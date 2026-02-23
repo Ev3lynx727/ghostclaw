@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ghostclaw"
+version = "0.1.3"
+description = "Architectural code review assistant that perceives code vibes"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [{name = "Ev3lynx", email = "ev3lynx727@example.com"}]
+keywords = ["architecture", "code-review", "静态分析"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+ghostclaw = "cli.ghostclaw:main"
+ghostclaw-watcher = "cli.watcher:main"
+ghostclaw-compare = "cli.compare:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["core", "stacks", "cli", "lib"]
+
+[tool.setuptools.package-data]
+"*" = ["references/*.yaml"]
