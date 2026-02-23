@@ -12,10 +12,14 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
+from dotenv import load_dotenv
 from core.analyzer import CodebaseAnalyzer
 from lib.cache import VibeCache
 from lib.github import GitHubClient
 from lib.notify import Notifier
+
+# Load .env file if present (secrets management)
+load_dotenv()
 
 
 def clone_or_pull(repo_url: str, dest_dir: Path) -> bool:

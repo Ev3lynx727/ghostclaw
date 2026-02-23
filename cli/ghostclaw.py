@@ -7,7 +7,11 @@ import sys
 import json
 from pathlib import Path
 from typing import Dict
+
+from dotenv import load_dotenv
 from core.analyzer import CodebaseAnalyzer
+
+load_dotenv()
 
 
 def print_report(report: Dict):

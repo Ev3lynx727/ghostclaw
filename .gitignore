@@ -30,3 +30,7 @@ build/
 # Ghostclaw specific
 .ghostclaw_cache/
 ~/.cache/ghostclaw/
+
+# Environment variables (secrets!)
+.env
+.env.local

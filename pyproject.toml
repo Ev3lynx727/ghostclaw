@@ -20,11 +20,14 @@ classifiers = [
 
 dependencies = [
     "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
 ]
 
 [project.scripts]
 ghostclaw = "cli.ghostclaw:main"
 ghostclaw-watcher = "cli.watcher:main"
+ghostclaw-compare = "cli.compare:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
