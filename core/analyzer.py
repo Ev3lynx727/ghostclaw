@@ -11,8 +11,14 @@ from stacks import get_analyzer
 class CodebaseAnalyzer:
     """Main analyzer class that coordinates the full analysis pipeline."""
 
-    def __init__(self):
-        self.validator = RuleValidator()
+    def __init__(self, validator: RuleValidator = None):
+        """
+        Initialize the analyzer with optional injected dependencies.
+
+        Args:
+            validator: Rule engine to use (Phase 4)
+        """
+        self.validator = validator or RuleValidator()
 
     def analyze(self, root: str) -> Dict:
         """
