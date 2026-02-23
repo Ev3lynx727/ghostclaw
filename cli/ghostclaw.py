@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""
+Ghostclaw CLI — command-line interface for the architectural analyzer.
+"""
+
+import sys
+import json
+from pathlib import Path
+from typing import Dict
+from core.analyzer import CodebaseAnalyzer
+
+
+def print_report(report: Dict):
+    """Pretty-print the analysis report to terminal."""
+    vibe_score = report['vibe_score']
+    stack = report['stack']
+    files = report['files_analyzed']
+    total = report['total_lines']
+
+    # Color/emoji based on vibe
+    if vibe_score >= 80:
+        emoji = "🟢"
+    elif vibe_score >= 60:
+        emoji = "🟡"
+    elif vibe_score >= 40:
+        emoji = "🟠"
+    else:
+        emoji = "🔴"
+
+    print(f"{emoji} Vibe Score: {vibe_score}/100")
+    print(f"   Stack: {stack}")
+    print(f"   Files: {files}, Lines: {total}")
+    print()
+
+    issues = report.get('issues', [])
+    if issues:
+        print("Issues detected:")
+        for issue in issues:
+            print(f"  • {issue}")
+        print()
+
+    ghosts = report.get('architectural_ghosts', [])
+    if ghosts:
+        print("👻 Architectural Ghosts:")
+        for ghost in ghosts:
+            print(f"   {ghost}")
+        print()
+
+    flags = report.get('red_flags', [])
+    if flags:
+        print("🚨 Red Flags:")
+        for flag in flags:
+            print(f"   {flag}")
+        print()
+
+    print("💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: ghostclaw <repo_path> [--json]")
+        sys.exit(1)
+
+    repo_path = sys.argv[1]
+    output_json = '--json' in sys.argv
+
+    if not Path(repo_path).is_dir():
+        print(f"Error: directory not found: {repo_path}", file=sys.stderr)
+        sys.exit(1)
+
+    analyzer = CodebaseAnalyzer()
+    report = analyzer.analyze(repo_path)
+
+    if output_json:
+        print(json.dumps(report, indent=2))
+    else:
+        print_report(report)
+
+
+if __name__ == "__main__":
+    main()

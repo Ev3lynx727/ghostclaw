@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Ghostclaw — main entry point
-# Usage: ghostclaw.sh <mode> [args...]
-# Modes: review <repo_path> | watcher
+# Ghostclaw — main entry point (refactored)
+# Usage: ghostclaw.sh review <repo_path> | watcher
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/.."
 PYTHON="${PYTHON:-python3}"
+export PYTHONPATH="$REPO_ROOT:${PYTHONPATH:-}"
 
 review() {
     local repo_path="$1"
@@ -19,17 +19,17 @@ review() {
         exit 1
     fi
 
-    # Run analysis
+    # Run new modular analyzer
     local report_json
-    report_json="$("$PYTHON" "$SCRIPT_DIR/analyze.py" "$repo_path" 2>/dev/null || echo '{"error":"analysis failed"}')"
+    report_json="$("$PYTHON" "$REPO_ROOT/cli/ghostclaw.py" "$repo_path" --json 2>/dev/null || echo '{"error":"analysis failed"}')"
 
-    # Pretty print
+    # Pretty print (now using correct 'issues' key from new structure)
     local vibe_score stack files total blem arch_ghosts red_flags
     vibe_score=$(echo "$report_json" | jq -r '.vibe_score // 0')
     stack=$(echo "$report_json" | jq -r '.stack // "unknown"')
     files=$(echo "$report_json" | jq -r '.files_analyzed // 0')
     total=$(echo "$report_json" | jq -r '.total_lines // 0')
-    blem=$(echo "$report_json" | jq -c '.plings // []')
+    blem=$(echo "$report_json" | jq -c '.issues // []')
     arch_ghosts=$(echo "$report_json" | jq -c '.architectural_ghosts // []')
     red_flags=$(echo "$report_json" | jq -c '.red_flags // []')
 
@@ -49,9 +49,9 @@ review() {
     echo "   Files: $files, Lines: $total"
     echo ""
 
-    # Print blem
+    # Print issues
     if [[ "$blem" != "[]" ]]; then
-   echo "Issues detected:"
+        echo "Issues detected:"
         echo "$blem" | jq -r '.[]' | sed 's/^/  • /'
         echo ""
     fi
@@ -70,7 +70,6 @@ review() {
         echo ""
     fi
 
-    # TODO: generate patches
     echo "💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)"
 }
 
