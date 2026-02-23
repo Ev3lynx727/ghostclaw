@@ -3,23 +3,17 @@
 import re
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
-from collections import defaultdict, deque
+from collections import defaultdict
 
 
 class NodeImportAnalyzer:
     """Analyzes Node.js imports using pattern matching."""
 
-    # Patterns to match ES6 imports and CommonJS requires
     PATTERNS = [
-        # import ... from 'module'
         re.compile(r"import\s+(?:[\w*{}\n, ]+)\s+from\s+['\"]([^'\"\n]+)['\"]"),
-        # import 'module'
         re.compile(r"import\s+['\"]([^'\"\n]+)['\"]"),
-        # require('module')
         re.compile(r"require\s*\(\s*['\"]([^'\"\n]+)['\"]\s*\)"),
-        # require("module")
         re.compile(r'require\s*\(\s*[\'"]([^\'"\n]+)[\'"]\s*\)'),
-        # export ... from 'module'
         re.compile(r"export\s*(?:[\w*{}\n, ]+)\s+from\s+['\"]([^'\"\n]+)['\"]"),
     ]
 
@@ -27,45 +21,69 @@ class NodeImportAnalyzer:
         self.root = Path(root)
         self.graph = self._init_graph()
 
-    def _init_graph(self) -> Dict:
-        """Initialize empty graph structure."""
+    def _init_graph(self):
         return {
             "nodes": set(),
             "edges": [],
             "module_to_file": {}
         }
 
-    def _is_local_import(self, module_path: str, known_modules: Set[str]) -> bool:
-        """Heuristic: is this import from within the project?"""
-        # Absolute/relative path imports (start with . or /)
-        if module_path.startswith('.') or module_path.startswith('/'):
-            return True
-        # If it's a known module (we've seen it as a file in the project)
-        if module_path in known_modules:
-            return True
-        return False
-
     def _module_name_from_file(self, filepath: Path) -> str:
-        """Convert file path to a module identifier."""
         rel = filepath.relative_to(self.root)
-        if rel.name == 'index.js':
+        if rel.name in ('index.js', 'index.ts', 'index.jsx', 'index.tsx'):
             parent = rel.parent
             if parent == Path('.'):
                 return '.'
             return str(parent).replace('/', '.')
         return str(rel.with_suffix('')).replace('/', '.')
 
+    def _resolve_import_path(self, import_path: str, source_file: Path) -> Path:
+        """
+        Resolve an import path to an absolute file path within the project.
+        Returns None if not found.
+        """
+        # Only handle relative imports
+        if not import_path.startswith('.'):
+            return None
+
+        # Strip query and hash
+        import_path = import_path.split('?')[0].split('#')[0]
+
+        source_dir = source_file.parent
+        candidate = (source_dir / import_path).resolve()
+
+        # If candidate is a directory, look for index.js or package.json main
+        if candidate.is_dir():
+            for ext in ['.js', '.ts', '.jsx', '.tsx']:
+                index_file = candidate / f'index{ext}'
+                if index_file.exists():
+                    return index_file
+            # Could also check package.json main, but skip for now
+
+        # If candidate is a file (with or without extension)
+        if candidate.is_file():
+            return candidate
+
+        # Try adding common extensions
+        for ext in ['.js', '.ts', '.jsx', '.tsx', '.json']:
+            candidate_with_ext = candidate.with_suffix(ext) if not candidate.suffix else candidate
+            if candidate_with_ext.is_file():
+                return candidate_with_ext
+
+        return None
+
     def analyze(self) -> Dict:
         issues = []
         ghosts = []
         flags = []
 
-        # Map all relevant files to module names
+        # Find all Node source files
         node_exts = ['.js', '.jsx', '.ts', '.tsx']
         files = []
         for ext in node_exts:
             files.extend(self.root.rglob(f"*{ext}"))
 
+        # Build module map
         known_modules = set()
         for f in files:
             module_name = self._module_name_from_file(f)
@@ -73,28 +91,26 @@ class NodeImportAnalyzer:
             self.graph["nodes"].add(module_name)
             known_modules.add(module_name)
 
-        # Also add directories that could be modules (have index.js or package.json)
-        for dirpath in self.root.rglob('*'):
-            if dirpath.is_dir():
-                if any((dirpath / 'index.js').exists()) or (dirpath / 'package.json').exists():
-                    module_name = str(dirpath.relative_to(self.root)).replace('/', '.')
-                    self.graph["nodes"].add(module_name)
-                    known_modules.add(module_name)
-
         # Parse each file for imports
         for f in files:
             try:
                 content = f.read_text(encoding='utf-8', errors='ignore')
                 importer = self._module_name_from_file(f)
+                imported_modules = set()
 
                 for pattern in self.PATTERNS:
                     for match in pattern.finditer(content):
                         imported = match.group(1)
-                        # Strip ?query and #hash
-                        imported = imported.split('?')[0].split('#')[0]
-                        # Resolve relative paths?
-                        if self._is_local_import(imported, known_modules):
-                            self.graph["edges"].append((importer, imported))
+                        # Only handle local relative imports for coupling
+                        resolved = self._resolve_import_path(imported, f)
+                        if resolved and resolved.is_relative_to(self.root):
+                            imported_module = self._module_name_from_file(resolved)
+                            if imported_module in known_modules:
+                                imported_modules.add(imported_module)
+
+                # Add unique edges
+                for imported_module in imported_modules:
+                    self.graph["edges"].append((importer, imported_module))
             except Exception:
                 continue
 
@@ -106,9 +122,9 @@ class NodeImportAnalyzer:
                 issues.append(f"Circular dependency: {cycle_str}")
                 ghosts.append(f"Circular dependency: {cycle_str}")
             if len(cycles) > 5:
-                issues.append(f"... and {len(cycles) - 5} more cycles")
+                issues.append(f"... and {len(cycles)-5} more cycles")
 
-        # Compute coupling metrics per module
+        # Compute coupling metrics
         coupling_metrics = {}
         for node in self.graph["nodes"]:
             afferent = sum(1 for src, dst in self.graph["edges"] if dst == node)
@@ -133,7 +149,6 @@ class NodeImportAnalyzer:
         }
 
     def _detect_cycles(self) -> List[List[str]]:
-        """Detect cycles in the import graph."""
         graph = defaultdict(list)
         for src, dst in self.graph["edges"]:
             graph[src].append(dst)
@@ -144,8 +159,8 @@ class NodeImportAnalyzer:
 
         def dfs(node):
             if node in stack:
-                cycle_start = stack.index(node)
-                cycles.append(stack[cycle_start:] + [node])
+                idx = stack.index(node)
+                cycles.append(stack[idx:] + [node])
                 return
             if node in visited:
                 return

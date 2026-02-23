@@ -24,10 +24,11 @@ dependencies = [
 
 [project.scripts]
 ghostclaw = "cli.ghostclaw:main"
+ghostclaw-watcher = "cli.watcher:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
-packages = ["core", "stacks", "cli"]
+packages = ["core", "stacks", "cli", "lib"]
 
 [tool.setuptools.package-data]
 "*" = ["references/*.yaml"]
