@@ -112,7 +112,7 @@ class CodebaseAnalyzer:
             "architectural_ghosts": ghosts,
             "red_flags": flags,
             "metadata": {
-                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "analyzer": "ghostclaw-refactored",
                 "version": "0.1.3",
                 "coupling_enabled": True,

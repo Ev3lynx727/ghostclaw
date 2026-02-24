@@ -20,21 +20,30 @@ Use ghostclaw when:
 
 ## Modes
 
-### 1. Ad-hoc Review (Sub-agent Invocation)
+### 1. Ad-hoc Review (One-Shot Review)
 
-Spawn ghostclaw to analyze a codebase:
+Scan a codebase directly via CLI:
 
 ```bash
-openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory and suggest architectural improvements"
+ghostclaw /path/to/repo
 ```
 
-Or from within OpenClaw chat, just mention: `ghostclaw: review my React components`
-
 Ghostclaw will:
-- Scan the code
-- Rate "vibe health" per module
-- Provide refactoring suggestions with rationale
-- Optionally generate patches or new files
+- Scan the code and rate "vibe health".
+- **Auto-generate** a timestamped `ARCHITECTURE-REPORT-<timestamp>.md` in the repository root.
+- Detect if a GitHub remote exists and suggest PR creation.
+
+**Flags:**
+- `--no-write-report`: Skip generating the Markdown report file.
+- `--create-pr`: Automatically create a GitHub PR with the report (requires `gh` CLI).
+- `--pr-title "Title"`: Custom title for the PR.
+- `--pr-body "Body"`: Custom body for the PR.
+- `--json`: Output raw JSON analysis data.
+
+You can also spawn ghostclaw as a sub-agent:
+```bash
+openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
+```
 
 ### 2. Background Watcher (Cron)
 
