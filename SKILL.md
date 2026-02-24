@@ -1,6 +1,6 @@
 ---
 name: ghostclaw
-description: Architectural code review and refactoring assistant that perceives code vibes and system-level flow issues. Uses advanced coupling analysis, rule validation, and can open draft PRs. Invoke as a sub-agent or run as a background watcher.
+description: Architectural code review and refactoring assistant that perceives code vibes and system-level flow issues. Use for analyzing code quality and architecture, suggesting refactors aligned with tech stack best practices, monitoring repositories for vibe health, or opening PRs with architectural improvements. Can be invoked as a sub-agent with codename ghostclaw or run as a background watcher via cron.
 ---
 
 # Ghostclaw — The Architectural Ghost
@@ -17,53 +17,57 @@ Use ghostclaw when:
 - Refactoring is needed to improve maintainability
 - A repository needs ongoing vibe health monitoring
 - PRs should be opened automatically for architectural improvements
-- You need quantitative coupling metrics (instability, circular dependencies)
 
 ## Modes
 
-### 1. Ad-hoc Review (Sub-agent Invocation)
+### 1. Ad-hoc Review (One-Shot Review)
 
-Spawn ghostclaw to analyze a codebase:
+Scan a codebase directly via CLI:
 
 ```bash
-openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory and suggest architectural improvements"
+ghostclaw /path/to/repo
 ```
 
-Or from within OpenClaw chat, just mention: `ghostclaw: review my React components`
-
 Ghostclaw will:
-- Detect the technology stack
-- Compute a vibe score based on file metrics, coupling, and rule violations
-- Identify architectural ghosts (code smells) and red flags
-- Produce refactoring suggestions aligned with stack best practices
-- Optionally generate patches or open draft PRs (when configured)
+- Scan the code and rate "vibe health".
+- **Auto-generate** a timestamped `ARCHITECTURE-REPORT-<timestamp>.md` in the repository root.
+- Detect if a GitHub remote exists and suggest PR creation.
+
+**Flags:**
+- `--no-write-report`: Skip generating the Markdown report file.
+- `--create-pr`: Automatically create a GitHub PR with the report (requires `gh` CLI).
+- `--pr-title "Title"`: Custom title for the PR.
+- `--pr-body "Body"`: Custom body for the PR.
+- `--json`: Output raw JSON analysis data.
+
+You can also spawn ghostclaw as a sub-agent:
+```bash
+openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
+```
 
 ### 2. Background Watcher (Cron)
 
 Configure ghostclaw to monitor repositories:
 
 ```bash
-openclaw cron schedule --interval "daily" --script "/path/to/ghostclaw/scripts/watcher.sh" --args "--notify"
+openclaw cron schedule --interval "daily" --script "/home/ev3lynx/.openclaw/workspace/ghostclaw/scripts/watcher.sh" --args "repo-list.txt"
 ```
 
 The watcher:
-- Clones or pulls target repos
+- Clones/pulls target repos
 - Scores vibe health (cohesion, coupling, naming, layering)
-- Tracks score trends over time (cached)
-- Creates draft PRs with improvements (when GH_TOKEN and `--create-pr` are set)
-- Sends notifications via Telegram or logs
+- Opens PRs with improvements (if GH_TOKEN available)
+- Sends digest notifications
 
 ## Personality & Output Style
 
-**Tone**: Quiet, precise, metaphorical. Speaks of "code ghosts" (legacy cruft), "energetic flow" (data paths), "heavy modules" (over Responsibility).
+**Tone**: Quiet, precise, metaphorical. Speaks of "code ghosts" (legacy cruft), " energetic flow" (data paths), "heavy modules" (over Responsibility).
 
 **Output**:
-- **Vibe Score**: 0-100 overall
-- **Issues**: List of detected problems
-- **Architectural Ghosts**: Structural concerns
-- **Red Flags**: Severe issues requiring immediate attention
-- **Coupling Metrics**: Instability, afferent/efferent couplings per module (for supported stacks)
+- **Vibe Score**: 0-100 per module
+- **Architectural Diagnosis**: What's structurally wrong
 - **Refactor Blueprint**: High-level plan before code changes
+- **Code-level suggestions**: Precise edits, new abstractions
 - **Tech Stack Alignment**: How changes match framework idioms
 
 **Example**:
@@ -89,73 +93,29 @@ Suggested changes... (patches follow)
 
 Ghostclaw adapts to stack conventions:
 
-- **Node/Express**: proper layering (routes → controllers → services → repositories), middleware composition, import coupling analysis
-- **React**: component size, prop drilling, state locality, hook abstraction
-- **Python/Django**: app structure, model thickness, view responsibilities, async boundaries
-- **Go**: package cohesion, interface usage, error handling patterns
-- **Rust**: module organization, trait boundaries, ownership clarity
+- **Node/Express**: looks for proper layering (routes → controllers → services → repositories), middleware composition
+- **React**: checks component size, prop drilling, state locality, hook abstraction
+- **Python/Django**: evaluates app structure, model thickness, view responsibilities
+- **Go**: inspects package cohesion, interface usage, error handling patterns
+- **Rust**: assesses module organization, trait boundaries, ownership clarity
 
-See `references/stack-patterns.yaml` for configurable validation rules and `references/stack-patterns.md` for detailed heuristics.
+See `references/stack-patterns/` for detailed heuristics.
 
 ## Setup
 
-1. Ensure dependencies: `python3` (≥3.8), `pip`, `git`, `gh` (optional for PRs)
-2. Install Python packages (choose one):
-   - `pip install pyyaml python-dotenv` (minimal)
-   - `pip install -e .` from the skill root (installs package and dependencies)
-3. Configure repositories to watch (for watcher): edit `scripts/repos.txt` (one URL per line)
-4. Set environment variables as needed:
-   - `GH_TOKEN` — GitHub token for PR automation
-   - `NOTIFY_CHANNEL` — Telegram chat ID for alerts
-5. Test review mode:
-   - `./scripts/ghostclaw /path/to/repo`
-   - `./scripts/ghostclaw review /path/to/repo` (legacy)
-6. Test watcher:
-   - `./scripts/watcher.sh --dry-run`
-7. Add to cron (if desired):
-   - `0 9 * * * /path/to/ghostclaw/scripts/watcher.sh --notify`
+1. Ensure dependencies: `bash`, `git`, `gh` (optional for PRs), `jq` (for JSON parsing)
+2. Configure repos to watch: edit `scripts/watcher.sh` → `REPOS=...`
+3. Set `GH_TOKEN` env for PR automation
+4. Set notification channel in `scripts/notify.sh` if desired
+5. Test: `./scripts/ghostclaw.sh review /path/to/repo`
 
-## Files (refactored structure)
+## Files
 
-```
-ghostclaw/
-├── SKILL.md               # Skill manifest
-├── README.md              # This file
-├── pyproject.toml         # Python package config
-├── .env.example           # Environment template
-├── scripts/
-│   ├── ghostclaw         # Wrapper for cli.ghostclaw (executable)
-│   ├── watcher.sh        # Wrapper for cli.watcher (executable)
-│   ├── install.sh        # Skill installation script
-│   └── repos.txt         # Repository list for watcher (edit)
-├── cli/
-│   ├── __init__.py
-│   ├── ghostclaw.py      # CLI entry point (one-shot review)
-│   ├── watcher.py        # Watcher implementation
-│   └── compare.py        # Compare vibe scores across commits
-├── core/
-│   ├── __init__.py
-│   ├── analyzer.py       # Main orchestrator
-│   ├── coupling.py       # Coupling metric computations
-│   ├── detector.py       # Stack detection
-│   ├── metrics.py        # Base metrics (file sizes, etc.)
-│   ├── node_coupling.py  # Node-specific import analysis
-│   └── validator.py      # Rule validation engine
-├── lib/
-│   ├── cache.py          # Vibe score persistence
-│   ├── github.py         # GitHub API/gh CLI integration
-│   └── notify.py         # Notification backends
-├── stacks/
-│   ├── __init__.py
-│   ├── base.py           # Base analyzer class
-│   ├── node.py           # Node.js stack analyzer
-│   ├── python.py         # Python stack analyzer
-│   └── go.py             # Go stack analyzer
-├── references/
-│   ├── stack-patterns.yaml  # Validation rules (used by validator)
-│   └── stack-patterns.md    # Human-readable patterns
-└── tests/                # Unit and integration tests
-```
+- `scripts/ghostclaw.sh` — Main entry point (review mode)
+- `scripts/watcher.sh` — Cron watcher loop
+- `scripts/analyze.py` — Core vibe analysis engine (Python)
+- `references/stack-patterns/` — Tech-stack-specific quality heuristics
+- `assets/refactor-templates/` — Boilerplate for common refactors
 
 ## Invocation Examples
 
@@ -164,7 +124,7 @@ User: ghostclaw, review my backend services
 Ghostclaw: Scanning... vibe check: 62/100 overall. Service layer is reaching into controllers (ControllerGhost detected). Suggest extracting business logic into pure services. See attached patches.
 
 User: set up ghostclaw watcher on my GitHub org
-Ghostclaw: Configure repos in scripts/repos.txt, then add cron: `0 9 * * * /path/to/ghostclaw/scripts/watcher.sh --notify`
+Ghostclaw: Configure repos in scripts/watcher.sh, then add cron: `0 9 * * * /path/to/ghostclaw/scripts/watcher.sh`
 ```
 
 ---

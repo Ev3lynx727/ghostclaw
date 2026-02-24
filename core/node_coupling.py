@@ -2,8 +2,8 @@
 
 import re
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
-from collections import defaultdict
+from typing import Dict, List
+from core.graph import ImportGraph
 
 
 class NodeImportAnalyzer:
@@ -19,14 +19,7 @@ class NodeImportAnalyzer:
 
     def __init__(self, root: str):
         self.root = Path(root)
-        self.graph = self._init_graph()
-
-    def _init_graph(self):
-        return {
-            "nodes": set(),
-            "edges": [],
-            "module_to_file": {}
-        }
+        self.graph = ImportGraph()
 
     def _module_name_from_file(self, filepath: Path) -> str:
         rel = filepath.relative_to(self.root)
@@ -87,8 +80,8 @@ class NodeImportAnalyzer:
         known_modules = set()
         for f in files:
             module_name = self._module_name_from_file(f)
-            self.graph["module_to_file"][module_name] = str(f)
-            self.graph["nodes"].add(module_name)
+            self.graph.module_to_file[module_name] = str(f)
+            self.graph.nodes.add(module_name)
             known_modules.add(module_name)
 
         # Parse each file for imports
@@ -110,12 +103,12 @@ class NodeImportAnalyzer:
 
                 # Add unique edges
                 for imported_module in imported_modules:
-                    self.graph["edges"].append((importer, imported_module))
+                    self.graph.add_edge(importer, imported_module)
             except Exception:
                 continue
 
         # Detect cycles
-        cycles = self._detect_cycles()
+        cycles = self.graph.detect_circular_dependencies()
         if cycles:
             for cycle in cycles[:5]:
                 cycle_str = " → ".join(cycle)
@@ -126,11 +119,10 @@ class NodeImportAnalyzer:
 
         # Compute coupling metrics
         coupling_metrics = {}
-        for node in self.graph["nodes"]:
-            afferent = sum(1 for src, dst in self.graph["edges"] if dst == node)
-            efferent = sum(1 for src, dst in self.graph["edges"] if src == node)
-            total = afferent + efferent
-            instability = efferent / total if total > 0 else 0.0
+        for node in self.graph.nodes:
+            afferent = self.graph.get_afferent_coupling(node)
+            efferent = self.graph.get_efferent_coupling(node)
+            instability = self.graph.get_instability(node)
             coupling_metrics[node] = {
                 "afferent": afferent,
                 "efferent": efferent,
@@ -147,30 +139,3 @@ class NodeImportAnalyzer:
             "architectural_ghosts": ghosts,
             "red_flags": flags
         }
-
-    def _detect_cycles(self) -> List[List[str]]:
-        graph = defaultdict(list)
-        for src, dst in self.graph["edges"]:
-            graph[src].append(dst)
-
-        visited = set()
-        stack = []
-        cycles = []
-
-        def dfs(node):
-            if node in stack:
-                idx = stack.index(node)
-                cycles.append(stack[idx:] + [node])
-                return
-            if node in visited:
-                return
-            visited.add(node)
-            stack.append(node)
-            for neighbor in graph.get(node, []):
-                dfs(neighbor)
-            stack.pop()
-
-        for node in self.graph["nodes"]:
-            dfs(node)
-
-        return cycles

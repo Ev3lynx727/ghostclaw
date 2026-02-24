@@ -2,62 +2,65 @@
 
 > "I see the flow between functions. I sense the weight of dependencies. I know when a module is uneasy."
 
-Ghostclaw is an OpenClaw skill that provides an **architectural code review assistant** focused on system-level flow, cohesion, coupling metrics, and tech stack best practices.
+Ghostclaw is an OpenClaw skill that provides an **architectural code review assistant** focused on system-level flow, cohesion, and tech stack best practices.
 
 ## Quick Start
 
 ```bash
-# Install the skill (if not already installed)
+# Install the skill
 ./scripts/install.sh
 
 # Run a review on a codebase
-./scripts/ghostclaw /path/to/your/repo
-# or legacy: ./scripts/ghostclaw review /path/to/your/repo
+./scripts/ghostclaw.sh review /path/to/your/repo
 
 # Set up background monitoring (cron)
-# Edit scripts/repos.txt first, then:
-0 9 * * * /path/to/ghostclaw/scripts/watcher.sh --notify
+export GHOSTCLAW_REPOS=/path/to/repos.txt  # list of git repos
+0 9 * * * /path/to/ghostclaw/scripts/watcher.sh
 ```
 
 ## What Ghostclaw Does
 
-- Analyzes codebase structure (file sizes, module boundaries, import coupling)
-- Detects "architectural ghosts" and circular dependencies
+- Analyzes codebase structure (file sizes, module boundaries)
+- Detects "architectural ghosts" — code smells that hurt maintainability
 - Assigns a "vibe score" (0-100) representing architectural health
-- Applies rule-based validation specific to your tech stack
-- Suggests refactoring directions aligned with framework idioms
+- Suggests refactoring directions aligned with your tech stack
 - Can run as a sub-agent via `openclaw sessions_spawn --agentId ghostclaw`
-- Watcher mode can create draft PRs with improvements and send notifications
+- Can run as a watcher that opens PRs for improvements
 
 ## Modes
 
-- **Review mode**: `./scripts/ghostclaw <repo_path>` — one-shot analysis
-- **Watcher mode**: `./scripts/watcher.sh [--dry-run] [--create-pr] [--notify]` — monitors multiple repos (configured via `scripts/repos.txt`)
+- **Review mode**: `ghostclaw.sh review <repo_path>` — one-shot analysis
+- **Watcher mode**: `ghostclaw.sh watcher` — monitors multiple repos (configured via `repos.txt`)
 - **Sub-agent**: Spawned by OpenClaw when `ghostclaw` codename is invoked
 
 ## Configuration
 
 - `scripts/repos.txt` — List of repositories for watcher (one URL per line)
 - `GH_TOKEN` — GitHub token for PR automation (optional)
-- `NOTIFY_CHANNEL` — Telegram chat ID for alerts (optional)
-- `references/stack-patterns.yaml` — Validation rules (customizable)
+- `NOTIFY_CHANNEL` — Telegram channel ID for alerts (optional)
 
-## Dependencies
+## Files
 
-- Python 3.8+
-- Python packages: `pyyaml`, `python-dotenv` (install via `pip install -r requirements-dev.txt` or `pip install -e .`)
-- Optional: `gh` (GitHub CLI) for PR creation
-- Bash (for wrappers)
-
-## Project Structure
-
-See `SKILL.md` for the full breakdown of the refactored codebase organization.
+```
+ghostclaw/
+├── SKILL.md — Skill documentation for OpenClaw
+├── scripts/
+│   ├── ghostclaw.sh — Main CLI entry point
+│   ├── analyze.py — Core analysis engine
+│   ├── watcher.sh — Cron watcher
+│   └── install.sh — Installation script
+├── references/
+│   └── stack-patterns.md — Tech-stack heuristics
+└── assets/ (reserved for future templates)
+```
 
 ## Currently Supported Stacks
 
-- Node.js / React / TypeScript (with import coupling analysis)
+- Node.js / React / TypeScript
 - Python (Django, FastAPI)
 - Go (basic detection)
+
+Analysis is currently based on file size metrics; future versions will add coupling (import analysis) and naming coherence.
 
 ## License
 
