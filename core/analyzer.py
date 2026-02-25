@@ -2,34 +2,50 @@
 
 import datetime
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from core.detector import detect_stack, find_files
 from core.validator import RuleValidator
 from stacks import get_analyzer
+from core.cache import LocalCache, compute_fingerprint
 
 
 class CodebaseAnalyzer:
     """Main analyzer class that coordinates the full analysis pipeline."""
 
-    def __init__(self, validator: RuleValidator = None):
+    def __init__(self, validator: RuleValidator = None, cache: LocalCache = None):
         """
         Initialize the analyzer with optional injected dependencies.
 
         Args:
             validator: Rule engine to use (Phase 4)
+            cache: Optional LocalCache instance for result caching
         """
         self.validator = validator or RuleValidator()
+        self.cache = cache
 
-    def analyze(self, root: str) -> Dict:
+    def analyze(self, root: str, use_cache: bool = True) -> Dict:
         """
         Perform a complete architectural analysis of a codebase.
 
         Args:
             root: Path to repository root
+            use_cache: Whether to use/write cache (if cache enabled)
 
         Returns:
             Complete analysis report with vibe score, issues, ghosts, etc.
         """
+        root_path = Path(root)
+
+        fingerprint = None
+        # 0. Cache shortcut if enabled
+        if use_cache and self.cache is not None:
+            fingerprint = compute_fingerprint(root_path)
+            cached_report = self.cache.get(fingerprint)
+            if cached_report is not None:
+                # Mark as cache hit for transparency
+                cached_report.setdefault("metadata", {})["cache_hit"] = True
+                return cached_report
+
         # 1. Detect stack
         stack = detect_stack(root)
 
@@ -119,6 +135,12 @@ class CodebaseAnalyzer:
                 "rules_enabled": True
             }
         }
+
+        # Store in cache if enabled and we have a fingerprint
+        if use_cache and self.cache is not None and fingerprint is not None:
+            # Only cache if analysis succeeded (has vibe_score)
+            if "vibe_score" in report:
+                self.cache.set(fingerprint, report)
 
         return report
 
