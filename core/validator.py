@@ -15,7 +15,7 @@ class RuleValidator:
         else:
             patterns_path = Path(patterns_path)
 
-        with open(patterns_path, 'r') as f:
+        with open(patterns_path, 'r', encoding='utf-8') as f:
             self.rules = yaml.safe_load(f)
 
     def validate(self, stack: str, report: Dict) -> Dict:
