@@ -23,8 +23,9 @@ class Notifier:
                 "text": message,
                 "parse_mode": "Markdown"
             }, timeout=10)
-            return resp.status_code == 200
-        except Exception:
+            resp.raise_for_status()
+            return True
+        except requests.RequestException:
             return False
 
     def notify(

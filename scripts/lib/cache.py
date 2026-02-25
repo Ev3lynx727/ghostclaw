@@ -20,7 +20,7 @@ class VibeCache:
         """Load the cache dictionary."""
         if self.cache_file.exists():
             try:
-                with open(self.cache_file, 'r') as f:
+                with open(self.cache_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception:
                 return {}
@@ -28,7 +28,7 @@ class VibeCache:
 
     def save(self, data: Dict):
         """Save the cache dictionary."""
-        with open(self.cache_file, 'w') as f:
+        with open(self.cache_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
     def get_history(self, repo_url: str) -> List[Dict]:

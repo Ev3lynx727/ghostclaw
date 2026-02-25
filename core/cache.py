@@ -174,13 +174,13 @@ def compute_fingerprint(
         }
 
         summary_str = json.dumps(summary, sort_keys=True, separators=(',', ':'))
-        digest = hashlib.md5(summary_str.encode()).hexdigest()
+        digest = hashlib.sha256(summary_str.encode()).hexdigest()
         return version_prefix + f"mtime:{digest}"
 
     except Exception:
         # Fallback: use repo path and current time (not ideal, but something)
         fallback = f"{repo_path}:{datetime.now().isoformat()}"
-        digest = hashlib.md5(fallback.encode()).hexdigest()
+        digest = hashlib.sha256(fallback.encode()).hexdigest()
         return version_prefix + f"static:{digest}"
 
 
