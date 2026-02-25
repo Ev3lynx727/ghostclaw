@@ -13,6 +13,7 @@ from typing import Dict, Optional
 
 from dotenv import load_dotenv
 from core.analyzer import CodebaseAnalyzer
+from core.cache import LocalCache
 
 load_dotenv()
 
@@ -171,6 +172,12 @@ def main():
     parser.add_argument("--pr-title", help="Custom PR title")
     parser.add_argument("--pr-body", help="Custom PR body")
 
+    # Caching options
+    parser.add_argument("--no-cache", action="store_true", help="Disable result caching")
+    parser.add_argument("--cache-dir", type=Path, help="Custom cache directory (default: ~/.cache/ghostclaw)")
+    parser.add_argument("--cache-ttl", type=int, default=7, help="Cache TTL in days (default: 7)")
+    parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
+
     args = parser.parse_args()
     repo_path = args.repo_path
 
@@ -178,8 +185,14 @@ def main():
         print(f"Error: directory not found: {repo_path}", file=sys.stderr)
         sys.exit(1)
 
-    analyzer = CodebaseAnalyzer()
-    report = analyzer.analyze(repo_path)
+    # Initialize cache if enabled
+    cache = None
+    use_cache = not args.no_cache
+    if use_cache:
+        cache = LocalCache(cache_dir=args.cache_dir, ttl_days=args.cache_ttl)
+
+    analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
+    report = analyzer.analyze(repo_path, use_cache=use_cache)
 
     # 1. Prepare and write report file if needed (must happen before stdout)
     report_file_path = None
@@ -222,6 +235,16 @@ def main():
         title = args.pr_title or f"🏰 Architecture Report - {datetime.datetime.now().strftime('%Y-%m-%d')}"
         body = args.pr_body or f"Ghostclaw has completed an architectural review of the codebase.\n\n**Vibe Score: {report['vibe_score']}/100**\n\nPlease review the attached report for details."
         create_github_pr(repo_path, report_file_path, title, body)
+
+    # 5. Cache statistics if requested
+    if args.cache_stats and cache:
+        info = cache.info()
+        stats_line = f"📊 Cache: {info['entries']} entries, {info['total_size_bytes']} bytes total ({info['cache_dir']})"
+        print(stats_line, file=sys.stderr if args.json else sys.stdout)
+
+    # If this was a cache hit, optionally indicate (not needed if --json but could still show in stderr)
+    if not args.json and report.get('metadata', {}).get('cache_hit'):
+        print("⚡ Cache hit!", file=sys.stderr)
 
 
 if __name__ == "__main__":
