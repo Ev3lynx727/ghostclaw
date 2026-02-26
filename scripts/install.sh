@@ -16,9 +16,18 @@ fi
 mkdir -p "$SKILLS_DIR"
 
 # Copy skill
-cp -r "$(dirname "$0")/.." "$SKILLS_DIR/ghostclaw"
-chmod +x "$SKILLS_DIR/ghostclaw/scripts/"*.sh
-chmod +x "$SKILLS_DIR/ghostclaw/scripts/"*.py
+mkdir -p "$SKILLS_DIR/ghostclaw"
+# Explicitly copy root-level modules and scripts
+for dir in core lib stacks scripts cli references; do
+    if [[ -d "$(dirname "$0")/../$dir" ]]; then
+        cp -r "$(dirname "$0")/../$dir" "$SKILLS_DIR/ghostclaw/"
+    fi
+done
+cp "$(dirname "$0")/../SKILL.md" "$SKILLS_DIR/ghostclaw/" 2>/dev/null || true
+cp "$(dirname "$0")/../README.md" "$SKILLS_DIR/ghostclaw/" 2>/dev/null || true
+
+chmod +x "$SKILLS_DIR/ghostclaw/scripts/"*.sh 2>/dev/null || true
+chmod +x "$SKILLS_DIR/ghostclaw/scripts/"*.py 2>/dev/null || true
 
 echo "👻 Ghostclaw skill installed to: $SKILLS_DIR/ghostclaw"
 echo ""

@@ -44,13 +44,16 @@ export GHOSTCLAW_REPOS=/path/to/repos.txt  # list of git repos
 ```
 ghostclaw/
 ├── SKILL.md — Skill documentation for OpenClaw
+├── core/ — Core analysis orchestration
+├── lib/ — Shared utilities (cache, github, notify)
+├── stacks/ — Stack-specific analysis strategies
+├── cli/ — CLI implementation
 ├── scripts/
-│   ├── ghostclaw.sh — Main CLI entry point
-│   ├── analyze.py — Core analysis engine
+│   ├── ghostclaw.sh — Main entry point
 │   ├── watcher.sh — Cron watcher
 │   └── install.sh — Installation script
 ├── references/
-│   └── stack-patterns.md — Tech-stack heuristics
+│   └── stack-patterns.yaml — Architectural rules
 └── assets/ (reserved for future templates)
 ```
 

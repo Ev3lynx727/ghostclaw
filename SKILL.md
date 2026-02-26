@@ -113,9 +113,9 @@ See `references/stack-patterns/` for detailed heuristics.
 
 - `scripts/ghostclaw.sh` — Main entry point (review mode)
 - `scripts/watcher.sh` — Cron watcher loop
-- `scripts/analyze.py` — Core vibe analysis engine (Python)
-- `references/stack-patterns/` — Tech-stack-specific quality heuristics
-- `assets/refactor-templates/` — Boilerplate for common refactors
+- `core/` — Modular analysis engine (Python)
+- `stacks/` — Tech-stack specific analysis logic
+- `references/stack-patterns.yaml` — Configurable architectural rules
 
 ## Invocation Examples
 

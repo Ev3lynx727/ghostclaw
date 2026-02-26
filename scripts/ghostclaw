@@ -8,6 +8,10 @@ import json
 from pathlib import Path
 from typing import Dict
 
+# Ensure root directory is in sys.path to allow importing from core, lib, and stacks
+# This script is located in scripts/, so root is one level up
+sys.path.append(str(Path(__file__).parent.parent))
+
 from dotenv import load_dotenv
 from core.analyzer import CodebaseAnalyzer
 
