@@ -9,4 +9,4 @@ REPO_ROOT="${SCRIPT_DIR}/.."
 PYTHON="${PYTHON:-python3}"
 export PYTHONPATH="$REPO_ROOT:${PYTHONPATH:-}"
 
-"$PYTHON" "$REPO_ROOT/cli/compare.py" "$@"
+"$PYTHON" "$REPO_ROOT/scripts/compare.py" "$@"
