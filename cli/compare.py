@@ -100,8 +100,11 @@ def main():
             # Use latest from cache
             curr_score = cache.get_latest_score(repo_url)
 
-        # Compute delta using existing cache method
-        delta = cache.get_score_delta(repo_url)
+        # Compute delta
+        if prev_score is not None and curr_score is not None:
+            delta = curr_score - prev_score
+        else:
+            delta = None
 
         rows.append((repo_url, curr_score, prev_score, delta))
 
