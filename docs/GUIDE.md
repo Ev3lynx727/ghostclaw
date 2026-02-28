@@ -78,5 +78,5 @@ View health trends across multiple repositories:
 ## Troubleshooting
 
 - **Python not found**: Ensure `python3` is in your PATH.
-- **ClawHub Errors**: Ensure you have the latest version of `clawhub-cli`.
+- **ClawHub Errors**: Ensure you have the latest version of `clawdhub`.
 - **Permission issues**: Check that `~/.openclaw` is writable.

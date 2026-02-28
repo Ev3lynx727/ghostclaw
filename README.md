@@ -11,7 +11,7 @@ Ghostclaw is an OpenClaw skill that provides an **architectural code review assi
 Install Ghostclaw via ClawHub:
 
 ```bash
-npx clawhub@latest install ghostclaw
+npx clawdhub@latest install ghostclaw
 ```
 
 ### Method 2: NPX
