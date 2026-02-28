@@ -4,66 +4,80 @@
 
 Ghostclaw is an OpenClaw skill that provides an **architectural code review assistant** focused on system-level flow, cohesion, and tech stack best practices.
 
-## Quick Start
+## Quick Start (Installation)
+
+### Method 1: ClawHub (Recommended)
+
+Install Ghostclaw via ClawHub:
 
 ```bash
-# Install the skill
-./scripts/install.sh
+npx clawdhub@latest install ghostclaw
+```
 
-# Run a review on a codebase
+### Method 2: NPX
+
+```bash
+npx skills add Ev3lynx727/ghostclaw
+```
+
+### Method 3: Build from source
+
+```bash
+git clone https://github.com/Ev3lynx727/ghostclaw.git
+cd ghostclaw
+pip install .
+```
+
+For a detailed integration guide, see **[GUIDE.md](docs/GUIDE.md)**.
+
+## Usage
+
+### Run a review on a codebase
+
+```bash
+# Via script
 ./scripts/ghostclaw.sh review /path/to/your/repo
 
-# Set up background monitoring (cron)
-export GHOSTCLAW_REPOS=/path/to/repos.txt  # list of git repos
+# Via alias (if installed globally)
+ghostclaw /path/to/your/repo
+```
+
+### Background Monitoring (Cron)
+
+Set up your repositories in `scripts/repos.txt` and add to cron:
+
+```bash
 0 9 * * * /path/to/ghostclaw/scripts/watcher.sh
 ```
 
 ## What Ghostclaw Does
 
-- Analyzes codebase structure (file sizes, module boundaries)
-- Detects "architectural ghosts" — code smells that hurt maintainability
-- Assigns a "vibe score" (0-100) representing architectural health
-- Suggests refactoring directions aligned with your tech stack
-- Can run as a sub-agent via `openclaw sessions_spawn --agentId ghostclaw`
-- Can run as a watcher that opens PRs for improvements
-
-## Modes
-
-- **Review mode**: `ghostclaw.sh review <repo_path>` — one-shot analysis
-- **Watcher mode**: `ghostclaw.sh watcher` — monitors multiple repos (configured via `repos.txt`)
-- **Sub-agent**: Spawned by OpenClaw when `ghostclaw` codename is invoked
-
-## Configuration
-
-- `scripts/repos.txt` — List of repositories for watcher (one URL per line)
-- `GH_TOKEN` — GitHub token for PR automation (optional)
-- `NOTIFY_CHANNEL` — Telegram channel ID for alerts (optional)
+- **Vibe Score**: Assigns a 0-100 score representing architectural health.
+- **Architectural Ghosts**: Detects code smells like "AuthGhost" or "ControllerGhost".
+- **Refactor Blueprints**: Suggests high-level plans before code changes.
+- **Sub-agent Mode**: Can be spawned via `openclaw sessions_spawn --agentId ghostclaw`.
+- **Watcher Mode**: Monitors repositories and opens PRs with improvements.
 
 ## Files
 
 ```
 ghostclaw/
-├── SKILL.md — Skill documentation for OpenClaw
+├── package.json — Package metadata for Skills CLI
+├── SKILL.md — OpenClaw skill definition
+├── docs/ — Documentation for Ghostclaw
 ├── core/ — Core analysis orchestration
-├── lib/ — Shared utilities (cache, github, notify)
+├── lib/ — Utilities (GitHub, Cache, Notify)
 ├── stacks/ — Stack-specific analysis strategies
 ├── cli/ — CLI implementation
-├── scripts/
-│   ├── ghostclaw.sh — Main entry point
-│   ├── watcher.sh — Cron watcher
-│   └── install.sh — Installation script
-├── references/
-│   └── stack-patterns.yaml — Architectural rules
-└── assets/ (reserved for future templates)
+├── scripts/ — Entry points
+└── references/ — Architectural patterns
 ```
 
-## Currently Supported Stacks
+## Supported Stacks
 
 - Node.js / React / TypeScript
 - Python (Django, FastAPI)
-- Go (basic detection)
-
-Analysis is currently based on file size metrics; future versions will add coupling (import analysis) and naming coherence.
+- Go (Basic)
 
 ## License
 
