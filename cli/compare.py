@@ -139,7 +139,7 @@ def main():
 
         delta_str = f"{delta:+d}" if delta is not None else "---"
         print(
-            f"{repo[:40]:40} {status_text:8} {str(prev) if prev else '---':8} {delta_str:6} {status_emoji}"
+            f"{repo[:40]:40} {status_text:8} {str(prev) if prev is not None else '---':8} {delta_str:6} {status_emoji}"
         )
 
     print()
