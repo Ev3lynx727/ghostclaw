@@ -9,12 +9,17 @@ from typing import Dict, List, Optional
 class VibeCache:
     """Stores historical vibe scores for repositories."""
 
-    def __init__(self, cache_dir: str = None):
-        if cache_dir is None:
-            cache_dir = Path.home() / ".cache" / "ghostclaw"
-        self.cache_dir = Path(cache_dir)
+    def __init__(self, cache_dir: str = None, cache_file: str = None):
+        if cache_file:
+            self.cache_file = Path(cache_file)
+            self.cache_dir = self.cache_file.parent
+        else:
+            if cache_dir is None:
+                cache_dir = Path.home() / ".cache" / "ghostclaw"
+            self.cache_dir = Path(cache_dir)
+            self.cache_file = self.cache_dir / "vibe_history.json"
+
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.cache_file = self.cache_dir / "vibe_history.json"
 
     def load(self) -> Dict:
         """Load the cache dictionary."""
@@ -42,8 +47,11 @@ class VibeCache:
         if repo_url not in data:
             data[repo_url] = []
 
+        # Standardized UTC ISO format with Z suffix
+        timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + 'Z'
+
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": timestamp,
             "vibe_score": vibe_score,
             "metadata": metadata or {}
         }
@@ -67,6 +75,5 @@ class VibeCache:
         history = self.get_history(repo_url)
         if len(history) >= 2:
             return history[-1]["vibe_score"] - history[-2]["vibe_score"]
-        elif len(history) == 1:
-            return history[-1]["vibe_score"]  # No previous, return current as delta from unknown
+        # If only one entry, we don't have a delta from a previous state
         return None
