@@ -25,30 +25,35 @@ def load_repos(repos_file: Path) -> List[str]:
     if not repos_file.exists():
         print(f"Error: repos file not found: {repos_file}", file=sys.stderr)
         sys.exit(1)
-    return [line.strip() for line in repos_file.read_text().splitlines()
-            if line.strip() and not line.startswith('#')]
+    return [
+        line.strip()
+        for line in repos_file.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ghostclaw Compare — view vibe score trends")
+    parser = argparse.ArgumentParser(
+        description="Ghostclaw Compare — view vibe score trends"
+    )
     parser.add_argument(
         "--repos-file",
         required=True,
-        help="Path to file containing repository URLs or paths (one per line)"
+        help="Path to file containing repository URLs or paths (one per line)",
     )
     parser.add_argument(
         "--cache-file",
         default=str(Path.home() / ".cache" / "ghostclaw" / "vibe_history.json"),
-        help="Path to vibe history JSON cache"
+        help="Path to vibe history JSON cache",
     )
     parser.add_argument(
         "--work-dir",
-        help="Directory where repos are cloned (if using URLs); if omitted, repos are assumed to be local paths"
+        help="Directory where repos are cloned (if using URLs); if omitted, repos are assumed to be local paths",
     )
     parser.add_argument(
         "--refresh",
         action="store_true",
-        help="Re-analyze all repos instead of using cached current scores"
+        help="Re-analyze all repos instead of using cached current scores",
     )
 
     args = parser.parse_args()
@@ -63,18 +68,22 @@ def main():
     for repo_url in repos:
         # Get previous score from cache
         history = cache.get_history(repo_url)
-        prev_score = history[-1]["vibe_score"] if history else None
+        prev_score = (
+            history[-2]["vibe_score"]
+            if len(history) >= 2
+            else (history[-1]["vibe_score"] if history else None)
+        )
 
         # Get current score
         if args.refresh:
             # Force re-analysis
             if work_dir:
-                repo_name = repo_url.rstrip('/').split('/')[-1]
+                repo_name = repo_url.rstrip("/").split("/")[-1]
                 repo_path = work_dir / repo_name
                 if repo_path.exists():
                     try:
                         report = CodebaseAnalyzer().analyze(str(repo_path))
-                        curr_score = report['vibe_score']
+                        curr_score = report["vibe_score"]
                         cache.record_score(repo_url, curr_score)
                     except Exception:
                         curr_score = None
@@ -83,7 +92,7 @@ def main():
             else:
                 try:
                     report = CodebaseAnalyzer().analyze(repo_url)
-                    curr_score = report['vibe_score']
+                    curr_score = report["vibe_score"]
                     cache.record_score(repo_url, curr_score)
                 except Exception:
                     curr_score = None
@@ -91,11 +100,8 @@ def main():
             # Use latest from cache
             curr_score = cache.get_latest_score(repo_url)
 
-        # Compute delta
-        if prev_score is not None and curr_score is not None:
-            delta = curr_score - prev_score
-        else:
-            delta = None
+        # Compute delta using existing cache method
+        delta = cache.get_score_delta(repo_url)
 
         rows.append((repo_url, curr_score, prev_score, delta))
 
@@ -132,7 +138,9 @@ def main():
             status_text = f"{curr}/100"
 
         delta_str = f"{delta:+d}" if delta is not None else "---"
-        print(f"{repo[:40]:40} {status_text:8} {str(prev) if prev else '---':8} {delta_str:6} {status_emoji}")
+        print(
+            f"{repo[:40]:40} {status_text:8} {str(prev) if prev else '---':8} {delta_str:6} {status_emoji}"
+        )
 
     print()
 
