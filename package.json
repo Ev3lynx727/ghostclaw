@@ -2,7 +2,6 @@
     "name": "ghostclaw",
     "version": "0.1.3",
     "description": "Architectural code review assistant that perceives code vibes",
-    "main": "index.js",
     "scripts": {
         "install-deps": "pip install -r requirements-dev.txt",
         "test": "python3 -m pytest -p no:sugar tests/unit"
