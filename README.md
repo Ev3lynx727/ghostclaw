@@ -28,7 +28,7 @@ cd ghostclaw
 pip install .
 ```
 
-For a detailed integration guide, see **[GUIDE.md](file:///home/ev3lynx/clawproject/ghostclaw/docs/GUIDE.md)**.
+For a detailed integration guide, see **[GUIDE.md](docs/GUIDE.md)**.
 
 ## Usage
 
