@@ -15,6 +15,9 @@ EXCLUDE_DIRS = {
     'scripts'  # Entry point scripts; not core modules
 }
 
+# Entry point directories that are allowed to have high efferent coupling (orchestrators)
+ENTRY_POINT_DIRS = {'cli', 'scripts', 'bin', '__main__'}
+
 def _should_exclude(path_parts: List[str]) -> bool:
     """Check if any component of the path is in exclude list."""
     return any(part in EXCLUDE_DIRS for part in path_parts)

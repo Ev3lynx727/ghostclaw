@@ -4,9 +4,7 @@ import ast
 from pathlib import Path
 from typing import Dict, List
 from core.graph import ImportGraph
-
-# Entry point directories that are allowed to have high efferent coupling (orchestrators)
-ENTRY_POINT_DIRS = {'cli', 'scripts', 'bin', '__main__'}
+from core.detector import EXCLUDE_DIRS, _should_exclude, ENTRY_POINT_DIRS
 
 
 class PythonImportAnalyzer:
@@ -26,6 +24,9 @@ class PythonImportAnalyzer:
         # Map file paths to module names (relative to root)
         for py_file in self.root.rglob("*.py"):
             rel_path = py_file.relative_to(self.root)
+            # Apply exclusion filter
+            if _should_exclude(rel_path.parts):
+                continue
             # Convert path to dotted module name
             if rel_path.name == "__init__.py":
                 module_name = ".".join(rel_path.parent.parts)

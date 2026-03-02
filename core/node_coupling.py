@@ -4,9 +4,7 @@ import re
 from pathlib import Path
 from typing import Dict, List
 from core.graph import ImportGraph
-
-# Entry point directories to exclude from instability warnings
-ENTRY_POINT_DIRS = {'scripts', 'bin', 'cli', '__main__'}
+from core.detector import EXCLUDE_DIRS, _should_exclude, ENTRY_POINT_DIRS
 
 
 class NodeImportAnalyzer:
@@ -73,11 +71,18 @@ class NodeImportAnalyzer:
         ghosts = []
         flags = []
 
-        # Find all Node source files
+        # Find all Node source files (with exclusion)
         node_exts = ['.js', '.jsx', '.ts', '.tsx']
         files = []
         for ext in node_exts:
-            files.extend(self.root.rglob(f"*{ext}"))
+            for filepath in self.root.rglob(f"*{ext}"):
+                try:
+                    rel_parts = filepath.relative_to(self.root).parts
+                except ValueError:
+                    continue
+                if _should_exclude(rel_parts):
+                    continue
+                files.append(filepath)
 
         # Build module map
         known_modules = set()

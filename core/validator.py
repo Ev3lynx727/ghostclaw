@@ -4,6 +4,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, List
 import fnmatch
+from core.detector import ENTRY_POINT_DIRS
 
 
 class RuleValidator:
@@ -74,6 +75,11 @@ class RuleValidator:
                 coupling_metrics = report.get('coupling_metrics', {})
 
                 for module, metrics in coupling_metrics.items():
+                    # Skip entry point modules (cli, scripts, bin, __main__) from metric_coupling warnings
+                    module_parts = module.split('.')
+                    if any(part in ENTRY_POINT_DIRS for part in module_parts):
+                        continue
+
                     value = metrics.get(metric_name, 0)
                     applies = False
                     if condition == 'greater_than' and value > threshold:
