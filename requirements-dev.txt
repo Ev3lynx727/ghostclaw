@@ -1,3 +1,10 @@
 pytest>=7.0
 pytest-cov>=4.0
 pytest-mock>=3.10
+pyscn>=1.0
+ai-codeindex>=0.17
+black>=23.0
+isort>=5.0
+flake8>=4.0
+mypy>=0.910
+pre-commit>=2.0
