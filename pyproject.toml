@@ -48,7 +48,7 @@ ghostclaw-mcp = "mcp.server:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}
-packages = ["core", "stacks", "cli", "lib"]
+packages = ["core", "stacks", "cli", "lib", "mcp"]
 
 [tool.setuptools.package-data]
 "*" = ["references/*.yaml"]
