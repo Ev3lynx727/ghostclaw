@@ -66,7 +66,7 @@ ghostclaw/
 ├── SKILL.md — OpenClaw skill definition
 ├── docs/ — Documentation for Ghostclaw
 ├── core/ — Core analysis orchestration
-├── mcp/ — Model Context Protocol (MCP) server
+├── ghostclaw_mcp/ — Model Context Protocol (MCP) server
 ├── lib/ — Utilities (GitHub, Cache, Notify)
 ├── stacks/ — Stack-specific analysis strategies
 ├── cli/ — CLI implementation

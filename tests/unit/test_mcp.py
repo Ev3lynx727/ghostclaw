@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import MagicMock, patch
-from mcp.server import ghostclaw_analyze, ghostclaw_get_ghosts, ghostclaw_refactor_plan
+from ghostclaw_mcp.server import ghostclaw_analyze, ghostclaw_get_ghosts, ghostclaw_refactor_plan
 
 def test_ghostclaw_analyze_invalid_path():
     result = ghostclaw_analyze("/invalid/path")
