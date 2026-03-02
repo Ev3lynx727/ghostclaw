@@ -22,6 +22,6 @@
     "license": "MIT",
     "openclaw": {
         "skill": true,
-        "entry": "skill/ghostclaw/cli/ghostclaw.py"
+        "entry": "cli/ghostclaw.py"
     }
 }
