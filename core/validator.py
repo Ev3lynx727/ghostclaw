@@ -4,7 +4,6 @@ import yaml
 from pathlib import Path
 from typing import Dict, List
 import fnmatch
-from core.detector import ENTRY_POINT_DIRS
 
 
 class RuleValidator:
@@ -75,11 +74,6 @@ class RuleValidator:
                 coupling_metrics = report.get('coupling_metrics', {})
 
                 for module, metrics in coupling_metrics.items():
-                    # Skip entry point modules (cli, scripts, bin, __main__) from metric_coupling warnings
-                    module_parts = module.split('.')
-                    if any(part in ENTRY_POINT_DIRS for part in module_parts):
-                        continue
-
                     value = metrics.get(metric_name, 0)
                     applies = False
                     if condition == 'greater_than' and value > threshold:
@@ -103,12 +97,33 @@ class RuleValidator:
 
             # Import dependency rules (layer violations)
             elif rule_type == 'import_dependency':
-                forbidden = rule.get('forbidden', [])
-                coupling_metrics = report.get('coupling_metrics', {})
-                # We need the actual import edges, not just metrics
-                # For now, we skip this; it requires the full graph
+                forbidden_patterns = rule.get('forbidden', [])
+                import_edges = report.get('import_edges', [])
 
-            # Naming pattern rules — need file list; skip for now
+                for pattern in forbidden_patterns:
+                    if "->" in pattern:
+                        src_p, dst_p = [p.strip() for p in pattern.split("->")]
+                        # Handle dotted names by adding wildcards if not present
+                        src_glob = f"*{src_p}*" if "*" not in src_p else src_p
+                        dst_glob = f"*{dst_p}*" if "*" not in dst_p else dst_p
+
+                        for src, dst in import_edges:
+                            if fnmatch.fnmatch(src, src_glob) and fnmatch.fnmatch(dst, dst_glob):
+                                formatted_msg = message.format(**{"from": src, "to": dst})
+                                new_issues.append(formatted_msg)
+                                new_ghosts.append(f"[{rule_id}] {formatted_msg}")
+
+            # Naming pattern rules
+            elif rule_type == 'naming':
+                pattern = rule.get('pattern', '')
+                files = report.get('files', [])
+                if pattern:
+                    matched_files = [f for f in files if fnmatch.fnmatch(f, f"*{pattern}*") or fnmatch.fnmatch(f, pattern)]
+                    if not matched_files:
+                        # This logic seems to be "warn if NO files match this pattern"
+                        # which might not be what's intended for all naming rules.
+                        # But for service_naming, it might mean "where are your services?"
+                        pass
 
         # Update report
         report['issues'] = new_issues

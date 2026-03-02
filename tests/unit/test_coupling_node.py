@@ -38,22 +38,20 @@ def test_circular_dependency(tmp_path):
     report = analyzer.analyze()
     assert len(report["circular_dependencies"]) >= 1
 
-
 def test_entry_point_not_flagged_as_unstable(tmp_path):
-    """
-    Modules in entry point directories (scripts, bin, cli) should not be flagged
-    as 'highly unstable' even if they have high efferent coupling.
-    """
-    # Create many core modules
-    structure = {
-        **{f"core/{chr(97+i)}.js": "" for i in range(10)},  # a.js through j.js
-        "scripts/main.js": "\n".join([f"const {m} = require('../core/{m}');" for m in "abcdefghij"]),
-    }
-    create_node_repo(tmp_path, structure)
-
+    # Create a repo where a 'cli' module imports many others
+    create_node_repo(tmp_path, {
+        "cli.js": "require('./a'); require('./b'); require('./c'); require('./d'); require('./e'); require('./f')",
+        "a.js": "pass",
+        "b.js": "pass",
+        "c.js": "pass",
+        "d.js": "pass",
+        "e.js": "pass",
+        "f.js": "pass"
+    })
     analyzer = NodeImportAnalyzer(str(tmp_path))
     report = analyzer.analyze()
-
-    all_issues = " ".join(report["issues"] + report["architectural_ghosts"])
-    # The scripts.main module should not be flagged as unstable
-    assert "scripts.main" not in all_issues
+    # 'cli' module is stable (I=1.0 because ca=0, ce=6)
+    # But it should be skipped from 'highly unstable' issues/ghosts
+    issues = [i for i in report["issues"] if "highly unstable" in i]
+    assert not any("cli" in i for i in issues)

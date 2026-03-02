@@ -2,9 +2,11 @@
 
 import ast
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Set
 from core.graph import ImportGraph
-from core.detector import EXCLUDE_DIRS, _should_exclude, ENTRY_POINT_DIRS
+
+# Modules in these directories are typically orchestrators and naturally have high efferent coupling
+ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}
 
 
 class PythonImportAnalyzer:
@@ -24,9 +26,6 @@ class PythonImportAnalyzer:
         # Map file paths to module names (relative to root)
         for py_file in self.root.rglob("*.py"):
             rel_path = py_file.relative_to(self.root)
-            # Apply exclusion filter
-            if _should_exclude(rel_path.parts):
-                continue
             # Convert path to dotted module name
             if rel_path.name == "__init__.py":
                 module_name = ".".join(rel_path.parent.parts)
@@ -46,21 +45,42 @@ class PythonImportAnalyzer:
                     if isinstance(node, ast.Import):
                         for alias in node.names:
                             imported_module = alias.name
-                            if self._is_local_import(imported_module) and imported_module in self.graph.module_to_file:
+                            if self._is_local_import(imported_module):
                                 self.graph.add_edge(module_name, imported_module)
                     elif isinstance(node, ast.ImportFrom):
-                        if node.module:
-                            imported_module = node.module
-                            if self._is_local_import(imported_module) and imported_module in self.graph.module_to_file:
-                                self.graph.add_edge(module_name, imported_module)
+                        imported_module = self._resolve_relative_import(module_name, node)
+                        if imported_module and self._is_local_import(imported_module):
+                            self.graph.add_edge(module_name, imported_module)
             except Exception:
                 continue  # Skip files with parse errors
 
         # Compute metrics
         return self._compute_report()
 
+    def _resolve_relative_import(self, current_module: str, node: ast.ImportFrom) -> str:
+        """Resolve a relative or absolute 'from' import to an absolute module name."""
+        if node.level == 0:
+            return node.module
+
+        # Handling relative imports
+        parts = current_module.split('.')
+        # level=1 is current directory, level=2 is parent, etc.
+        # For 'from . import x', level=1, we keep parts[:-0] if it's a file, but wait...
+        # If current_module is 'a.b', and we do 'from . import c', it depends if 'a.b' is a package.
+        # But our module_name for 'a/b.py' is 'a.b', and for 'a/b/__init__.py' it is also 'a.b'.
+
+        # Simple heuristic:
+        base_parts = parts[:-node.level] if len(parts) >= node.level else []
+        base = ".".join(base_parts)
+
+        if node.module:
+            return f"{base}.{node.module}" if base else node.module
+        return base
+
     def _is_local_import(self, module_name: str) -> bool:
         """Check if an import is likely from the local project (not stdlib/third-party)."""
+        if not module_name:
+            return False
         # Heuristic: if the module prefix exists in our graph, it's local
         for known in self.graph.nodes:
             if module_name == known or module_name.startswith(known + "."):
@@ -83,11 +103,11 @@ class PythonImportAnalyzer:
             if len(cycles) > 5:
                 issues.append(f"... and {len(cycles) - 5} more cycles")
 
-        # Identify highly unstable modules (God modules), excluding entry points
+        # Identify highly unstable modules (God modules)
         for module in self.graph.nodes:
-            # Skip entry point modules (cli, scripts, etc.) from instability warnings
-            module_parts = module.split('.')
-            if any(part in ENTRY_POINT_DIRS for part in module_parts):
+            # Skip entry points as they naturally import many things
+            module_parts = set(module.split('.'))
+            if any(entry in module_parts for entry in ENTRY_POINT_DIRS):
                 continue
 
             instability = self.graph.get_instability(module)

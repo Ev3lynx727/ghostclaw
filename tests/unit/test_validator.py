@@ -71,3 +71,20 @@ def test_unknown_stack_passes_through():
     # Should not modify the report (no additional issues)
     assert result["issues"] == []
     assert result["architectural_ghosts"] == []
+
+def test_import_dependency_rule():
+    validator = RuleValidator()
+    # Mock report for Node.js stack which has forbidden "repositories -> controllers"
+    report = {
+        "stack": "node",
+        "import_edges": [
+            ("src.repositories.UserRepo", "src.controllers.UserController")
+        ],
+        "issues": [],
+        "architectural_ghosts": [],
+        "red_flags": []
+    }
+    result = validator.validate("node", report)
+    issues = result["issues"]
+    assert any("Forbidden dependency" in i for i in issues)
+    assert any("UserRepo" in i and "UserController" in i for i in issues)

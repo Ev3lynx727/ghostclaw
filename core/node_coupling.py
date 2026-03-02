@@ -2,9 +2,11 @@
 
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Set
 from core.graph import ImportGraph
-from core.detector import EXCLUDE_DIRS, _should_exclude, ENTRY_POINT_DIRS
+
+# Modules in these directories are typically orchestrators and naturally have high efferent coupling
+ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}
 
 
 class NodeImportAnalyzer:
@@ -71,18 +73,11 @@ class NodeImportAnalyzer:
         ghosts = []
         flags = []
 
-        # Find all Node source files (with exclusion)
+        # Find all Node source files
         node_exts = ['.js', '.jsx', '.ts', '.tsx']
         files = []
         for ext in node_exts:
-            for filepath in self.root.rglob(f"*{ext}"):
-                try:
-                    rel_parts = filepath.relative_to(self.root).parts
-                except ValueError:
-                    continue
-                if _should_exclude(rel_parts):
-                    continue
-                files.append(filepath)
+            files.extend(self.root.rglob(f"*{ext}"))
 
         # Build module map
         known_modules = set()
@@ -136,12 +131,14 @@ class NodeImportAnalyzer:
                 "efferent": efferent,
                 "instability": round(instability, 2)
             }
-            # Skip entry point modules from instability warnings
-            node_parts = node.split('.')
-            if not any(part in ENTRY_POINT_DIRS for part in node_parts):
-                if instability > 0.8:
-                    issues.append(f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})")
-                    ghosts.append(f"Unstable module {node}: knows too many others")
+            if instability > 0.8:
+                # Skip entry points as they naturally import many things
+                module_parts = set(node.split('.'))
+                if any(entry in module_parts for entry in ENTRY_POINT_DIRS):
+                    continue
+
+                issues.append(f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})")
+                ghosts.append(f"Unstable module {node}: knows too many others")
 
         return {
             "coupling_metrics": coupling_metrics,

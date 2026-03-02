@@ -74,8 +74,18 @@ class CodebaseAnalyzer:
         line_counts = []
         for f in files:
             try:
-                with open(f, 'r', encoding='utf-8', errors='ignore') as file:
-                    count = sum(1 for _ in file)
+                with open(f, 'rb') as file:
+                    # Efficient chunk-based line counting
+                    count = 0
+                    while True:
+                        chunk = file.read(65536)
+                        if not chunk:
+                            break
+                        count += chunk.count(b'\n')
+                    # Handle files without a final newline
+                    if count > 0 or Path(f).stat().st_size > 0:
+                        count += 1
+
                     total_lines += count
                     line_counts.append(count)
                     if count > (analyzer.get_large_file_threshold() if analyzer else 300):
@@ -98,6 +108,7 @@ class CodebaseAnalyzer:
         # 4. Stack-specific analysis
         pyscn_used = False
         ai_codeindex_used = False
+        import_edges = []
 
         if analyzer:
             stack_result = analyzer.analyze(root, files, base_metrics)
@@ -105,6 +116,10 @@ class CodebaseAnalyzer:
             ghosts = stack_result.get('architectural_ghosts', [])
             flags = stack_result.get('red_flags', [])
             coupling_metrics = stack_result.get('coupling_metrics', {})
+
+            # Extract edges if the analyzer has a graph
+            if hasattr(analyzer, 'graph'):
+                import_edges = analyzer.graph.edges
 
             # Integration Step: Additive Integration (Option A)
             if HAS_PYSCN:
@@ -156,6 +171,8 @@ class CodebaseAnalyzer:
                 "architectural_ghosts": ghosts,
                 "red_flags": flags,
                 "coupling_metrics": coupling_metrics,
+                "import_edges": import_edges,
+                "files": files,
                 "files_analyzed": total_files,
                 "total_lines": total_lines,
                 "stack": stack,
