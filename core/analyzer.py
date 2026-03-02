@@ -96,6 +96,9 @@ class CodebaseAnalyzer:
         }
 
         # 4. Stack-specific analysis
+        pyscn_used = False
+        ai_codeindex_used = False
+
         if analyzer:
             stack_result = analyzer.analyze(root, files, base_metrics)
             issues = stack_result.get('issues', [])
@@ -107,6 +110,7 @@ class CodebaseAnalyzer:
             if HAS_PYSCN:
                 pyscn = PySCNAnalyzer(root)
                 if pyscn.is_available():
+                    pyscn_used = True
                     pyscn_report = pyscn.analyze()
                     if "error" not in pyscn_report:
                         # Enhance the report with pyscn insights
@@ -123,6 +127,7 @@ class CodebaseAnalyzer:
             if HAS_AI_CODEINDEX:
                 ai_codeindex = AICodeIndexWrapper(root)
                 if ai_codeindex.is_available():
+                    ai_codeindex_used = True
                     graph_data = ai_codeindex.build_graph()
                     if "error" not in graph_data:
                         # Enhance coupling metrics with tree-sitter based graph
@@ -185,7 +190,8 @@ class CodebaseAnalyzer:
                 "version": __version__,
                 "coupling_enabled": True,
                 "rules_enabled": True,
-                "ai_codeindex_integrated": HAS_AI_CODEINDEX
+                "pyscn_integrated": pyscn_used,
+                "ai_codeindex_integrated": ai_codeindex_used
             }
         }
 
