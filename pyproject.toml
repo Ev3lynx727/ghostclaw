@@ -24,6 +24,22 @@ dependencies = [
     "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+full = [
+    "mcp-sdk>=0.1.0",
+    "ai-codeindex>=0.1.0",
+    "pyscn>=0.1.0"
+]
+mcp = [
+    "mcp-sdk>=0.1.0"
+]
+pyscn = [
+    "pyscn>=0.1.0"
+]
+ai-codeindex = [
+    "ai-codeindex>=0.1.0"
+]
+
 [project.scripts]
 ghostclaw = "cli.ghostclaw:main"
 ghostclaw-watcher = "cli.watcher:main"

@@ -8,6 +8,20 @@ from core.validator import RuleValidator
 from stacks import get_analyzer
 from core.cache import LocalCache, compute_fingerprint
 
+# Defensive import for Phase 1: pyscn Integration
+try:
+    from core.pyscn_wrapper import PySCNAnalyzer
+    HAS_PYSCN = True
+except ImportError:
+    HAS_PYSCN = False
+
+# Defensive import for Phase 1: ai-codeindex Integration
+try:
+    from core.ai_codeindex_wrapper import AICodeIndexWrapper
+    HAS_AI_CODEINDEX = True
+except ImportError:
+    HAS_AI_CODEINDEX = False
+
 
 class CodebaseAnalyzer:
     """Main analyzer class that coordinates the full analysis pipeline."""
@@ -88,6 +102,39 @@ class CodebaseAnalyzer:
             ghosts = stack_result.get('architectural_ghosts', [])
             flags = stack_result.get('red_flags', [])
             coupling_metrics = stack_result.get('coupling_metrics', {})
+
+            # Integration Step: Additive Integration (Option A)
+            if HAS_PYSCN:
+                pyscn = PySCNAnalyzer(root)
+                if pyscn.is_available():
+                    pyscn_report = pyscn.analyze()
+                    if "error" not in pyscn_report:
+                        # Enhance the report with pyscn insights
+                        # For example, adding discovered clones/dead code to issues
+                        clones = pyscn_report.get("clones", [])
+                        if clones:
+                            ghosts.append(f"Found {len(clones)} code clones via pyscn (Phase 1 Integration)")
+
+                        dead_code = pyscn_report.get("dead_code", [])
+                        if dead_code:
+                            issues.append(f"Detected {len(dead_code)} potential dead code spots via pyscn")
+
+            # Integration Step: Additive Integration (Option A) - ai-codeindex
+            if HAS_AI_CODEINDEX:
+                ai_codeindex = AICodeIndexWrapper(root)
+                if ai_codeindex.is_available():
+                    graph_data = ai_codeindex.build_graph()
+                    if "error" not in graph_data:
+                        # Enhance coupling metrics with tree-sitter based graph
+                        inheritance = ai_codeindex.get_inheritance_depth()
+                        if inheritance:
+                            deep_inheritance = [c for c, d in inheritance.items() if d > 3]
+                            if deep_inheritance:
+                                ghosts.append(f"Deep inheritance hierarchies detected via ai-codeindex: {', '.join(deep_inheritance[:3])}")
+
+                        # Mark report as having enhanced graphing
+                        coupling_metrics["graph_engine"] = "ai-codeindex"
+
         else:
             issues = ["Cannot detect tech stack; no build files found"]
             ghosts = []
@@ -119,6 +166,11 @@ class CodebaseAnalyzer:
         vibe_score = self._compute_vibe_score(base_metrics, len(issues), len(ghosts))
 
         # 8. Build final report
+        try:
+            from cli import __version__
+        except ImportError:
+            __version__ = "unknown"
+
         report = {
             "vibe_score": vibe_score,
             "stack": stack,
@@ -130,9 +182,10 @@ class CodebaseAnalyzer:
             "metadata": {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "analyzer": "ghostclaw-refactored",
-                "version": "0.1.3",
+                "version": __version__,
                 "coupling_enabled": True,
-                "rules_enabled": True
+                "rules_enabled": True,
+                "ai_codeindex_integrated": HAS_AI_CODEINDEX
             }
         }
 
