@@ -5,10 +5,11 @@
 This project follows a modular architecture. Please respect the separation of concerns:
 
 - `core/`: Core analysis orchestration, metrics, and rule validation.
+- `mcp/`: Model Context Protocol (MCP) server implementation.
 - `lib/`: Shared utilities (Caching, GitHub integration, Notifications).
 - `stacks/`: Tech-stack specific analysis strategies (Python, Node.js, Go).
 - `cli/`: Command-line interface logic.
-- `scripts/`: Executable entry points and automation scripts.
+- `scripts/`: Executable entry points, automation, and deployment scripts.
 
 ## Important: No Duplicate Modules
 

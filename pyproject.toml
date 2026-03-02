@@ -44,6 +44,7 @@ ai-codeindex = [
 ghostclaw = "cli.ghostclaw:main"
 ghostclaw-watcher = "cli.watcher:main"
 ghostclaw-compare = "cli.compare:main"
+ghostclaw-mcp = "mcp.server:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}

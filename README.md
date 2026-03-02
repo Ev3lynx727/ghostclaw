@@ -66,11 +66,42 @@ ghostclaw/
 ├── SKILL.md — OpenClaw skill definition
 ├── docs/ — Documentation for Ghostclaw
 ├── core/ — Core analysis orchestration
+├── mcp/ — Model Context Protocol (MCP) server
 ├── lib/ — Utilities (GitHub, Cache, Notify)
 ├── stacks/ — Stack-specific analysis strategies
 ├── cli/ — CLI implementation
-├── scripts/ — Entry points
+├── scripts/ — Entry points and deployment
 └── references/ — Architectural patterns
+```
+
+## Integrations
+
+### MCP Server (Phase 2)
+
+Ghostclaw can now be used as an MCP server for Claude, Cursor, and other AI tools.
+
+To install with MCP support:
+```bash
+pip install ghostclaw[mcp]
+```
+
+To run the MCP server:
+```bash
+ghostclaw-mcp
+```
+
+**Exposed Tools:**
+- `ghostclaw_analyze`: Full vibe analysis.
+- `ghostclaw_get_ghosts`: Architectural smells only.
+- `ghostclaw_refactor_plan`: Automated blueprint generation.
+
+### Systemd Service (Phase 3)
+
+For persistent local service, use the provided `systemd` unit:
+```bash
+cp scripts/ghostclaw.service /etc/systemd/system/
+systemctl enable ghostclaw
+systemctl start ghostclaw
 ```
 
 ## Supported Stacks
