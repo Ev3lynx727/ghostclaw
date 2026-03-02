@@ -18,6 +18,17 @@ This document outlines the critical issues identified during self-analysis of gh
 - `tests/unit/test_detector.py::test_find_files_excludes_tests`
 - `tests/unit/test_detector.py::test_find_files_excludes_node_modules`
 
+### 2a. Edge Filter for Coupling Analyzers
+**Problem:** Even with file exclusion, modules from excluded directories (like `tests`) still appeared in coupling metrics because they were imported by scanned modules and added as nodes via `ImportGraph.add_edge()` without checking if the imported module was from an excluded file.
+
+**Fix:** Modified both `PythonImportAnalyzer` and `NodeImportAnalyzer` to only add edges if the imported module's name exists in `self.graph.module_to_file` (i.e., the file was scanned). This ensures excluded modules cannot enter the graph indirectly.
+
+**Files changed:**
+- `core/coupling.py` (Python analyzer)
+- `core/node_coupling.py` (Node analyzer) – already had a similar guard via `known_modules`, but we verified consistency.
+
+**Effect:** Test modules and other excluded code no longer appear in instability metrics or ghost reports.
+
 ---
 
 ### 2. Stack Detection False Positive (OpenClaw Skill)

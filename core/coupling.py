@@ -46,12 +46,12 @@ class PythonImportAnalyzer:
                     if isinstance(node, ast.Import):
                         for alias in node.names:
                             imported_module = alias.name
-                            if self._is_local_import(imported_module):
+                            if self._is_local_import(imported_module) and imported_module in self.graph.module_to_file:
                                 self.graph.add_edge(module_name, imported_module)
                     elif isinstance(node, ast.ImportFrom):
                         if node.module:
                             imported_module = node.module
-                            if self._is_local_import(imported_module):
+                            if self._is_local_import(imported_module) and imported_module in self.graph.module_to_file:
                                 self.graph.add_edge(module_name, imported_module)
             except Exception:
                 continue  # Skip files with parse errors
