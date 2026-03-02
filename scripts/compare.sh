@@ -5,8 +5,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${SCRIPT_DIR}/.."
+SKILL_ROOT="${SCRIPT_DIR}/../skill/ghostclaw"
 PYTHON="${PYTHON:-python3}"
-export PYTHONPATH="$REPO_ROOT:${PYTHONPATH:-}"
+export PYTHONPATH="$SKILL_ROOT:${PYTHONPATH:-}"
 
-"$PYTHON" "$REPO_ROOT/scripts/compare.py" "$@"
+"$PYTHON" "$SCRIPT_DIR/compare.py" "$@"

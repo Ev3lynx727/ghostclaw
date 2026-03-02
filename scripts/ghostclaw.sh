@@ -5,9 +5,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${SCRIPT_DIR}/.."
+SKILL_ROOT="${SCRIPT_DIR}/../skill/ghostclaw"
 PYTHON="${PYTHON:-python3}"
-export PYTHONPATH="$REPO_ROOT:${PYTHONPATH:-}"
+export PYTHONPATH="$SKILL_ROOT:${PYTHONPATH:-}"
 
 review() {
     local repo_path="$1"
@@ -21,7 +21,7 @@ review() {
 
     # Run new modular analyzer
     local report_json
-    report_json="$("$PYTHON" "$REPO_ROOT/cli/ghostclaw.py" "$repo_path" --json 2>/dev/null || echo '{"error":"analysis failed"}')"
+    report_json="$("$PYTHON" "$SKILL_ROOT/cli/ghostclaw.py" "$repo_path" --json 2>/dev/null || echo '{"error":"analysis failed"}')"
 
     # Pretty print (now using correct 'issues' key from new structure)
     local vibe_score stack files total blem arch_ghosts red_flags

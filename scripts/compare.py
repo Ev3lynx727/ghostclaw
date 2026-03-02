@@ -6,8 +6,8 @@ Ghostclaw Compare — command-line interface for comparing vibe scores.
 import sys
 from pathlib import Path
 
-# Ensure root directory is in sys.path
-sys.path.append(str(Path(__file__).parent.parent))
+# Ensure skill directory is in sys.path
+sys.path.append(str(Path(__file__).parent.parent / "skill" / "ghostclaw"))
 
 from cli.compare import main
 

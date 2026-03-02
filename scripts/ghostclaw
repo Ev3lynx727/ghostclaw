@@ -8,9 +8,9 @@ import json
 from pathlib import Path
 from typing import Dict
 
-# Ensure root directory is in sys.path to allow importing from core, lib, and stacks
-# This script is located in scripts/, so root is one level up
-sys.path.append(str(Path(__file__).parent.parent))
+# Ensure skill directory is in sys.path to allow importing from core, lib, and stacks
+# This script is located in scripts/, so skill is in ../skill/ghostclaw
+sys.path.append(str(Path(__file__).parent.parent / "skill" / "ghostclaw"))
 
 from dotenv import load_dotenv
 from core.analyzer import CodebaseAnalyzer
