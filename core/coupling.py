@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Dict, List
 from core.graph import ImportGraph
 
+# Entry point directories that are allowed to have high efferent coupling (orchestrators)
+ENTRY_POINT_DIRS = {'cli', 'scripts', 'bin', '__main__'}
+
 
 class PythonImportAnalyzer:
     """Analyzes Python imports using AST."""
@@ -79,8 +82,13 @@ class PythonImportAnalyzer:
             if len(cycles) > 5:
                 issues.append(f"... and {len(cycles) - 5} more cycles")
 
-        # Identify highly unstable modules (God modules)
+        # Identify highly unstable modules (God modules), excluding entry points
         for module in self.graph.nodes:
+            # Skip entry point modules (cli, scripts, etc.) from instability warnings
+            module_parts = module.split('.')
+            if any(part in ENTRY_POINT_DIRS for part in module_parts):
+                continue
+
             instability = self.graph.get_instability(module)
             if instability > 0.8:
                 ce = self.graph.get_efferent_coupling(module)

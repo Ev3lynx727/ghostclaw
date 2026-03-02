@@ -57,3 +57,33 @@ def test_circular_dependency(tmp_path):
     # Check that a cycle appears in issues/ghosts
     issues = " ".join(report["issues"])
     assert "Circular dependency" in issues
+
+
+def test_entry_point_not_flagged_as_unstable(tmp_path):
+    """
+    Modules in entry point directories (cli, scripts) should not be flagged
+    as 'highly unstable' even if they have high efferent coupling.
+    """
+    # Create many small modules that a cli module will import
+    structure = {
+        "core/a.py": "",
+        "core/b.py": "",
+        "core/c.py": "",
+        "core/d.py": "",
+        "core/e.py": "",
+        "core/f.py": "",
+        "core/g.py": "",
+        "core/h.py": "",
+        "core/i.py": "",
+        "core/j.py": "",
+        "cli/main.py": "\n".join([f"from core.{m} import *" for m in "abcdefghij"]),
+    }
+    create_python_repo(tmp_path, structure)
+
+    analyzer = PythonImportAnalyzer(str(tmp_path))
+    report = analyzer.analyze()
+
+    # cli.main should have high instability, but should NOT appear in issues or ghosts
+    all_issues_text = " ".join(report["issues"] + report["architectural_ghosts"])
+    assert "cli.main" not in all_issues_text
+    # The core modules might be flagged as unstable too, but that's not the point; we assert cli.main is absent

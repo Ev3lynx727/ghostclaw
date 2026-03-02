@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Dict, List
 from core.graph import ImportGraph
 
+# Entry point directories to exclude from instability warnings
+ENTRY_POINT_DIRS = {'scripts', 'bin', 'cli', '__main__'}
+
 
 class NodeImportAnalyzer:
     """Analyzes Node.js imports using pattern matching."""
@@ -128,9 +131,12 @@ class NodeImportAnalyzer:
                 "efferent": efferent,
                 "instability": round(instability, 2)
             }
-            if instability > 0.8:
-                issues.append(f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})")
-                ghosts.append(f"Unstable module {node}: knows too many others")
+            # Skip entry point modules from instability warnings
+            node_parts = node.split('.')
+            if not any(part in ENTRY_POINT_DIRS for part in node_parts):
+                if instability > 0.8:
+                    issues.append(f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})")
+                    ghosts.append(f"Unstable module {node}: knows too many others")
 
         return {
             "coupling_metrics": coupling_metrics,

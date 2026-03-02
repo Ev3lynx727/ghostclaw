@@ -37,3 +37,23 @@ def test_circular_dependency(tmp_path):
     analyzer = NodeImportAnalyzer(str(tmp_path))
     report = analyzer.analyze()
     assert len(report["circular_dependencies"]) >= 1
+
+
+def test_entry_point_not_flagged_as_unstable(tmp_path):
+    """
+    Modules in entry point directories (scripts, bin, cli) should not be flagged
+    as 'highly unstable' even if they have high efferent coupling.
+    """
+    # Create many core modules
+    structure = {
+        **{f"core/{chr(97+i)}.js": "" for i in range(10)},  # a.js through j.js
+        "scripts/main.js": "\n".join([f"const {m} = require('../core/{m}');" for m in "abcdefghij"]),
+    }
+    create_node_repo(tmp_path, structure)
+
+    analyzer = NodeImportAnalyzer(str(tmp_path))
+    report = analyzer.analyze()
+
+    all_issues = " ".join(report["issues"] + report["architectural_ghosts"])
+    # The scripts.main module should not be flagged as unstable
+    assert "scripts.main" not in all_issues

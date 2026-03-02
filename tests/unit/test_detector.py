@@ -47,3 +47,51 @@ def test_find_files_ts(tmp_path):
     assert len(files) == 2
     assert any(f.endswith('.ts') for f in files)
     assert any(f.endswith('.js') for f in files)
+
+
+def test_find_files_excludes_venv(tmp_path):
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "lib.py").write_text("")
+    (tmp_path / "app.py").write_text("")
+    files = find_files(str(tmp_path), ['.py'])
+    assert all('.venv' not in f for f in files)
+    assert len(files) == 1
+
+
+def test_find_files_excludes_tests(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test.py").write_text("")
+    (tmp_path / "app.py").write_text("")
+    files = find_files(str(tmp_path), ['.py'])
+    # Excluding tests/ means the only file should be app.py
+    assert len(files) == 1
+    # Check that the returned file is app.py (no tests component in relative path)
+    relpath = Path(files[0]).relative_to(tmp_path)
+    assert relpath.parts[0] == "app.py"
+
+
+def test_find_files_excludes_node_modules(tmp_path):
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "pkg.js").write_text("")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.js").write_text("")
+    files = find_files(str(tmp_path), ['.js'])
+    assert all('node_modules' not in f for f in files)
+    assert len(files) == 1
+
+
+def test_detect_python_over_node_with_openclaw_skill(tmp_path):
+    # Both package.json with openclaw key and pyproject.toml exist
+    pkg = tmp_path / "package.json"
+    pkg.write_text('{"name": "test", "openclaw": {"skill": true}}')
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[project]\nname = 'test'")
+    # Should detect as python (OpenClaw skill, not a Node project)
+    assert detect_stack(str(tmp_path)) == "python"
+
+
+def test_detect_node_without_openclaw(tmp_path):
+    # package.json without openclaw key
+    pkg = tmp_path / "package.json"
+    pkg.write_text('{"name": "test"}')
+    assert detect_stack(str(tmp_path)) == "node"
