@@ -11,7 +11,12 @@ All notable changes to the Ghostclaw project will be documented in this file.
 - **PySCN Integration**: Added support for structural clone detection and dead code identification (optional dependency: `pyscn`).
 - **Feature Flags**: Added explicit CLI flags (`--pyscn`, `--ai-codeindex`) to `scripts/ghostclaw` and `scripts/watcher` to toggle engines manually.
 - **Engine Badging**: Added CLI terminal badges to display active analysis engines (e.g., `🚀 Engines: PySCN, AI-CodeIndex`).
+- **Documentation Overhaul**: Created `INTEGRATION.md`, `HOWTOUSE.md`, `ARCHITECTURE.md`, and `TROUBLESHOOT.md` guides.
 - **Graceful Fallbacks**: Implemented non-breaking analyzer fallbacks when optional dependencies are missing but invoked.
+
+### Changed
+
+- **Standardised Layout**: Moved core modules (`cli/`, `core/`, `lib/`, `stacks/`) inside a `src/ghostclaw/` package to resolve namespace collisions (e.g., `ModuleNotFoundError: No module named 'core.analyzer'`).
 
 ## [0.1.3] - 2026-02-27
 
