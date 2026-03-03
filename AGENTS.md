@@ -4,11 +4,11 @@
 
 This project follows a modular architecture. Please respect the separation of concerns:
 
-- `core/`: Core analysis orchestration, metrics, and rule validation.
-- `ghostclaw_mcp/`: Model Context Protocol (MCP) server implementation.
-- `lib/`: Shared utilities (Caching, GitHub integration, Notifications).
-- `stacks/`: Tech-stack specific analysis strategies (Python, Node.js, Go).
-- `cli/`: Command-line interface logic.
+- `src/ghostclaw/core/`: Core analysis orchestration, metrics, and rule validation.
+- `src/ghostclaw_mcp/`: Model Context Protocol (MCP) server implementation.
+- `src/ghostclaw/lib/`: Shared utilities (Caching, GitHub integration, Notifications).
+- `src/ghostclaw/stacks/`: Tech-stack specific analysis strategies (Python, Node.js, Go).
+- `src/ghostclaw/cli/`: Command-line interface logic.
 - `scripts/`: Executable entry points, automation, and deployment scripts.
 
 ## Optional Integration Engines
@@ -29,7 +29,7 @@ If you create new scripts in `scripts/`, use the following pattern to ensure the
 ```python
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 # ...

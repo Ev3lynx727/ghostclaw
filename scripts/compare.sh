@@ -7,6 +7,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/.."
 PYTHON="${PYTHON:-python3}"
-export PYTHONPATH="$REPO_ROOT:${PYTHONPATH:-}"
+export PYTHONPATH="$REPO_ROOT/src:${PYTHONPATH:-}"
 
 "$PYTHON" "$REPO_ROOT/scripts/compare.py" "$@"

@@ -121,9 +121,9 @@ See `references/stack-patterns/` for detailed heuristics.
 - `scripts/ghostclaw.sh` — Main entry point (review mode)
 - `scripts/compare.sh` — Trend analysis entry point
 - `scripts/watcher.sh` — Cron watcher loop
-- `core/` — Modular analysis engine (Python)
-- `stacks/` — Tech-stack specific analysis logic
-- `references/stack-patterns.yaml` — Configurable architectural rules
+- `src/ghostclaw/core/` — Modular analysis engine (Python)
+- `src/ghostclaw/stacks/` — Tech-stack specific analysis logic
+- `src/ghostclaw/references/stack-patterns.yaml` — Configurable architectural rules
 
 ## Invocation Examples
 

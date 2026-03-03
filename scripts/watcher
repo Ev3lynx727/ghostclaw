@@ -12,9 +12,9 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
-# Ensure root directory is in sys.path to allow importing from core, lib, and stacks
-# This script is located in scripts/, so root is one level up
-sys.path.append(str(Path(__file__).parent.parent))
+# Ensure src directory is in sys.path to allow importing from the ghostclaw package
+# This script is located in scripts/, so src is one level up + src/
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from dotenv import load_dotenv
 from ghostclaw.core.analyzer import CodebaseAnalyzer

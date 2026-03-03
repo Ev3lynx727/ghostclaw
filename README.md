@@ -65,13 +65,14 @@ ghostclaw/
 ├── package.json — Package metadata for Skills CLI
 ├── SKILL.md — OpenClaw skill definition
 ├── docs/ — Documentation for Ghostclaw
-├── core/ — Core analysis orchestration
-├── ghostclaw_mcp/ — Model Context Protocol (MCP) server
-├── lib/ — Utilities (GitHub, Cache, Notify)
-├── stacks/ — Stack-specific analysis strategies
-├── cli/ — CLI implementation
 ├── scripts/ — Entry points and deployment
-└── references/ — Architectural patterns
+└── src/ghostclaw/ — Main package source
+    ├── core/ — Core analysis orchestration
+    ├── ghostclaw_mcp/ — Model Context Protocol (MCP) server
+    ├── lib/ — Utilities (GitHub, Cache, Notify)
+    ├── stacks/ — Stack-specific analysis strategies
+    ├── cli/ — CLI implementation
+    └── references/ — Architectural patterns
 ```
 
 ## Integrations
