@@ -14,6 +14,7 @@ from typing import Dict, Optional
 from dotenv import load_dotenv
 from core.analyzer import CodebaseAnalyzer
 from core.cache import LocalCache
+from cli import __version__
 
 load_dotenv()
 
@@ -163,9 +164,47 @@ def print_report(report: Dict):
     print("💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)")
 
 
+def update_ghostclaw():
+    """Perform self-update via pip or git."""
+    print("🔄 Checking for Ghostclaw updates...")
+    # Check if the package itself is in a git repo
+    package_root = Path(__file__).parent.parent
+    try:
+        is_git = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=package_root,
+            capture_output=True,
+            text=True,
+            check=False
+        ).returncode == 0
+
+        if is_git:
+            print(f"Detected git repository at {package_root}. Pulling latest changes...")
+            subprocess.run(["git", "pull"], cwd=package_root, check=True)
+            print("✅ Updated via git.")
+            # Also run pip install . to ensure dependencies are updated if pyproject.toml changed
+            subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], cwd=package_root, check=True)
+            return
+
+    except Exception as e:
+        print(f"⚠️ Git update failed or skipped: {e}")
+
+    # Fallback to pip update
+    try:
+        print("Updating via pip...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "ghostclaw"], check=True)
+        print("✅ Updated via pip.")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to update via pip: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"❌ Error during update: {e}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Ghostclaw CLI — Architectural Analyzer")
-    parser.add_argument("repo_path", help="Path to the repository to analyze")
+    parser.add_argument("repo_path", nargs="?", help="Path to the repository to analyze")
+    parser.add_argument("--version", action="version", version=f"Ghostclaw {__version__}")
+    parser.add_argument("--update", action="store_true", help="Self-update Ghostclaw via pip or git")
     parser.add_argument("--json", action="store_true", help="Output raw JSON")
     parser.add_argument("--no-write-report", action="store_true", help="Skip writing the .md report file")
     parser.add_argument("--create-pr", action="store_true", help="Automatically create a GitHub PR with the report")
@@ -179,7 +218,15 @@ def main():
     parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
 
     args = parser.parse_args()
+
+    if args.update:
+        update_ghostclaw()
+        sys.exit(0)
+
     repo_path = args.repo_path
+    if not repo_path:
+        parser.print_help()
+        sys.exit(1)
 
     if not Path(repo_path).is_dir():
         print(f"Error: directory not found: {repo_path}", file=sys.stderr)

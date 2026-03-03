@@ -65,23 +65,50 @@ def print_report(report: Dict):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: ghostclaw <repo_path> [--json]")
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(description="Ghostclaw Architectural Analyzer")
+    parser.add_argument("repo_path", help="Path to repository")
+    parser.add_argument("--json", action="store_true", help="Output raw JSON report")
+    
+    # Engine toggles
+    parser.add_argument("--pyscn", action=argparse.BooleanOptionalAction, default=None, 
+                        help="Enable/disable PySCN explicitly")
+    parser.add_argument("--ai-codeindex", action=argparse.BooleanOptionalAction, default=None, 
+                        help="Enable/disable AI-CodeIndex explicitly")
 
-    repo_path = sys.argv[1]
-    output_json = '--json' in sys.argv
+    args = parser.parse_args()
+
+    repo_path = args.repo_path
+    output_json = args.json
 
     if not Path(repo_path).is_dir():
         print(f"Error: directory not found: {repo_path}", file=sys.stderr)
         sys.exit(1)
 
     analyzer = CodebaseAnalyzer()
-    report = analyzer.analyze(repo_path)
+    report = analyzer.analyze(
+        repo_path, 
+        use_pyscn=args.pyscn, 
+        use_ai_codeindex=args.ai_codeindex
+    )
 
     if output_json:
         print(json.dumps(report, indent=2))
     else:
+        # Print engine badge if any engine was used
+        pyscn_used = report.get("metadata", {}).get("pyscn_integrated", False)
+        ai_used = report.get("metadata", {}).get("ai_codeindex_integrated", False)
+
+        engines = []
+        if pyscn_used:
+            engines.append("PySCN")
+        if ai_used:
+            engines.append("AI-CodeIndex")
+
+        if engines:
+            print(f"🚀 Engines: {', '.join(engines)}")
+            print()
+            
         print_report(report)
 
 

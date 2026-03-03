@@ -1,0 +1,13 @@
+[Unit]
+Description=Ghostclaw Architectural MCP Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/ghostclaw-mcp
+Restart=always
+User=ghostclaw
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+WorkingDirectory=/opt/ghostclaw
+
+[Install]
+WantedBy=multi-user.target

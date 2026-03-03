@@ -5,7 +5,7 @@ description: Architectural code review and refactoring assistant that perceives 
 
 # Ghostclaw — The Architectural Ghost
 
-**"I see the flow between functions. I sense the weight of dependencies. I know when a module is uneasy."**
+> *"I see the flow between functions. I sense the weight of dependencies. I know when a module is uneasy."*
 
 Ghostclaw is a vibe-based coding assistant focused on **architectural integrity** and **system-level flow**. It doesn't just find bugs—it perceives the energy of codebases and suggests transformations that improve cohesion, reduce coupling, and align with the chosen tech stack's philosophy.
 
@@ -42,6 +42,8 @@ Ghostclaw will:
 - `--pr-title "Title"`: Custom title for the PR.
 - `--pr-body "Body"`: Custom body for the PR.
 - `--json`: Output raw JSON analysis data.
+- `--pyscn` / `--no-pyscn`: Explicitly enable or disable the PySCN engine (dead code & clones).
+- `--ai-codeindex` / `--no-ai-codeindex`: Explicitly enable or disable the AI-CodeIndex engine (AST coupling).
 
 You can also spawn ghostclaw as a sub-agent:
 
@@ -78,7 +80,7 @@ The watcher:
 
 **Example**:
 
-```
+```text
 Module: src/services/userService.ts
 Vibe: 45/100 — feels heavy, knows too much
 
@@ -125,7 +127,7 @@ See `references/stack-patterns/` for detailed heuristics.
 
 ## Invocation Examples
 
-```
+```text
 User: ghostclaw, review my backend services
 Ghostclaw: Scanning... vibe check: 62/100 overall. Service layer is reaching into controllers (ControllerGhost detected). Suggest extracting business logic into pure services. See attached patches.
 

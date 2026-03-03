@@ -27,6 +27,13 @@ build/
 *.swp
 *.swo
 
+# Node / NPM
+node_modules/
+package-lock.json
+
+# Pytest
+.pytest_cache/
+
 # Ghostclaw specific
 .ghostclaw_cache/
 ~/.cache/ghostclaw/

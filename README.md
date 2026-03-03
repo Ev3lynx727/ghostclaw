@@ -60,17 +60,76 @@ Set up your repositories in `scripts/repos.txt` and add to cron:
 
 ## Files
 
-```
+```text
 ghostclaw/
 ├── package.json — Package metadata for Skills CLI
 ├── SKILL.md — OpenClaw skill definition
 ├── docs/ — Documentation for Ghostclaw
 ├── core/ — Core analysis orchestration
+├── ghostclaw_mcp/ — Model Context Protocol (MCP) server
 ├── lib/ — Utilities (GitHub, Cache, Notify)
 ├── stacks/ — Stack-specific analysis strategies
 ├── cli/ — CLI implementation
-├── scripts/ — Entry points
+├── scripts/ — Entry points and deployment
 └── references/ — Architectural patterns
+```
+
+## Integrations
+
+### Advanced Integrations (Phase 2)
+
+Ghostclaw now supports several advanced extensions and optional dependencies.
+
+#### MCP Server
+
+Ghostclaw can now be used as an MCP server for Claude, Cursor, and other AI tools.
+
+To install with MCP support:
+
+```bash
+pip install ghostclaw[mcp]
+```
+
+To run the MCP server:
+
+```bash
+ghostclaw-mcp
+```
+
+**Exposed Tools:**
+
+- `ghostclaw_analyze`: Full vibe analysis.
+- `ghostclaw_get_ghosts`: Architectural smells only.
+- `ghostclaw_refactor_plan`: Automated blueprint generation.
+
+#### Advanced Context & AST Indexing
+
+By utilizing the `ai-codeindex` engine, Ghostclaw can extract full structural syntax trees and build extensive call graphs.
+
+To install:
+
+```bash
+pip install ghostclaw[ai-codeindex]
+```
+
+#### Dead Code & Clone Detection
+
+Ghostclaw can offload syntax-level checks for dead code and near-identical code blocks to `pyscn`.
+
+To install:
+
+```bash
+pip install ghostclaw[pyscn]
+```
+
+### Systemd Service (Phase 3)
+
+For persistent local service, use the provided `systemd` unit:
+
+```bash
+cp scripts/ghostclaw.service /etc/systemd/system/
+systemctl enable ghostclaw
+systemctl start ghostclaw
 ```
 
 ## Supported Stacks
