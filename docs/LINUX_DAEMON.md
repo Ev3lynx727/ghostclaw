@@ -24,16 +24,39 @@ Ensure the `ghostclaw-mcp` executable is available in `/usr/local/bin` or adjust
 sudo pip install /path/to/ghostclaw/repo[mcp]
 ```
 
-## 2. Install the Service File
+## 2. Install the Service File Automatically
 
-To install a `.service` file into systemd, you **must use `sudo`** because `/etc/systemd/system/` is owned by the root user.
+The easiest way to install the daemon is to use our provided setup shell script. It will automatically detect your current Linux user (`whoami`), correctly find the `ghostclaw-mcp` path on your system, and inject these into the `.service` template.
 
 ```bash
-# 1. Copy the file using sudo
-sudo cp scripts/ghostclaw.service /etc/systemd/system/
+# From the repository root, run:
+./scripts/install_service.sh
+```
 
-# 2. Set the correct permissions for the file
+**What this does under the hood:**
+
+1. Replaces the generic `User=ghostclaw` with your user.
+2. Replaces `WorkingDirectory=/opt/ghostclaw` with your repository root.
+3. Automatically sets up `/etc/systemd/system/ghostclaw.service` utilizing `sudo`.
+4. Runs `systemctl daemon-reload && systemctl enable --now ghostclaw.service`.
+
+## 3. Manual Installation (Alternative)
+
+If you prefer to configure the file yourself rather than running the auto-installer script:
+
+1. Copy the file using sudo:
+
+```bash
+sudo cp scripts/ghostclaw.service /etc/systemd/system/
+```
+
+2. Manually edit `/etc/systemd/system/ghostclaw.service` and change `User=` and `WorkingDirectory=`.
+2. Set permissions and start:
+
+```bash
 sudo chmod 644 /etc/systemd/system/ghostclaw.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now ghostclaw.service
 ```
 
 ## 3. Enable and Start the Daemon
