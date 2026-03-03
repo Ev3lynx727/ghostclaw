@@ -50,7 +50,7 @@ If you prefer to configure the file yourself rather than running the auto-instal
 sudo cp scripts/ghostclaw.service /etc/systemd/system/
 ```
 
-2. Manually edit `/etc/systemd/system/ghostclaw.service` and change `User=` and `WorkingDirectory=`.
+1. Manually edit `/etc/systemd/system/ghostclaw.service` and change `User=` and `WorkingDirectory=`.
 2. Set permissions and start:
 
 ```bash

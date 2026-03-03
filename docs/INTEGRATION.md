@@ -2,11 +2,12 @@
 
 Ghostclaw is designed to operate not just as a standalone CLI tool, but as an embedded architectural sentinel within larger AI agent ecosystems and CI/CD pipelines.
 
-This guide details the three primary ways to integrate Ghostclaw into your workflows:
+This guide details the primary ways to integrate Ghostclaw into your workflows:
 
 1. **As an OpenClaw Skill**
 2. **As an MCP (Model Context Protocol) Server**
 3. **With External Analysis Engines (PySCN & AI-CodeIndex)**
+4. **Supported Agentic Platforms (VSCode, Antigravity, OpenCode)**
 
 ---
 
@@ -94,3 +95,13 @@ Ghostclaw's core analysis engine (`CodebaseAnalyzer`) can be supercharged by int
 * **Invocation**: Pass `--ai-codeindex` to the CLI, or `use_ai_codeindex=True` to the Python API.
 * **Wrapper**: `src/ghostclaw/core/ai_codeindex_wrapper.py`
 * **Requirement**: Requires the `ai-codeindex` binary to be installed and available in your system `$PATH`.
+
+---
+
+## 4. Supported Agentic Platforms
+
+Ghostclaw is fully compatible with state-of-the-art agentic coding platforms and AI-enhanced IDEs:
+
+* **VSCode**: You can run Ghostclaw seamlessly within the VSCode integrated terminal or via VSCode-compatible agent extensions.
+* **OpenCode**: Ghostclaw can be integrated into OpenCode environments, allowing architectural vibe checks to be part of the automated code review loop.
+* **Antigravity**: As a highly advanced AI system, Antigravity natively supports calling Ghostclaw via MCP or OpenClaw integration, utilizing it as an architectural sentinel.
