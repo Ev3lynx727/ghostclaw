@@ -19,13 +19,27 @@ def test_ai_codeindex_build_graph_success():
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout='{"nodes": [], "edges": []}'
+            stdout='{"nodes": [{"id": 1}], "edges": [{"source": 1, "target": 2}]}'
         )
         with patch.object(AICodeIndexWrapper, "is_available", return_value=True):
             wrapper = AICodeIndexWrapper("/fake/path")
             result = wrapper.build_graph()
             assert "nodes" in result
+            assert len(result["nodes"]) == 1
             assert "edges" in result
+            assert len(result["edges"]) == 1
+
+def test_ai_codeindex_build_graph_invalid_json():
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='Graph generation failed midway'
+        )
+        with patch.object(AICodeIndexWrapper, "is_available", return_value=True):
+            wrapper = AICodeIndexWrapper("/fake/path")
+            result = wrapper.build_graph()
+            assert "raw_output" in result
+            assert result["raw_output"] == "Graph generation failed midway"
 
 def test_analyzer_integration_with_ai_codeindex(tmp_path):
     repo = tmp_path / "repo"

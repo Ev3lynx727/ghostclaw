@@ -9,6 +9,8 @@ import logging
 from typing import Dict, List, Optional
 from pathlib import Path
 
+sys.path.append(str(Path(__file__).parent.parent))
+
 # Use try-import to handle optional dependencies for Phase 2
 try:
     from mcp.server.fastmcp import FastMCP

@@ -33,7 +33,7 @@ class PySCNAnalyzer:
             # or parsing its output. Assuming it has a basic CLI for now.
             # In a real scenario, we'd use its specific flags.
             result = subprocess.run(
-                ["pyscn", "analyze", str(self.repo_path), "--format", "json"],
+                ["pyscn", "analyze", str(self.repo_path), "--json"],
                 capture_output=True,
                 text=True,
                 check=False

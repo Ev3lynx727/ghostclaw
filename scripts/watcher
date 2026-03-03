@@ -165,6 +165,15 @@ def main():
         "--gh-token",
         help="GitHub token (or set GH_TOKEN env)"
     )
+    # Engine toggles
+    parser.add_argument(
+        "--pyscn", action=argparse.BooleanOptionalAction, default=None,
+        help="Enable/disable PySCN explicitly"
+    )
+    parser.add_argument(
+        "--ai-codeindex", action=argparse.BooleanOptionalAction, default=None,
+        help="Enable/disable AI-CodeIndex explicitly"
+    )
 
     args = parser.parse_args()
 
@@ -200,7 +209,9 @@ def main():
             continue
 
         # Analyze
-        report = analyze_repo(repo_dir)
+        analyzer = CodebaseAnalyzer()
+        report = analyzer.analyze(str(repo_dir), use_pyscn=args.pyscn, use_ai_codeindex=args.ai_codeindex)
+        
         vibe_score = report['vibe_score']
         issues = report.get('issues', [])
 

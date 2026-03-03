@@ -11,6 +11,13 @@ This project follows a modular architecture. Please respect the separation of co
 - `cli/`: Command-line interface logic.
 - `scripts/`: Executable entry points, automation, and deployment scripts.
 
+## Optional Integration Engines
+
+Ghostclaw supports enhanced architectural analysis via two optional engines. These are natively integrated but must be explicitly toggled via CLI flags or installed in the host environment:
+
+- **PySCN (`--pyscn`)**: Deep clone detection and dead code analysis.
+- **AI-CodeIndex (`--ai-codeindex`)**: AST-based coupling graph and deep inheritance hierarchy detection.
+
 ## Important: No Duplicate Modules
 
 **DO NOT create duplicate module directories inside `scripts/`.**

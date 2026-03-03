@@ -37,13 +37,16 @@ class CodebaseAnalyzer:
         self.validator = validator or RuleValidator()
         self.cache = cache
 
-    def analyze(self, root: str, use_cache: bool = True) -> Dict:
+    def analyze(self, root: str, use_cache: bool = True, use_pyscn: bool = None, use_ai_codeindex: bool = None) -> Dict:
         """
         Perform a complete architectural analysis of a codebase.
 
         Args:
             root: Path to repository root
             use_cache: Whether to use/write cache (if cache enabled)
+            use_pyscn: Explicitly enable/disable PySCN integration
+            use_ai_codeindex: Explicitly enable/disable AI-CodeIndex integration
+
 
         Returns:
             Complete analysis report with vibe score, issues, ghosts, etc.
@@ -122,7 +125,7 @@ class CodebaseAnalyzer:
                 import_edges = analyzer.graph.edges
 
             # Integration Step: Additive Integration (Option A)
-            if HAS_PYSCN:
+            if (use_pyscn is not False) and HAS_PYSCN:
                 pyscn = PySCNAnalyzer(root)
                 if pyscn.is_available():
                     pyscn_used = True
@@ -137,9 +140,14 @@ class CodebaseAnalyzer:
                         dead_code = pyscn_report.get("dead_code", [])
                         if dead_code:
                             issues.append(f"Detected {len(dead_code)} potential dead code spots via pyscn")
+                else:
+                    if hasattr(self, 'logger'):
+                        self.logger.info("Install 'pyscn' for deeper dead code and clone detection capabilities.")
+                    else:
+                        issues.append("Info: Optional dependency 'pyscn' not found. Install for clone detection.")
 
             # Integration Step: Additive Integration (Option A) - ai-codeindex
-            if HAS_AI_CODEINDEX:
+            if (use_ai_codeindex is not False) and HAS_AI_CODEINDEX:
                 ai_codeindex = AICodeIndexWrapper(root)
                 if ai_codeindex.is_available():
                     ai_codeindex_used = True
@@ -154,6 +162,11 @@ class CodebaseAnalyzer:
 
                         # Mark report as having enhanced graphing
                         coupling_metrics["graph_engine"] = "ai-codeindex"
+                else:
+                    if hasattr(self, 'logger'):
+                        self.logger.info("Install 'ai-codeindex' for deeper AST coupling metrics.")
+                    else:
+                        issues.append("Info: Optional dependency 'ai-codeindex' not found. Install for AST graphs.")
 
         else:
             issues = ["Cannot detect tech stack; no build files found"]

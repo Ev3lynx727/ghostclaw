@@ -27,8 +27,22 @@ def test_pyscn_analyze_success():
             result = analyzer.analyze()
             assert "clones" in result
             assert len(result["clones"]) == 1
+            assert result["clones"][0]["file"] == "a.py"
             assert "dead_code" in result
             assert len(result["dead_code"]) == 1
+            assert result["dead_code"][0] == "func_b"
+
+def test_pyscn_analyze_invalid_json():
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='Invalid JSON Output Format'
+        )
+        with patch.object(PySCNAnalyzer, "is_available", return_value=True):
+            analyzer = PySCNAnalyzer("/fake/path")
+            result = analyzer.analyze()
+            assert "raw_output" in result
+            assert result["raw_output"] == "Invalid JSON Output Format"
 
 def test_analyzer_integration_with_pyscn(tmp_path):
     repo = tmp_path / "repo"
