@@ -18,7 +18,7 @@ try:
 except ImportError:
     HAS_MCP = False
 
-from core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.analyzer import CodebaseAnalyzer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

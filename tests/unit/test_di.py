@@ -2,8 +2,8 @@
 
 import pytest
 from unittest.mock import MagicMock
-from core.analyzer import CodebaseAnalyzer
-from core.validator import RuleValidator
+from ghostclaw.core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.validator import RuleValidator
 
 def test_analyzer_injected_validator():
     # Create a mock validator

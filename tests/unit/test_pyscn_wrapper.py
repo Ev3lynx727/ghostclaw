@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from core.pyscn_wrapper import PySCNAnalyzer
-from core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.pyscn_wrapper import PySCNAnalyzer
+from ghostclaw.core.analyzer import CodebaseAnalyzer
 
 def test_pyscn_not_available():
     with patch("subprocess.run") as mock_run:
@@ -50,8 +50,8 @@ def test_analyzer_integration_with_pyscn(tmp_path):
     (repo / "pyproject.toml").write_text("[project]\nname='test'")
     (repo / "a.py").write_text("def a(): pass")
 
-    with patch("core.pyscn_wrapper.PySCNAnalyzer.is_available", return_value=True), \
-         patch("core.pyscn_wrapper.PySCNAnalyzer.analyze", return_value={
+    with patch("ghostclaw.core.pyscn_wrapper.PySCNAnalyzer.is_available", return_value=True), \
+         patch("ghostclaw.core.pyscn_wrapper.PySCNAnalyzer.analyze", return_value={
              "clones": [{"file": "a.py"}],
              "dead_code": ["func_b"]
          }):

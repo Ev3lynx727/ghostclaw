@@ -5,7 +5,7 @@ import pytest
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
-from core.cache import LocalCache, compute_fingerprint
+from ghostclaw.core.cache import LocalCache, compute_fingerprint
 
 
 @pytest.fixture

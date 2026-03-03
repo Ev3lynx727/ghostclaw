@@ -16,9 +16,9 @@ from typing import Dict, List
 sys.path.append(str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
-from lib.cache import VibeCache
-from core.analyzer import CodebaseAnalyzer
-from core.cache import LocalCache
+from ghostclaw.lib.cache import VibeCache
+from ghostclaw.core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.cache import LocalCache
 
 load_dotenv()
 

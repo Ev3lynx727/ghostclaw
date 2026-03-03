@@ -1,7 +1,7 @@
 """Node.js / React / TypeScript stack analyzer with coupling."""
 
 from typing import Dict, List
-from core.node_coupling import NodeImportAnalyzer
+from ghostclaw.core.node_coupling import NodeImportAnalyzer
 from .base import StackAnalyzer
 
 

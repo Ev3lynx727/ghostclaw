@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from dotenv import load_dotenv
-from core.analyzer import CodebaseAnalyzer
-from core.cache import LocalCache
-from cli import __version__
+from ghostclaw.core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.cache import LocalCache
+from ghostclaw.cli import __version__
 
 load_dotenv()
 

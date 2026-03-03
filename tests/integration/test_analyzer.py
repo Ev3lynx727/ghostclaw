@@ -3,7 +3,7 @@
 import sys
 import pytest
 from pathlib import Path
-from core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.analyzer import CodebaseAnalyzer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 

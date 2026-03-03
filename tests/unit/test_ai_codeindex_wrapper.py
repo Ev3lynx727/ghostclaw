@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from core.ai_codeindex_wrapper import AICodeIndexWrapper
-from core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.ai_codeindex_wrapper import AICodeIndexWrapper
+from ghostclaw.core.analyzer import CodebaseAnalyzer
 
 def test_ai_codeindex_not_available():
     with patch("subprocess.run") as mock_run:
@@ -47,9 +47,9 @@ def test_analyzer_integration_with_ai_codeindex(tmp_path):
     (repo / "pyproject.toml").write_text("[project]\nname='test'")
     (repo / "a.py").write_text("def a(): pass")
 
-    with patch("core.ai_codeindex_wrapper.AICodeIndexWrapper.is_available", return_value=True), \
-         patch("core.ai_codeindex_wrapper.AICodeIndexWrapper.build_graph", return_value={"nodes": [], "edges": []}), \
-         patch("core.ai_codeindex_wrapper.AICodeIndexWrapper.get_inheritance_depth", return_value={"DeepClass": 5}):
+    with patch("ghostclaw.core.ai_codeindex_wrapper.AICodeIndexWrapper.is_available", return_value=True), \
+         patch("ghostclaw.core.ai_codeindex_wrapper.AICodeIndexWrapper.build_graph", return_value={"nodes": [], "edges": []}), \
+         patch("ghostclaw.core.ai_codeindex_wrapper.AICodeIndexWrapper.get_inheritance_depth", return_value={"DeepClass": 5}):
         analyzer = CodebaseAnalyzer()
         report = analyzer.analyze(str(repo), use_cache=False)
 

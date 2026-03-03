@@ -3,21 +3,21 @@
 import datetime
 from pathlib import Path
 from typing import Dict, Optional
-from core.detector import detect_stack, find_files
-from core.validator import RuleValidator
-from stacks import get_analyzer
-from core.cache import LocalCache, compute_fingerprint
+from ghostclaw.core.detector import detect_stack, find_files
+from ghostclaw.core.validator import RuleValidator
+from ghostclaw.stacks import get_analyzer
+from ghostclaw.core.cache import LocalCache, compute_fingerprint
 
 # Defensive import for Phase 1: pyscn Integration
 try:
-    from core.pyscn_wrapper import PySCNAnalyzer
+    from ghostclaw.core.pyscn_wrapper import PySCNAnalyzer
     HAS_PYSCN = True
 except ImportError:
     HAS_PYSCN = False
 
 # Defensive import for Phase 1: ai-codeindex Integration
 try:
-    from core.ai_codeindex_wrapper import AICodeIndexWrapper
+    from ghostclaw.core.ai_codeindex_wrapper import AICodeIndexWrapper
     HAS_AI_CODEINDEX = True
 except ImportError:
     HAS_AI_CODEINDEX = False

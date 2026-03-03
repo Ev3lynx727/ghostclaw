@@ -3,7 +3,7 @@
 import sys
 import pytest
 from pathlib import Path
-from core.coupling import PythonImportAnalyzer
+from ghostclaw.core.coupling import PythonImportAnalyzer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 

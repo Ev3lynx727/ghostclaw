@@ -13,7 +13,7 @@ def test_ghostclaw_analyze_success(tmp_path):
     repo.mkdir()
     (repo / "pyproject.toml").write_text("[project]\nname='test'")
 
-    with patch("core.analyzer.CodebaseAnalyzer.analyze") as mock_analyze:
+    with patch("ghostclaw.core.analyzer.CodebaseAnalyzer.analyze") as mock_analyze:
         mock_analyze.return_value = {"vibe_score": 100}
         result = ghostclaw_analyze(str(repo))
         data = json.loads(result)
@@ -24,7 +24,7 @@ def test_ghostclaw_get_ghosts_success(tmp_path):
     repo.mkdir()
     (repo / "pyproject.toml").write_text("[project]\nname='test'")
 
-    with patch("core.analyzer.CodebaseAnalyzer.analyze") as mock_analyze:
+    with patch("ghostclaw.core.analyzer.CodebaseAnalyzer.analyze") as mock_analyze:
         mock_analyze.return_value = {"architectural_ghosts": ["Ghost1"]}
         result = ghostclaw_get_ghosts(str(repo))
         data = json.loads(result)
@@ -35,7 +35,7 @@ def test_ghostclaw_refactor_plan_success(tmp_path):
     repo.mkdir()
     (repo / "pyproject.toml").write_text("[project]\nname='test'")
 
-    with patch("core.analyzer.CodebaseAnalyzer.analyze") as mock_analyze:
+    with patch("ghostclaw.core.analyzer.CodebaseAnalyzer.analyze") as mock_analyze:
         mock_analyze.return_value = {"issues": ["Issue1"], "architectural_ghosts": ["Ghost1"]}
         result = ghostclaw_refactor_plan(str(repo))
         assert "### Ghostclaw Refactor Blueprint" in result

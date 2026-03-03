@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.analyzer import CodebaseAnalyzer
 # ...
 ```
 

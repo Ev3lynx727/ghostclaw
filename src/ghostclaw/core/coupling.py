@@ -3,7 +3,7 @@
 import ast
 from pathlib import Path
 from typing import Dict, List, Set
-from core.graph import ImportGraph
+from ghostclaw.core.graph import ImportGraph
 
 # Modules in these directories are typically orchestrators and naturally have high efferent coupling
 ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}

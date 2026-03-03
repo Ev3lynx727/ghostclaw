@@ -3,7 +3,7 @@
 import sys
 import pytest
 from pathlib import Path
-from core.validator import RuleValidator
+from ghostclaw.core.validator import RuleValidator
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
