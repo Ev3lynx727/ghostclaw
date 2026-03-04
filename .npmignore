@@ -1,0 +1,34 @@
+# Exclude development and documentation files from npm package
+
+# Development files
+tests/
+scripts/
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation (keep in repo, but not in npm)
+docs/
+
+# Build artifacts and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+build/
+dist/
+*.egg
+
+# Project specific
+.pyscn/
+
+# Misc
+.DS_Store
+Thumbs.db

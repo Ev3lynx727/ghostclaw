@@ -23,5 +23,13 @@
     "openclaw": {
         "skill": true,
         "entry": "src/ghostclaw/cli/ghostclaw.py"
-    }
+    },
+    "files": [
+        "SKILL.md",
+        "src/",
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "AGENTS.md"
+    ]
 }
