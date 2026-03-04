@@ -15,6 +15,44 @@ If you encounter issues while installing, configuring, or running Ghostclaw, con
 1. Ensure your repository is up to date.
 2. If running from source, ensure you run `pip install -e .` from the repository root, OR use the wrapper scripts in `./scripts/` (e.g., `./scripts/ghostclaw.sh`).
 
+### `ModuleNotFoundError: No module named 'ghostclaw'` (OpenClaw Skill Install)
+
+**Symptom:** After manually installing Ghostclaw into `~/.openclaw/skills/ghostclaw/`, OpenClaw or Python cannot import `ghostclaw`.
+**Cause:** The skill directory structure is incorrect. The Python package **must** be inside a top-level `ghostclaw/` directory (i.e., `~/.openclaw/skills/ghostclaw/ghostclaw/`). A common mistake is to copy only the contents of `src/ghostclaw/` directly, flattening the package.
+**Solution:**
+
+1. Verify your skill layout:
+
+   ```
+   ~/.openclaw/skills/ghostclaw/
+   ├── SKILL.md
+   └── ghostclaw/          ← this package directory is required
+       ├── __init__.py
+       ├── cli/
+       ├── core/
+       ├── lib/
+       ├── stacks/
+       └── references/
+   ```
+
+2. If the `ghostclaw/` package is missing, reinstall using the `skills` branch:
+
+   ```bash
+   git clone https://github.com/Ev3lynx727/ghostclaw.git
+   cd ghostclaw
+   git checkout skills
+   cp -r ghostclaw ~/.openclaw/skills/ghostclaw/ghostclaw
+   cp SKILL.md ~/.openclaw/skills/ghostclaw/
+   ```
+
+3. Test the installation:
+
+   ```bash
+   python3 -c "import sys; sys.path.insert(0, str(Path.home() / '.openclaw/skills/ghostclaw')); from ghostclaw.core.analyzer import CodebaseAnalyzer; print('OK')"
+   ```
+
+For a complete walkthrough, see [docs/HOWTOUSE.md](./HOWTOUSE.md#5-manual-installation-as-an-openclaw-skill).
+
 ### `Command 'ghostclaw' not found`
 
 **Symptom:** You installed Ghostclaw via pip, but the CLI command is unavailable.

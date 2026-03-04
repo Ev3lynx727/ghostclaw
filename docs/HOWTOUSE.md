@@ -119,3 +119,71 @@ If installed via `npx clawhub-cli install ghostclaw`, your OpenClaw agents can a
 
 If you are using Claude Desktop or another MCP-compatible client, Ghostclaw exposes MCP tools (`ghostclaw_analyze`, `ghostclaw_get_ghosts`, `ghostclaw_refactor_plan`).
 Please see [docs/INTEGRATION.md](./INTEGRATION.md) for detailed MCP server configuration instructions.
+
+---
+
+## 5. Manual Installation as an OpenClaw Skill
+
+If you prefer not to use `npx` or want a local copy of the skill, you can manually install Ghostclaw into your OpenClaw skills directory.
+
+### The `skills` Branch: Ready-to-Copy Artifact
+
+The repository maintains a `skills` branch that contains a self-contained package layout suitable for dropping directly into `~/.openclaw/skills/`. Do **not** use the `develop` branch for manual installation; it requires a full install via `pip` or the wrapper scripts.
+
+```bash
+# Clone the repository (if you haven't already)
+git clone https://github.com/Ev3lynx727/ghostclaw.git
+cd ghostclaw
+
+# Ensure you have the latest skills branch
+git checkout skills
+git pull origin skills
+```
+
+### Correct Directory Structure
+
+After copying, your OpenClaw skills directory should look like:
+
+```
+~/.openclaw/skills/ghostclaw/
+├── SKILL.md
+└── ghostclaw/
+    ├── __init__.py
+    ├── cli/
+    ├── core/
+    ├── lib/
+    ├── stacks/
+    └── references/
+```
+
+**Important:** The top-level `ghostclaw/` package directory is required. A common mistake is to copy only the contents of `src/ghostclaw/` directly into `~/.openclaw/skills/ghostclaw/` without the package wrapper, which results in import errors like:
+
+```
+ModuleNotFoundError: No module named 'ghostclaw'
+```
+
+The `skills` branch already has the correct layout: the `ghostclaw/` package resides at the skill root alongside `SKILL.md`.
+
+### Copy vs Symlink
+
+You can either copy the files or create symlinks for live updates:
+
+```bash
+# Option A: Copy (static)
+cp -r /path/to/ghostclaw/skills/* ~/.openclaw/skills/ghostclaw/
+
+# Option B: Symlink (recommended for development)
+rm -rf ~/.openclaw/skills/ghostclaw
+ln -s /path/to/ghostclaw/ghostclaw ~/.openclaw/skills/ghostclaw/ghostclaw
+ln -s /path/to/ghostclaw/SKILL.md ~/.openclaw/skills/ghostclaw/SKILL.md
+```
+
+### Verification
+
+Test that the skill is importable by OpenClaw:
+
+```bash
+python3 -c "import sys; sys.path.insert(0, str(Path.home() / '.openclaw/skills/ghostclaw')); from ghostclaw.core.analyzer import CodebaseAnalyzer; print('Ghostclaw skill loaded OK')"
+```
+
+If you see no errors, the skill is ready. OpenClaw agents will now be able to invoke Ghostclaw.

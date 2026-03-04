@@ -23,6 +23,12 @@ You can run or install Ghostclaw directly using OpenClaw's CLI:
 npx clawhub-cli install ghostclaw
 ```
 
+### Manual Installation
+
+Alternatively, you can manually copy the skill from the `skills` branch into your OpenClaw skills directory (`~/.openclaw/skills/ghostclaw/`). This is useful for local development or if you prefer not to use `npx`.
+
+See the detailed steps and troubleshooting in [HOWTOUSE.md](./HOWTOUSE.md#5-manual-installation-as-an-openclaw-skill).
+
 ### Metadata Configuration
 
 The integration is defined in the `package.json` at the root of the repository:
