@@ -2,8 +2,11 @@
 
 import re
 from pathlib import Path
-from typing import Dict, List
-from core.graph import ImportGraph
+from typing import Dict, List, Set
+from ghostclaw.core.graph import ImportGraph
+
+# Modules in these directories are typically orchestrators and naturally have high efferent coupling
+ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}
 
 
 class NodeImportAnalyzer:
@@ -129,6 +132,11 @@ class NodeImportAnalyzer:
                 "instability": round(instability, 2)
             }
             if instability > 0.8:
+                # Skip entry points as they naturally import many things
+                module_parts = set(node.split('.'))
+                if any(entry in module_parts for entry in ENTRY_POINT_DIRS):
+                    continue
+
                 issues.append(f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})")
                 ghosts.append(f"Unstable module {node}: knows too many others")
 

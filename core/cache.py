@@ -130,7 +130,7 @@ def compute_fingerprint(
 
     # Non-git repo or git command failed: use mtime+size summary of code files
     try:
-        from core.detector import detect_stack
+        from ghostclaw.core.detector import detect_stack
 
         stack = detect_stack(str(repo_path))
         # Determine likely code extensions based on stack

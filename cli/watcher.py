@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import Dict, List
 
 from dotenv import load_dotenv
-from core.analyzer import CodebaseAnalyzer
-from lib.cache import VibeCache
-from lib.github import GitHubClient
-from lib.notify import Notifier
+from ghostclaw.core.analyzer import CodebaseAnalyzer
+from ghostclaw.lib.cache import VibeCache
+from ghostclaw.lib.github import GitHubClient
+from ghostclaw.lib.notify import Notifier
 
 # Load .env file if present (secrets management)
 load_dotenv()

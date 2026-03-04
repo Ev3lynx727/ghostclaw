@@ -2,8 +2,11 @@
 
 import ast
 from pathlib import Path
-from typing import Dict, List
-from core.graph import ImportGraph
+from typing import Dict, List, Set
+from ghostclaw.core.graph import ImportGraph
+
+# Modules in these directories are typically orchestrators and naturally have high efferent coupling
+ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}
 
 
 class PythonImportAnalyzer:
@@ -45,18 +48,39 @@ class PythonImportAnalyzer:
                             if self._is_local_import(imported_module):
                                 self.graph.add_edge(module_name, imported_module)
                     elif isinstance(node, ast.ImportFrom):
-                        if node.module:
-                            imported_module = node.module
-                            if self._is_local_import(imported_module):
-                                self.graph.add_edge(module_name, imported_module)
+                        imported_module = self._resolve_relative_import(module_name, node)
+                        if imported_module and self._is_local_import(imported_module):
+                            self.graph.add_edge(module_name, imported_module)
             except Exception:
                 continue  # Skip files with parse errors
 
         # Compute metrics
         return self._compute_report()
 
+    def _resolve_relative_import(self, current_module: str, node: ast.ImportFrom) -> str:
+        """Resolve a relative or absolute 'from' import to an absolute module name."""
+        if node.level == 0:
+            return node.module
+
+        # Handling relative imports
+        parts = current_module.split('.')
+        # level=1 is current directory, level=2 is parent, etc.
+        # For 'from . import x', level=1, we keep parts[:-0] if it's a file, but wait...
+        # If current_module is 'a.b', and we do 'from . import c', it depends if 'a.b' is a package.
+        # But our module_name for 'a/b.py' is 'a.b', and for 'a/b/__init__.py' it is also 'a.b'.
+
+        # Simple heuristic:
+        base_parts = parts[:-node.level] if len(parts) >= node.level else []
+        base = ".".join(base_parts)
+
+        if node.module:
+            return f"{base}.{node.module}" if base else node.module
+        return base
+
     def _is_local_import(self, module_name: str) -> bool:
         """Check if an import is likely from the local project (not stdlib/third-party)."""
+        if not module_name:
+            return False
         # Heuristic: if the module prefix exists in our graph, it's local
         for known in self.graph.nodes:
             if module_name == known or module_name.startswith(known + "."):
@@ -81,6 +105,11 @@ class PythonImportAnalyzer:
 
         # Identify highly unstable modules (God modules)
         for module in self.graph.nodes:
+            # Skip entry points as they naturally import many things
+            module_parts = set(module.split('.'))
+            if any(entry in module_parts for entry in ENTRY_POINT_DIRS):
+                continue
+
             instability = self.graph.get_instability(module)
             if instability > 0.8:
                 ce = self.graph.get_efferent_coupling(module)
