@@ -26,6 +26,12 @@ Use ghostclaw when:
 Scan a codebase directly via CLI:
 
 ```bash
+python -m ghostclaw.cli.ghostclaw /path/to/repo
+```
+
+Or invoke directly:
+
+```bash
 ghostclaw /path/to/repo
 ```
 
@@ -56,7 +62,14 @@ openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
 Configure ghostclaw to monitor repositories:
 
 ```bash
-openclaw cron schedule --interval "daily" --script "/home/ev3lynx/.openclaw/workspace/ghostclaw/scripts/watcher.sh" --args "repo-list.txt"
+openclaw cron schedule --interval "daily" --command "python -m ghostclaw.cli.watcher" --args "repo-list.txt"
+```
+
+Or integrate directly:
+
+```python
+from ghostclaw.cli.watcher import main
+main()
 ```
 
 The watcher:
@@ -107,23 +120,40 @@ Ghostclaw adapts to stack conventions:
 - **Go**: inspects package cohesion, interface usage, error handling patterns
 - **Rust**: assesses module organization, trait boundaries, ownership clarity
 
-See `references/stack-patterns/` for detailed heuristics.
+See `ghostclaw/references/stack-patterns.yaml` and `ghostclaw/references/stack-patterns.md` for detailed heuristics.
 
 ## Setup
 
-1. Ensure dependencies: `bash`, `git`, `gh` (optional for PRs), `jq` (for JSON parsing)
-2. Configure repos to watch: edit `scripts/repos.txt`
-3. Set `GH_TOKEN` env for PR automation
-4. Test: `./scripts/ghostclaw.sh review /path/to/repo` or `./scripts/compare.sh --repos-file scripts/repos.txt`
+1. Install dependencies: `pip install -e .` in the project root
+2. Ensure system tools: `bash`, `git`, `gh` (optional for PRs), `jq` (optional for JSON output)
+3. Create `repo-list.txt` in project root for watcher mode (list of repos to monitor, one per line)
+4. Set `GH_TOKEN` env variable for PR automation
+5. Test ad-hoc review: `python -m ghostclaw.cli.ghostclaw /path/to/target-repo`
+6. Test comparison: `python -m ghostclaw.cli.compare --repos-file repo-list.txt`
 
 ## Files
 
-- `scripts/ghostclaw.sh` — Main entry point (review mode)
-- `scripts/compare.sh` — Trend analysis entry point
-- `scripts/watcher.sh` — Cron watcher loop
-- `src/ghostclaw/core/` — Modular analysis engine (Python)
-- `src/ghostclaw/stacks/` — Tech-stack specific analysis logic
-- `src/ghostclaw/references/stack-patterns.yaml` — Configurable architectural rules
+- `ghostclaw/cli/ghostclaw.py` — Main entry point (ad-hoc review mode)
+- `ghostclaw/cli/compare.py` — Trend analysis and comparison entry point
+- `ghostclaw/cli/watcher.py` — Cron watcher loop for repo monitoring
+- `ghostclaw/core/` — Modular analysis engine (Python)
+  - `analyzer.py` — Main CodebaseAnalyzer class
+  - `cache.py` — Caching layer for analysis results
+  - `detector.py` — Code smell and pattern detection
+  - `metrics.py` — Vibe scoring and metrics computation
+  - `coupling.py` — Coupling analysis
+  - `validator.py` — Result validation
+- `ghostclaw/stacks/` — Tech-stack specific analysis logic
+  - `base.py` — Base stack analyzer interface
+  - `python.py` — Python-specific patterns
+  - `node.py` — Node.js/Express patterns
+  - `go.py` — Go-specific patterns
+- `ghostclaw/lib/` — Utility libraries
+  - `github.py` — GitHub API integration
+  - `cache.py` — Caching utilities
+  - `notify.py` — Notification system
+- `ghostclaw/references/stack-patterns.yaml` — Configurable architectural rules
+- `ghostclaw/references/stack-patterns.md` — Documentation of patterns
 
 ## Invocation Examples
 
@@ -131,8 +161,18 @@ See `references/stack-patterns/` for detailed heuristics.
 User: ghostclaw, review my backend services
 Ghostclaw: Scanning... vibe check: 62/100 overall. Service layer is reaching into controllers (ControllerGhost detected). Suggest extracting business logic into pure services. See attached patches.
 
+$ python -m ghostclaw.cli.ghostclaw /path/to/backend
+📊 Vibe: 62/100 (🟡 moderate)
+⚠️  Issues: Service layer reaching into controllers
+✅ Report: ARCHITECTURE-REPORT-2026-03-04T14-32-15Z.md
+
 User: show me the health trends for my microservices
-Ghostclaw: Running comparison... Average vibe: 74.5/100 (+4.2). 8/10 repos are healthy. See full table via `./scripts/compare.sh`.
+Ghostclaw: Running comparison... Average vibe: 74.5/100 (+4.2). 8/10 repos are healthy.
+
+$ python -m ghostclaw.cli.compare --repos-file repo-list.txt
+Comparing 10 repositories...
+📈 Average Vibe: 74.5/100 (+4.2 from last run)
+🟢 Healthy: 8/10 repos above threshold
 ```
 
 ---
