@@ -111,16 +111,16 @@ See `references/stack-patterns/` for detailed heuristics.
 
 ## Setup
 
-1. Ensure dependencies: `bash`, `git`, `gh` (optional for PRs), `jq` (for JSON parsing)
-2. Configure repos to watch: edit `scripts/repos.txt`
+1. Ensure Python dependencies are installed: `npm run install-deps`
+2. Configure repos to watch: create a `repos.txt` with repo paths.
 3. Set `GH_TOKEN` env for PR automation
-4. Test: `./scripts/ghostclaw.sh review /path/to/repo` or `./scripts/compare.sh --repos-file scripts/repos.txt`
+4. Test: `python3 src/ghostclaw/cli/ghostclaw.py /path/to/repo` or `python3 src/ghostclaw/cli/compare.py --repos-file repos.txt`
 
 ## Files
 
-- `scripts/ghostclaw.sh` — Main entry point (review mode)
-- `scripts/compare.sh` — Trend analysis entry point
-- `scripts/watcher.sh` — Cron watcher loop
+- `src/ghostclaw/cli/ghostclaw.py` — Main entry point (review mode)
+- `src/ghostclaw/cli/compare.py` — Trend analysis entry point
+- `src/ghostclaw/cli/watcher.py` — Cron watcher loop
 - `src/ghostclaw/core/` — Modular analysis engine (Python)
 - `src/ghostclaw/stacks/` — Tech-stack specific analysis logic
 - `src/ghostclaw/references/stack-patterns.yaml` — Configurable architectural rules
@@ -132,7 +132,7 @@ User: ghostclaw, review my backend services
 Ghostclaw: Scanning... vibe check: 62/100 overall. Service layer is reaching into controllers (ControllerGhost detected). Suggest extracting business logic into pure services. See attached patches.
 
 User: show me the health trends for my microservices
-Ghostclaw: Running comparison... Average vibe: 74.5/100 (+4.2). 8/10 repos are healthy. See full table via `./scripts/compare.sh`.
+Ghostclaw: Running comparison... Average vibe: 74.5/100 (+4.2). 8/10 repos are healthy. See full table via `python3 src/ghostclaw/cli/compare.py`.
 ```
 
 ---

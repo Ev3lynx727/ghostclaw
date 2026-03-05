@@ -1,6 +1,6 @@
 pytest>=7.0
 pytest-cov>=4.0
 pytest-mock>=3.10
-mcp-sdk>=0.1.0
+mcp>=1.0.0
 ai-codeindex>=0.1.0
 pyscn>=0.1.0

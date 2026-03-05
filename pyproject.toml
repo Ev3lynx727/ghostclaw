@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [{name = "Ev3lynx", email = "ev3lynx727@example.com"}]
-keywords = ["architecture", "code-review", "静态分析"]
+keywords = ["architecture", "code-review", "code-quality", "code-smell"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -26,12 +26,12 @@ dependencies = [
 
 [project.optional-dependencies]
 full = [
-    "mcp-sdk>=0.1.0",
+    "mcp>=1.0.0",
     "ai-codeindex>=0.1.0",
     "pyscn>=0.1.0"
 ]
 mcp = [
-    "mcp-sdk>=0.1.0"
+    "mcp>=1.0.0"
 ]
 pyscn = [
     "pyscn>=0.1.0"
