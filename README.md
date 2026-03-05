@@ -29,7 +29,7 @@ npx ghostclaw /path/to/repo
 You can also add it via OpenClaw skills:
 
 ```bash
-npx skills add ghostclaw
+npx skills add Ev3lynx727/ghostclaw
 ```
 
 ### Method 3: ClawHub
