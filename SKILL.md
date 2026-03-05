@@ -48,7 +48,7 @@ Ghostclaw will:
 You can also spawn ghostclaw as a sub-agent:
 
 ```bash
-openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
+openclaw agent --agent ghostclaw --message "review the /src directory"
 ```
 
 ### 2. Background Watcher (Cron)
@@ -56,7 +56,7 @@ openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
 Configure ghostclaw to monitor repositories:
 
 ```bash
-openclaw cron schedule --interval "daily" --script "/home/ev3lynx/.openclaw/workspace/ghostclaw/scripts/watcher.sh" --args "repo-list.txt"
+openclaw cron add --name "ghostclaw-watcher" --every "1d" --message "python -m ghostclaw.cli.watcher repo-list.txt"
 ```
 
 The watcher:
