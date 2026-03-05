@@ -4,3 +4,4 @@ pytest-mock>=3.10
 mcp>=1.0.0
 ai-codeindex>=0.1.0
 pyscn>=0.1.0
+pyinstaller
