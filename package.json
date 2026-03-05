@@ -4,6 +4,7 @@
     "description": "Architectural code review assistant that perceives code vibes",
     "scripts": {
         "install-deps": "pip install -r requirements-dev.txt",
+        "install-service": "./scripts/install_service.sh",
         "test": "python3 -m pytest -p no:sugar tests/unit"
     },
     "keywords": [
