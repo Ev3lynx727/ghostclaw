@@ -14,7 +14,16 @@ from typing import Dict, Optional
 from dotenv import load_dotenv
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.cache import LocalCache
+from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.cli import __version__
+
+try:
+    from rich.console import Console
+    from rich.markdown import Markdown
+    from rich.status import Status
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
 
 load_dotenv()
 
@@ -163,6 +172,10 @@ def print_report(report: Dict):
 
     print("💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)")
 
+    if "ai_synthesis" in report:
+        # Final formatting was already handled live by the analyzer during generation
+        pass
+
 
 def update_ghostclaw():
     """Perform self-update via pip or git."""
@@ -217,6 +230,18 @@ def main():
     parser.add_argument("--cache-ttl", type=int, default=7, help="Cache TTL in days (default: 7)")
     parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
 
+    # AI options
+    parser.add_argument("--use-ai", action="store_true", help="Enable Ghost Engine AI synthesis")
+    parser.add_argument("--ai-provider", help="AI Provider (openrouter, openai, anthropic)")
+    parser.add_argument("--dry-run", action="store_true", help="Dry run mode: prints prompt and token count without API call")
+    parser.add_argument("--verbose", action="store_true", help="Verbose mode: saves raw API requests/responses to debug.log")
+
+    # Engine Integrations (Phase 1)
+    parser.add_argument("--pyscn", action="store_true", help="Enable PySCN integration")
+    parser.add_argument("--no-pyscn", action="store_true", help="Explicitly disable PySCN integration")
+    parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
+    parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
+
     args = parser.parse_args()
 
     if args.update:
@@ -224,6 +249,28 @@ def main():
         sys.exit(0)
 
     repo_path = args.repo_path
+    if repo_path == "init":
+        # Scaffold .ghostclaw.json template
+        cwd = Path.cwd()
+        gc_dir = cwd / ".ghostclaw"
+        gc_dir.mkdir(parents=True, exist_ok=True)
+        config_file = gc_dir / "ghostclaw.json"
+        if config_file.exists():
+            print(f"⚠️ {config_file} already exists. Skipping initialization.")
+            sys.exit(0)
+
+        template = {
+            "use_ai": True,
+            "ai_provider": "openrouter",
+            "use_pyscn": False,
+            "use_ai_codeindex": False
+        }
+        with open(config_file, "w", encoding="utf-8") as f:
+            json.dump(template, f, indent=2)
+        print(f"✅ Created template config at {config_file}")
+        print("💡 Remember: Do NOT save your GHOSTCLAW_API_KEY in this file. Use an environment variable or ~/.ghostclaw/ghostclaw.json.")
+        sys.exit(0)
+
     if not repo_path:
         parser.print_help()
         sys.exit(1)
@@ -238,20 +285,67 @@ def main():
     if use_cache:
         cache = LocalCache(cache_dir=args.cache_dir, ttl_days=args.cache_ttl)
 
+    # Initialize Config
+    # Extract known CLI overrides
+    cli_overrides = {}
+    if args.use_ai:
+        cli_overrides['use_ai'] = True
+    if args.ai_provider:
+        cli_overrides['ai_provider'] = args.ai_provider
+    if args.dry_run:
+        cli_overrides['dry_run'] = True
+    if args.verbose:
+        cli_overrides['verbose'] = True
+
+    # Handle backward compatibility flags
+    if args.pyscn:
+        cli_overrides['use_pyscn'] = True
+    elif args.no_pyscn:
+        cli_overrides['use_pyscn'] = False
+
+    if args.ai_codeindex:
+        cli_overrides['use_ai_codeindex'] = True
+    elif args.no_ai_codeindex:
+        cli_overrides['use_ai_codeindex'] = False
+
+    try:
+        config = GhostclawConfig.load(repo_path, **cli_overrides)
+    except Exception as e:
+        print(f"Configuration Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
-    report = analyzer.analyze(repo_path, use_cache=use_cache)
+
+    # The analyzer will handle its own rich terminal output for streaming AI synthesis
+    report = analyzer.analyze(repo_path, use_cache=use_cache, config=config)
 
     # 1. Prepare and write report file if needed (must happen before stdout)
     report_file_path = None
     if not args.no_write_report:
         now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         filename = f"ARCHITECTURE-REPORT-{now}.md"
-        report_file_path = Path(repo_path) / filename
-        md_content = generate_markdown_report(report)
+        ghostclaw_dir = Path(repo_path) / ".ghostclaw"
         try:
+            ghostclaw_dir.mkdir(parents=True, exist_ok=True)
+            report_file_path = ghostclaw_dir / filename
+            md_content = generate_markdown_report(report)
             report_file_path.write_text(md_content, encoding='utf-8')
+
+            # Phase 0: Gitignore Injection
+            gitignore_path = Path(repo_path) / ".gitignore"
+            if gitignore_path.exists():
+                content = gitignore_path.read_text(encoding='utf-8')
+                if ".ghostclaw" not in content and ".ghostclaw/" not in content:
+                    # Append it
+                    newline = "\n" if not content.endswith("\n") else ""
+                    with open(gitignore_path, "a", encoding="utf-8") as f:
+                        f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
+            else:
+                # Optionally, we could create it, but usually we just warn or leave it alone.
+                pass
+
         except Exception as e:
-            print(f"Error writing report file: {e}", file=sys.stderr)
+            print(f"Error writing report file or updating gitignore: {e}", file=sys.stderr)
             report_file_path = None
 
     # 2. Output to stdout

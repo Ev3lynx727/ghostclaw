@@ -1,12 +1,16 @@
 """Core analyzer — orchestrates stack detection, metrics, and stack-specific analysis."""
 
 import datetime
+import asyncio
 from pathlib import Path
 from typing import Dict, Optional
 from ghostclaw.core.detector import detect_stack, find_files
 from ghostclaw.core.validator import RuleValidator
 from ghostclaw.stacks import get_analyzer
 from ghostclaw.core.cache import LocalCache, compute_fingerprint
+from ghostclaw.core.config import GhostclawConfig
+from ghostclaw.core.llm_client import LLMClient
+from ghostclaw.core.context_builder import ContextBuilder
 
 # Defensive import for Phase 1: pyscn Integration
 try:
@@ -37,21 +41,23 @@ class CodebaseAnalyzer:
         self.validator = validator or RuleValidator()
         self.cache = cache
 
-    def analyze(self, root: str, use_cache: bool = True, use_pyscn: bool = None, use_ai_codeindex: bool = None) -> Dict:
+    def analyze(self, root: str, use_cache: bool = True, config: Optional[GhostclawConfig] = None) -> Dict:
         """
         Perform a complete architectural analysis of a codebase.
 
         Args:
             root: Path to repository root
             use_cache: Whether to use/write cache (if cache enabled)
-            use_pyscn: Explicitly enable/disable PySCN integration
-            use_ai_codeindex: Explicitly enable/disable AI-CodeIndex integration
+            config: GhostclawConfig instance with user settings
 
 
         Returns:
             Complete analysis report with vibe score, issues, ghosts, etc.
         """
         root_path = Path(root)
+        config = config or GhostclawConfig()
+        use_pyscn = config.use_pyscn
+        use_ai_codeindex = config.use_ai_codeindex
 
         fingerprint = None
         # 0. Cache shortcut if enabled
@@ -169,22 +175,21 @@ class CodebaseAnalyzer:
                         issues.append("Info: Optional dependency 'ai-codeindex' not found. Install for AST graphs.")
 
         else:
-            # Upgrade: Attempt AI-driven fallback ingestion if standard stack detection fails
+            # Upgrade: Fallback logic for unknown stacks
             issues = ["Standard stack detection failed."]
-            ghosts = ["Attempting AI Token Ingestion fallback (AI Ghostclaw)"]
-            
-            # Instead of failing immediately, hook into AI CodeIndex to parse the structure
-            if HAS_AI_CODEINDEX:
-                ai_codeindex = AICodeIndexWrapper(root)
-                if ai_codeindex.is_available():
-                    ai_codeindex_used = True
-                    ghosts.append("Successfully hooked into AI CodeIndex to ingest unknown architecture.")
-                    # In a full implementation, you'd feed `ai_codeindex.build_graph()` to the LLM here!
-                else:
-                    issues.append("AI-CodeIndex unavailable for fallback ingestion.")
-            
+            ghosts = []
             flags = []
             coupling_metrics = {}
+
+            if config.use_ai:
+                ghosts.append("Attempting AI Synthesis fallback (Ghost Engine)")
+                if HAS_AI_CODEINDEX:
+                    ai_codeindex = AICodeIndexWrapper(root)
+                    if ai_codeindex.is_available():
+                        ai_codeindex_used = True
+                        ghosts.append("Successfully hooked into AI CodeIndex to ingest unknown architecture.")
+                    else:
+                        issues.append("AI-CodeIndex unavailable for fallback ingestion.")
         # 5. Merge metrics for vibe score
         combined_metrics = {**base_metrics, "coupling_metrics": coupling_metrics}
 
@@ -235,6 +240,70 @@ class CodebaseAnalyzer:
                 "ai_codeindex_integrated": ai_codeindex_used
             }
         }
+
+        # 9. Ghost Engine Synthesis
+        if config.use_ai:
+            llm_client = LLMClient(config, root)
+            context_builder = ContextBuilder()
+            prompt = context_builder.build_prompt(
+                metrics=base_metrics,
+                issues=issues,
+                ghosts=ghosts,
+                flags=flags,
+                coupling_metrics=coupling_metrics,
+                import_edges=import_edges
+            )
+
+            # Use asyncio to consume the stream generator with Rich UX
+            async def _consume_stream():
+                content = []
+                import sys
+
+                try:
+                    from rich.console import Console
+                    from rich.markdown import Markdown
+                    from rich.status import Status
+                    has_rich = True
+                    console = Console()
+                except ImportError:
+                    has_rich = False
+
+                print("\n" + "="*50 + "\n")
+                print("🧠 Ghost Engine Synthesis:\n")
+
+                if has_rich:
+                    status = console.status("[bold green]Ghostclaw is analyzing architecture and synthesizing vibes...[/bold green]", spinner="dots")
+                    status.start()
+
+                first_chunk_received = False
+
+                async for chunk in llm_client.stream_analysis(prompt):
+                    if not first_chunk_received:
+                        first_chunk_received = True
+                        if has_rich:
+                            status.stop()
+
+                    # Print raw tokens as they stream to avoid UI flicker from unclosed markdown tags
+                    sys.stdout.write(chunk)
+                    sys.stdout.flush()
+                    content.append(chunk)
+
+                full_text = "".join(content)
+                print("\n\n" + "="*50)
+
+                # Re-render the full string as beautifully formatted Markdown if rich is available
+                if has_rich and full_text.strip():
+                    # Instead of printing both, clear the raw stream with an ANSI code
+                    # by moving the cursor up by the number of lines printed.
+                    lines_printed = full_text.count('\n') + 2 # +2 for padding
+                    sys.stdout.write(f"\033[{lines_printed}A\033[J")
+                    sys.stdout.flush()
+                    console.print(Markdown(full_text))
+
+                return full_text
+
+            ai_synthesis = asyncio.run(_consume_stream())
+            report["ai_synthesis"] = ai_synthesis
 
         # Store in cache if enabled and we have a fingerprint
         if use_cache and self.cache is not None and fingerprint is not None:
