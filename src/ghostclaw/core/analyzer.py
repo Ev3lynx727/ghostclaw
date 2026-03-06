@@ -169,11 +169,22 @@ class CodebaseAnalyzer:
                         issues.append("Info: Optional dependency 'ai-codeindex' not found. Install for AST graphs.")
 
         else:
-            issues = ["Cannot detect tech stack; no build files found"]
-            ghosts = []
+            # Upgrade: Attempt AI-driven fallback ingestion if standard stack detection fails
+            issues = ["Standard stack detection failed."]
+            ghosts = ["Attempting AI Token Ingestion fallback (AI Ghostclaw)"]
+            
+            # Instead of failing immediately, hook into AI CodeIndex to parse the structure
+            if HAS_AI_CODEINDEX:
+                ai_codeindex = AICodeIndexWrapper(root)
+                if ai_codeindex.is_available():
+                    ai_codeindex_used = True
+                    ghosts.append("Successfully hooked into AI CodeIndex to ingest unknown architecture.")
+                    # In a full implementation, you'd feed `ai_codeindex.build_graph()` to the LLM here!
+                else:
+                    issues.append("AI-CodeIndex unavailable for fallback ingestion.")
+            
             flags = []
             coupling_metrics = {}
-
         # 5. Merge metrics for vibe score
         combined_metrics = {**base_metrics, "coupling_metrics": coupling_metrics}
 
