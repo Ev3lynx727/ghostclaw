@@ -282,11 +282,20 @@ class CodebaseAnalyzer:
                     from rich.text import Text
 
                     # Buffer to hold full text content
-                    with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
-                        async for chunk in llm_client.stream_analysis(prompt):
-                            if not first_chunk_received:
-                                first_chunk_received = True
-                                status.stop()
+                    try:
+                        with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
+                            async for chunk in llm_client.stream_analysis(prompt):
+                                if not first_chunk_received:
+                                    first_chunk_received = True
+                                    status.stop()
+
+                                content.append(chunk)
+                                # Render unformatted raw text in the Live context so it automatically clears when finished
+                                # without breaking markdown or leaving dirty lines if terminal wraps
+                                live.update(Text("".join(content)))
+                    finally:
+                        if not first_chunk_received:
+                            status.stop()
 
                             content.append(chunk)
                             # Render unformatted raw text in the Live context so it automatically clears when finished
