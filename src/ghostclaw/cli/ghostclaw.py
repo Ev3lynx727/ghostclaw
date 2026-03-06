@@ -112,7 +112,7 @@ def create_github_pr(repo_path: str, report_file: Path, title: str, body: str):
         # Create branch
         subprocess.run(["git", "checkout", "-b", branch_name], cwd=repo_path, check=True, capture_output=True, text=True)
         # Add report
-        subprocess.run(["git", "add", report_file.name], cwd=repo_path, check=True, capture_output=True, text=True)
+        subprocess.run(["git", "add", str(report_file.relative_to(repo_path))], cwd=repo_path, check=True, capture_output=True, text=True)
         # Commit
         subprocess.run(["git", "commit", "-m", f"Add architecture report: {report_file.name}"], cwd=repo_path, check=True, capture_output=True, text=True)
         # Push
