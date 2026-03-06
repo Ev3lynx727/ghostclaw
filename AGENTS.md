@@ -4,11 +4,19 @@
 
 This project follows a modular architecture. Please respect the separation of concerns:
 
-- `core/`: Core analysis orchestration, metrics, and rule validation.
-- `lib/`: Shared utilities (Caching, GitHub integration, Notifications).
-- `stacks/`: Tech-stack specific analysis strategies (Python, Node.js, Go).
-- `cli/`: Command-line interface logic.
-- `scripts/`: Executable entry points and automation scripts.
+- `src/ghostclaw/core/`: Core analysis orchestration, metrics, and rule validation.
+- `src/ghostclaw_mcp/`: Model Context Protocol (MCP) server implementation.
+- `src/ghostclaw/lib/`: Shared utilities (Caching, GitHub integration, Notifications).
+- `src/ghostclaw/stacks/`: Tech-stack specific analysis strategies (Python, Node.js, Go).
+- `src/ghostclaw/cli/`: Command-line interface logic.
+- `scripts/`: Executable entry points, automation, and deployment scripts.
+
+## Optional Integration Engines
+
+Ghostclaw supports enhanced architectural analysis via two optional engines. These are natively integrated but must be explicitly toggled via CLI flags or installed in the host environment:
+
+- **PySCN (`--pyscn`)**: Deep clone detection and dead code analysis.
+- **AI-CodeIndex (`--ai-codeindex`)**: AST-based coupling graph and deep inheritance hierarchy detection.
 
 ## Important: No Duplicate Modules
 
@@ -21,9 +29,9 @@ If you create new scripts in `scripts/`, use the following pattern to ensure the
 ```python
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.analyzer import CodebaseAnalyzer
 # ...
 ```
 

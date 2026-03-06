@@ -4,23 +4,43 @@
 
 Ghostclaw is an OpenClaw skill that provides an **architectural code review assistant** focused on system-level flow, cohesion, and tech stack best practices.
 
+## Prerequisites
+
+Before installing Ghostclaw, you must have [OpenClaw](https://openclaw.ai/) and [ClawHub](https://clawhub.ai/) installed on your system.
+
 ## Quick Start (Installation)
 
-### Method 1: ClawHub (Recommended)
+### Method 1: NPM (Recommended)
 
-Install Ghostclaw via ClawHub:
+Install Ghostclaw globally from the npm registry:
 
 ```bash
-npx clawdhub@latest install ghostclaw
+npm install -g ghostclaw
 ```
 
 ### Method 2: NPX
+
+To run it without explicitly installing globally:
+
+```bash
+npx ghostclaw /path/to/repo
+```
+
+You can also add it via OpenClaw skills:
 
 ```bash
 npx skills add Ev3lynx727/ghostclaw
 ```
 
-### Method 3: Build from source
+### Method 3: ClawHub
+
+Install skills only via ClawHub by running:
+
+```bash
+clawhub install skill ghostclaw
+```
+
+### Method 4: Build from source
 
 ```bash
 git clone https://github.com/Ev3lynx727/ghostclaw.git
@@ -35,19 +55,19 @@ For a detailed integration guide, see **[GUIDE.md](docs/GUIDE.md)**.
 ### Run a review on a codebase
 
 ```bash
-# Via script
-./scripts/ghostclaw.sh review /path/to/your/repo
-
-# Via alias (if installed globally)
+# If installed globally via NPM or Python
 ghostclaw /path/to/your/repo
+
+# If running from source
+python3 src/ghostclaw/cli/ghostclaw.py /path/to/your/repo
 ```
 
 ### Background Monitoring (Cron)
 
-Set up your repositories in `scripts/repos.txt` and add to cron:
+Set up your repositories in a `repos.txt` file and add the native watcher binary to your cron jobs:
 
 ```bash
-0 9 * * * /path/to/ghostclaw/scripts/watcher.sh
+0 9 * * * ghostclaw-watcher /path/to/repos.txt
 ```
 
 ## What Ghostclaw Does
@@ -60,17 +80,76 @@ Set up your repositories in `scripts/repos.txt` and add to cron:
 
 ## Files
 
-```
+```text
 ghostclaw/
-├── package.json — Package metadata for Skills CLI
+├── package.json — Package metadata for NPM and Skills CLI
 ├── SKILL.md — OpenClaw skill definition
 ├── docs/ — Documentation for Ghostclaw
-├── core/ — Core analysis orchestration
-├── lib/ — Utilities (GitHub, Cache, Notify)
-├── stacks/ — Stack-specific analysis strategies
-├── cli/ — CLI implementation
-├── scripts/ — Entry points
-└── references/ — Architectural patterns
+├── scripts/ — Systemd service setup configuration
+└── src/ghostclaw/ — Main Python package source
+    ├── core/ — Core analysis orchestration
+    ├── ghostclaw_mcp/ — Model Context Protocol (MCP) server
+    ├── lib/ — Utilities (GitHub, Cache, Notify)
+    ├── stacks/ — Stack-specific analysis strategies
+    ├── cli/ — CLI implementation
+    └── references/ — Architectural patterns
+```
+
+## Integrations
+
+### Advanced Integrations (Phase 2)
+
+Ghostclaw now supports several advanced extensions and optional dependencies.
+
+#### MCP Server
+
+Ghostclaw can now be used as an MCP server for Claude, Cursor, and other AI tools.
+
+To install with MCP support:
+
+```bash
+pip install ghostclaw[mcp]
+```
+
+To run the MCP server:
+
+```bash
+ghostclaw-mcp
+```
+
+**Exposed Tools:**
+
+- `ghostclaw_analyze`: Full vibe analysis.
+- `ghostclaw_get_ghosts`: Architectural smells only.
+- `ghostclaw_refactor_plan`: Automated blueprint generation.
+
+#### Advanced Context & AST Indexing
+
+By utilizing the `ai-codeindex` engine, Ghostclaw can extract full structural syntax trees and build extensive call graphs.
+
+To install:
+
+```bash
+pip install ghostclaw[ai-codeindex]
+```
+
+#### Dead Code & Clone Detection
+
+Ghostclaw can offload syntax-level checks for dead code and near-identical code blocks to `pyscn`.
+
+To install:
+
+```bash
+pip install ghostclaw[pyscn]
+```
+
+### Systemd Service (Phase 3)
+
+For a persistent local MCP service, you can use the provided setup script which installs a `systemd` unit on Linux:
+
+```bash
+# Run from the source repository directory
+npm run install-service
 ```
 
 ## Supported Stacks

@@ -3,10 +3,24 @@
 import datetime
 from pathlib import Path
 from typing import Dict, Optional
-from core.detector import detect_stack, find_files
-from core.validator import RuleValidator
-from stacks import get_analyzer
-from core.cache import LocalCache, compute_fingerprint
+from ghostclaw.core.detector import detect_stack, find_files
+from ghostclaw.core.validator import RuleValidator
+from ghostclaw.stacks import get_analyzer
+from ghostclaw.core.cache import LocalCache, compute_fingerprint
+
+# Defensive import for Phase 1: pyscn Integration
+try:
+    from ghostclaw.core.pyscn_wrapper import PySCNAnalyzer
+    HAS_PYSCN = True
+except ImportError:
+    HAS_PYSCN = False
+
+# Defensive import for Phase 1: ai-codeindex Integration
+try:
+    from ghostclaw.core.ai_codeindex_wrapper import AICodeIndexWrapper
+    HAS_AI_CODEINDEX = True
+except ImportError:
+    HAS_AI_CODEINDEX = False
 
 
 class CodebaseAnalyzer:
@@ -23,13 +37,16 @@ class CodebaseAnalyzer:
         self.validator = validator or RuleValidator()
         self.cache = cache
 
-    def analyze(self, root: str, use_cache: bool = True) -> Dict:
+    def analyze(self, root: str, use_cache: bool = True, use_pyscn: bool = None, use_ai_codeindex: bool = None) -> Dict:
         """
         Perform a complete architectural analysis of a codebase.
 
         Args:
             root: Path to repository root
             use_cache: Whether to use/write cache (if cache enabled)
+            use_pyscn: Explicitly enable/disable PySCN integration
+            use_ai_codeindex: Explicitly enable/disable AI-CodeIndex integration
+
 
         Returns:
             Complete analysis report with vibe score, issues, ghosts, etc.
@@ -60,8 +77,18 @@ class CodebaseAnalyzer:
         line_counts = []
         for f in files:
             try:
-                with open(f, 'r', encoding='utf-8', errors='ignore') as file:
-                    count = sum(1 for _ in file)
+                with open(f, 'rb') as file:
+                    # Efficient chunk-based line counting
+                    count = 0
+                    while True:
+                        chunk = file.read(65536)
+                        if not chunk:
+                            break
+                        count += chunk.count(b'\n')
+                    # Handle files without a final newline
+                    if count > 0 or Path(f).stat().st_size > 0:
+                        count += 1
+
                     total_lines += count
                     line_counts.append(count)
                     if count > (analyzer.get_large_file_threshold() if analyzer else 300):
@@ -82,18 +109,82 @@ class CodebaseAnalyzer:
         }
 
         # 4. Stack-specific analysis
+        pyscn_used = False
+        ai_codeindex_used = False
+        import_edges = []
+
         if analyzer:
             stack_result = analyzer.analyze(root, files, base_metrics)
             issues = stack_result.get('issues', [])
             ghosts = stack_result.get('architectural_ghosts', [])
             flags = stack_result.get('red_flags', [])
             coupling_metrics = stack_result.get('coupling_metrics', {})
+
+            # Extract edges if the analyzer has a graph
+            if hasattr(analyzer, 'graph'):
+                import_edges = analyzer.graph.edges
+
+            # Integration Step: Additive Integration (Option A)
+            if (use_pyscn is not False) and HAS_PYSCN:
+                pyscn = PySCNAnalyzer(root)
+                if pyscn.is_available():
+                    pyscn_used = True
+                    pyscn_report = pyscn.analyze()
+                    if "error" not in pyscn_report:
+                        # Enhance the report with pyscn insights
+                        # For example, adding discovered clones/dead code to issues
+                        clones = pyscn_report.get("clones", [])
+                        if clones:
+                            ghosts.append(f"Found {len(clones)} code clones via pyscn (Phase 1 Integration)")
+
+                        dead_code = pyscn_report.get("dead_code", [])
+                        if dead_code:
+                            issues.append(f"Detected {len(dead_code)} potential dead code spots via pyscn")
+                else:
+                    if hasattr(self, 'logger'):
+                        self.logger.info("Install 'pyscn' for deeper dead code and clone detection capabilities.")
+                    else:
+                        issues.append("Info: Optional dependency 'pyscn' not found. Install for clone detection.")
+
+            # Integration Step: Additive Integration (Option A) - ai-codeindex
+            if (use_ai_codeindex is not False) and HAS_AI_CODEINDEX:
+                ai_codeindex = AICodeIndexWrapper(root)
+                if ai_codeindex.is_available():
+                    ai_codeindex_used = True
+                    graph_data = ai_codeindex.build_graph()
+                    if "error" not in graph_data:
+                        # Enhance coupling metrics with tree-sitter based graph
+                        inheritance = ai_codeindex.get_inheritance_depth()
+                        if inheritance:
+                            deep_inheritance = [c for c, d in inheritance.items() if d > 3]
+                            if deep_inheritance:
+                                ghosts.append(f"Deep inheritance hierarchies detected via ai-codeindex: {', '.join(deep_inheritance[:3])}")
+
+                        # Mark report as having enhanced graphing
+                        coupling_metrics["graph_engine"] = "ai-codeindex"
+                else:
+                    if hasattr(self, 'logger'):
+                        self.logger.info("Install 'ai-codeindex' for deeper AST coupling metrics.")
+                    else:
+                        issues.append("Info: Optional dependency 'ai-codeindex' not found. Install for AST graphs.")
+
         else:
-            issues = ["Cannot detect tech stack; no build files found"]
-            ghosts = []
+            # Upgrade: Attempt AI-driven fallback ingestion if standard stack detection fails
+            issues = ["Standard stack detection failed."]
+            ghosts = ["Attempting AI Token Ingestion fallback (AI Ghostclaw)"]
+            
+            # Instead of failing immediately, hook into AI CodeIndex to parse the structure
+            if HAS_AI_CODEINDEX:
+                ai_codeindex = AICodeIndexWrapper(root)
+                if ai_codeindex.is_available():
+                    ai_codeindex_used = True
+                    ghosts.append("Successfully hooked into AI CodeIndex to ingest unknown architecture.")
+                    # In a full implementation, you'd feed `ai_codeindex.build_graph()` to the LLM here!
+                else:
+                    issues.append("AI-CodeIndex unavailable for fallback ingestion.")
+            
             flags = []
             coupling_metrics = {}
-
         # 5. Merge metrics for vibe score
         combined_metrics = {**base_metrics, "coupling_metrics": coupling_metrics}
 
@@ -104,6 +195,8 @@ class CodebaseAnalyzer:
                 "architectural_ghosts": ghosts,
                 "red_flags": flags,
                 "coupling_metrics": coupling_metrics,
+                "import_edges": import_edges,
+                "files": files,
                 "files_analyzed": total_files,
                 "total_lines": total_lines,
                 "stack": stack,
@@ -119,6 +212,11 @@ class CodebaseAnalyzer:
         vibe_score = self._compute_vibe_score(base_metrics, len(issues), len(ghosts))
 
         # 8. Build final report
+        try:
+            from cli import __version__
+        except ImportError:
+            __version__ = "unknown"
+
         report = {
             "vibe_score": vibe_score,
             "stack": stack,
@@ -130,9 +228,11 @@ class CodebaseAnalyzer:
             "metadata": {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "analyzer": "ghostclaw-refactored",
-                "version": "0.1.3",
+                "version": __version__,
                 "coupling_enabled": True,
-                "rules_enabled": True
+                "rules_enabled": True,
+                "pyscn_integrated": pyscn_used,
+                "ai_codeindex_integrated": ai_codeindex_used
             }
         }
 

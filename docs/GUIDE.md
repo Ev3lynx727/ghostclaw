@@ -15,7 +15,7 @@ This guide explains how to install and integrate the **Ghostclaw** skill into yo
 Ghostclaw is available on ClawHub. You can install it using the `clawdhub`:
 
 ```bash
-clawdhub install ghostclaw
+clawhub install skill ghostclaw
 ```
 
 ### Method 2: NPX Skills CLI
@@ -23,7 +23,7 @@ clawdhub install ghostclaw
 You can also install via the generic skills manager:
 
 ```bash
-npx skills add Ev3lynx727/ghostclaw
+npx skills add ghostclaw
 ```
 
 ### Method 3: Build from source

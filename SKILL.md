@@ -5,7 +5,7 @@ description: Architectural code review and refactoring assistant that perceives 
 
 # Ghostclaw — The Architectural Ghost
 
-**"I see the flow between functions. I sense the weight of dependencies. I know when a module is uneasy."**
+> *"I see the flow between functions. I sense the weight of dependencies. I know when a module is uneasy."*
 
 Ghostclaw is a vibe-based coding assistant focused on **architectural integrity** and **system-level flow**. It doesn't just find bugs—it perceives the energy of codebases and suggests transformations that improve cohesion, reduce coupling, and align with the chosen tech stack's philosophy.
 
@@ -42,11 +42,13 @@ Ghostclaw will:
 - `--pr-title "Title"`: Custom title for the PR.
 - `--pr-body "Body"`: Custom body for the PR.
 - `--json`: Output raw JSON analysis data.
+- `--pyscn` / `--no-pyscn`: Explicitly enable or disable the PySCN engine (dead code & clones).
+- `--ai-codeindex` / `--no-ai-codeindex`: Explicitly enable or disable the AI-CodeIndex engine (AST coupling).
 
 You can also spawn ghostclaw as a sub-agent:
 
 ```bash
-openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
+openclaw agent --agent ghostclaw --message "review the /src directory"
 ```
 
 ### 2. Background Watcher (Cron)
@@ -54,7 +56,7 @@ openclaw sessions_spawn --agentId ghostclaw --task "review the /src directory"
 Configure ghostclaw to monitor repositories:
 
 ```bash
-openclaw cron schedule --interval "daily" --script "/home/ev3lynx/.openclaw/workspace/ghostclaw/scripts/watcher.sh" --args "repo-list.txt"
+openclaw cron add --name "ghostclaw-watcher" --every "1d" --message "python -m ghostclaw.cli.watcher repo-list.txt"
 ```
 
 The watcher:
@@ -78,7 +80,7 @@ The watcher:
 
 **Example**:
 
-```
+```text
 Module: src/services/userService.ts
 Vibe: 45/100 — feels heavy, knows too much
 
@@ -109,28 +111,28 @@ See `references/stack-patterns/` for detailed heuristics.
 
 ## Setup
 
-1. Ensure dependencies: `bash`, `git`, `gh` (optional for PRs), `jq` (for JSON parsing)
-2. Configure repos to watch: edit `scripts/repos.txt`
+1. Ensure Python dependencies are installed: `npm run install-deps`
+2. Configure repos to watch: create a `repos.txt` with repo paths.
 3. Set `GH_TOKEN` env for PR automation
-4. Test: `./scripts/ghostclaw.sh review /path/to/repo` or `./scripts/compare.sh --repos-file scripts/repos.txt`
+4. Test: `python3 src/ghostclaw/cli/ghostclaw.py /path/to/repo` or `python3 src/ghostclaw/cli/compare.py --repos-file repos.txt`
 
 ## Files
 
-- `scripts/ghostclaw.sh` — Main entry point (review mode)
-- `scripts/compare.sh` — Trend analysis entry point
-- `scripts/watcher.sh` — Cron watcher loop
-- `core/` — Modular analysis engine (Python)
-- `stacks/` — Tech-stack specific analysis logic
-- `references/stack-patterns.yaml` — Configurable architectural rules
+- `src/ghostclaw/cli/ghostclaw.py` — Main entry point (review mode)
+- `src/ghostclaw/cli/compare.py` — Trend analysis entry point
+- `src/ghostclaw/cli/watcher.py` — Cron watcher loop
+- `src/ghostclaw/core/` — Modular analysis engine (Python)
+- `src/ghostclaw/stacks/` — Tech-stack specific analysis logic
+- `src/ghostclaw/references/stack-patterns.yaml` — Configurable architectural rules
 
 ## Invocation Examples
 
-```
+```text
 User: ghostclaw, review my backend services
 Ghostclaw: Scanning... vibe check: 62/100 overall. Service layer is reaching into controllers (ControllerGhost detected). Suggest extracting business logic into pure services. See attached patches.
 
 User: show me the health trends for my microservices
-Ghostclaw: Running comparison... Average vibe: 74.5/100 (+4.2). 8/10 repos are healthy. See full table via `./scripts/compare.sh`.
+Ghostclaw: Running comparison... Average vibe: 74.5/100 (+4.2). 8/10 repos are healthy. See full table via `python3 src/ghostclaw/cli/compare.py`.
 ```
 
 ---

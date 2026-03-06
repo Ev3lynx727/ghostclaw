@@ -1,7 +1,7 @@
 """Python (Django/FastAPI) stack analyzer with AST coupling."""
 
 from typing import Dict, List
-from core.coupling import PythonImportAnalyzer
+from ghostclaw.core.coupling import PythonImportAnalyzer
 from .base import StackAnalyzer
 
 

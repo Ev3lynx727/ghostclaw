@@ -3,7 +3,7 @@
 import sys
 import pytest
 from pathlib import Path
-from core.node_coupling import NodeImportAnalyzer
+from ghostclaw.core.node_coupling import NodeImportAnalyzer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -37,3 +37,21 @@ def test_circular_dependency(tmp_path):
     analyzer = NodeImportAnalyzer(str(tmp_path))
     report = analyzer.analyze()
     assert len(report["circular_dependencies"]) >= 1
+
+def test_entry_point_not_flagged_as_unstable(tmp_path):
+    # Create a repo where a 'cli' module imports many others
+    create_node_repo(tmp_path, {
+        "cli.js": "require('./a'); require('./b'); require('./c'); require('./d'); require('./e'); require('./f')",
+        "a.js": "pass",
+        "b.js": "pass",
+        "c.js": "pass",
+        "d.js": "pass",
+        "e.js": "pass",
+        "f.js": "pass"
+    })
+    analyzer = NodeImportAnalyzer(str(tmp_path))
+    report = analyzer.analyze()
+    # 'cli' module is stable (I=1.0 because ca=0, ce=6)
+    # But it should be skipped from 'highly unstable' issues/ghosts
+    issues = [i for i in report["issues"] if "highly unstable" in i]
+    assert not any("cli" in i for i in issues)

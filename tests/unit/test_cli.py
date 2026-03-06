@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch, ANY
 from pathlib import Path
-from cli.ghostclaw import generate_markdown_report, detect_github_remote, main as cli_main
-from core.cache import LocalCache
+from ghostclaw.cli.ghostclaw import generate_markdown_report, detect_github_remote, main as cli_main
+from ghostclaw.core.cache import LocalCache
 import subprocess
 import sys
 

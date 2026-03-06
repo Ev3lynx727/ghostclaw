@@ -5,7 +5,7 @@ import pytest
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
-from core.cache import LocalCache, compute_fingerprint
+from ghostclaw.core.cache import LocalCache, compute_fingerprint
 
 
 @pytest.fixture
@@ -76,6 +76,8 @@ def test_fingerprint_git_repo(tmp_path):
     (tmp_path / "test.txt").write_text("hello")
     import subprocess
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, check=True, capture_output=True)
 

@@ -1,10 +1,16 @@
 {
     "name": "ghostclaw",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "Architectural code review assistant that perceives code vibes",
+    "bin": {
+        "ghostclaw": "./bin/ghostclaw.sh"
+    },
     "scripts": {
         "install-deps": "pip install -r requirements-dev.txt",
-        "test": "python3 -m pytest -p no:sugar tests/unit"
+        "install-service": "./scripts/install_service.sh",
+        "test": "python3 -m pytest -p no:sugar tests/unit",
+        "build": "./scripts/install.sh",
+        "postinstall": "./scripts/setup-path.sh"
     },
     "keywords": [
         "ghostclaw",
@@ -22,6 +28,15 @@
     "license": "MIT",
     "openclaw": {
         "skill": true,
-        "entry": "cli/ghostclaw.py"
-    }
+        "entry": "~/.local/bin/ghostclaw"
+    },
+    "files": [
+        "SKILL.md",
+        "src/",
+        "scripts/",
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "AGENTS.md"
+    ]
 }
