@@ -111,8 +111,10 @@ def create_github_pr(repo_path: str, report_file: Path, title: str, body: str):
     try:
         # Create branch
         subprocess.run(["git", "checkout", "-b", branch_name], cwd=repo_path, check=True, capture_output=True, text=True)
-        # Add report
-        subprocess.run(["git", "add", str(report_file.relative_to(repo_path))], cwd=repo_path, check=True, capture_output=True, text=True)
+        # Add report with force (to bypass gitignore if needed)
+        # Convert absolute report file path to relative path
+        rel_report_path = report_file.relative_to(Path(repo_path))
+        subprocess.run(["git", "add", "-f", str(rel_report_path)], cwd=repo_path, check=True, capture_output=True, text=True)
         # Commit
         subprocess.run(["git", "commit", "-m", f"Add architecture report: {report_file.name}"], cwd=repo_path, check=True, capture_output=True, text=True)
         # Push
@@ -331,18 +333,19 @@ def main():
             md_content = generate_markdown_report(report)
             report_file_path.write_text(md_content, encoding='utf-8')
 
-            # Phase 0: Gitignore Injection
-            gitignore_path = Path(repo_path) / ".gitignore"
-            if gitignore_path.exists():
-                content = gitignore_path.read_text(encoding='utf-8')
-                if ".ghostclaw" not in content and ".ghostclaw/" not in content:
-                    # Append it
-                    newline = "\n" if not content.endswith("\n") else ""
-                    with open(gitignore_path, "a", encoding="utf-8") as f:
-                        f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
-            else:
-                # Optionally, we could create it, but usually we just warn or leave it alone.
-                pass
+            # Phase 0: Gitignore Injection (Skip if creating a PR, so git add will work)
+            if not args.create_pr:
+                gitignore_path = Path(repo_path) / ".gitignore"
+                if gitignore_path.exists():
+                    content = gitignore_path.read_text(encoding='utf-8')
+                    if ".ghostclaw" not in content and ".ghostclaw/" not in content:
+                        # Append it
+                        newline = "\n" if not content.endswith("\n") else ""
+                        with open(gitignore_path, "a", encoding="utf-8") as f:
+                            f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
+                else:
+                    # Optionally, we could create it, but usually we just warn or leave it alone.
+                    pass
 
         except Exception as e:
             print(f"Error writing report file or updating gitignore: {e}", file=sys.stderr)
