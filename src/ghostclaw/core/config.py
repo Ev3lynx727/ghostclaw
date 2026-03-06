@@ -62,62 +62,24 @@ class GhostclawConfig(BaseSettings):
             except json.JSONDecodeError:
                 pass
 
-        # Create base settings which loads env vars and defaults
-        # We don't pass file_config here so env vars take precedence over defaults
-        base_settings = cls()
-
         # Manually apply precedence: CLI > Env > Local > Global
-        # base_settings already has (Env > Defaults)
-        # So we update with file_config (Local > Global) where Env didn't override
 
-        final_config = {}
-        for field in cls.model_fields:
-            # If a field was explicitly set via env vars, it will be in base_settings
-            # Pydantic v2 Settings will have env vars in model_dump, we can compare with default
-            val = getattr(base_settings, field)
-            default_val = cls.model_fields[field].default
-
-            # Check if this value came from an environment variable (different from default)
-            # A more robust way in pydantic-settings is just to overlay our manually loaded configs
-            # over the defaults, then overlay the env vars, then cli.
-            pass
-
-        # Actually, let's use the standard Pydantic way of overlaying:
-        # Pydantic v2 settings load order:
-        # 1. init kwargs (highest)
-        # 2. env vars
-        # 3. dotenv
-        # 4. default
-
-        # So to make it CLI > Env > File > Default, we can't just pass file_config to kwargs
-        # because kwargs > env vars.
-
-        # Instead, we instantiate with NO kwargs to let env vars override defaults.
-        env_settings = cls().model_dump()
         default_settings = {k: v.default for k, v in cls.model_fields.items()}
 
         # Start with defaults
         resolved_config = default_settings.copy()
 
-        # Apply file config (Local > Global is already resolved in file_config)
+        # 1. & 2. Apply file config (Local > Global is already resolved in file_config)
         resolved_config.update(file_config)
 
-        # Apply env vars (only if they are different from defaults, or if they were explicitly set)
-        for k, v in env_settings.items():
-            if v != default_settings.get(k) or k in [key.lower() for key in cls().model_config.get('env_prefix', '')]:
-                # In Pydantic Settings, determining if an env var was explicitly set vs default is tricky.
-                # Since we want Env > File, and `cls()` has Env values overriding defaults, we can check:
-                if v != default_settings.get(k):
-                    resolved_config[k] = v
-
-        # To be completely safe about env precedence without relying on default differences:
+        # 3. Apply env vars safely via os.environ
         import os
         env_prefix = cls.model_config.get("env_prefix", "")
         for k in cls.model_fields:
             env_key = f"{env_prefix}{k}".upper()
             if env_key in os.environ:
-                # Convert string to bool for boolean fields
                 val = os.environ[env_key]
+                # Convert string to bool for boolean fields
                 if cls.model_fields[k].annotation is bool:
                     val = val.lower() in ("true", "1", "yes")
                 resolved_config[k] = val
