@@ -173,8 +173,10 @@ def print_report(report: Dict):
     print("💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)")
 
     if "ai_synthesis" in report:
-        # Final formatting was already handled live by the analyzer during generation
-        pass
+        print("\n" + "="*50)
+        print("🧠 Ghost Engine Synthesis (cached):\n")
+        print(report["ai_synthesis"])
+        print("\n" + "="*50)
 
 
 def update_ghostclaw():
