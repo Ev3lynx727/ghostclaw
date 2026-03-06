@@ -277,11 +277,20 @@ class CodebaseAnalyzer:
 
                 first_chunk_received = False
 
-                async for chunk in llm_client.stream_analysis(prompt):
-                    if not first_chunk_received:
-                        first_chunk_received = True
-                        if has_rich:
-                            status.stop()
+                try:
+                    async for chunk in llm_client.stream_analysis(prompt):
+                        if not first_chunk_received:
+                            first_chunk_received = True
+                            if has_rich:
+                                status.stop()
+
+                        # Print raw tokens as they stream to avoid UI flicker from unclosed markdown tags
+                        sys.stdout.write(chunk)
+                        sys.stdout.flush()
+                        content.append(chunk)
+                finally:
+                    if has_rich and not first_chunk_received:
+                        status.stop()
 
                     # Print raw tokens as they stream to avoid UI flicker from unclosed markdown tags
                     sys.stdout.write(chunk)
