@@ -277,28 +277,38 @@ class CodebaseAnalyzer:
 
                 first_chunk_received = False
 
-                async for chunk in llm_client.stream_analysis(prompt):
-                    if not first_chunk_received:
-                        first_chunk_received = True
-                        if has_rich:
-                            status.stop()
+                if has_rich:
+                    from rich.live import Live
+                    from rich.text import Text
 
-                    # Print raw tokens as they stream to avoid UI flicker from unclosed markdown tags
-                    sys.stdout.write(chunk)
-                    sys.stdout.flush()
-                    content.append(chunk)
+                    # Buffer to hold full text content
+                    with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
+                        async for chunk in llm_client.stream_analysis(prompt):
+                            if not first_chunk_received:
+                                first_chunk_received = True
+                                status.stop()
 
-                full_text = "".join(content)
-                print("\n\n" + "="*50)
+                            content.append(chunk)
+                            # Render unformatted raw text in the Live context so it automatically clears when finished
+                            # without breaking markdown or leaving dirty lines if terminal wraps
+                            live.update(Text("".join(content)))
 
-                # Re-render the full string as beautifully formatted Markdown if rich is available
-                if has_rich and full_text.strip():
-                    # Instead of printing both, clear the raw stream with an ANSI code
-                    # by moving the cursor up by the number of lines printed.
-                    lines_printed = full_text.count('\n') + 2 # +2 for padding
-                    sys.stdout.write(f"\033[{lines_printed}A\033[J")
-                    sys.stdout.flush()
-                    console.print(Markdown(full_text))
+                    full_text = "".join(content)
+                    print("\n\n" + "="*50)
+                    if full_text.strip():
+                        console.print(Markdown(full_text))
+                else:
+                    async for chunk in llm_client.stream_analysis(prompt):
+                        if not first_chunk_received:
+                            first_chunk_received = True
+
+                        # Fallback for systems without Rich
+                        sys.stdout.write(chunk)
+                        sys.stdout.flush()
+                        content.append(chunk)
+
+                    full_text = "".join(content)
+                    print("\n\n" + "="*50)
 
                 return full_text
 

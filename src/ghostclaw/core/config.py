@@ -118,8 +118,7 @@ class GhostclawConfig(BaseSettings):
             if env_key in os.environ:
                 # Convert string to bool for boolean fields
                 val = os.environ[env_key]
-                field_type = cls.model_fields[k].annotation
-                if field_type is bool or field_type is Optional[bool]:
+                if cls.model_fields[k].annotation is bool:
                     val = val.lower() in ("true", "1", "yes")
                 resolved_config[k] = val
 
