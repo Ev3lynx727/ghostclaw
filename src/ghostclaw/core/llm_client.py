@@ -36,10 +36,15 @@ class LLMClient:
         elif self.config.ai_provider == "openai":
             self.base_url = "https://api.openai.com/v1/chat/completions"
             self.model = "gpt-4o"
+        elif self.config.ai_provider == "anthropic":
+            self.base_url = "https://api.anthropic.com/v1/messages"
+            self.model = "claude-sonnet-4-20250514"
         else:
-            # Default to OpenRouter as fallback
-            self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-            self.model = "anthropic/claude-3.5-sonnet"
+            raise ValueError(
+                f"Unsupported AI provider: '{self.config.ai_provider}'. "
+                "Supported providers: openrouter, openai, anthropic"
+            )
+
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count for a given text."""
