@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ghostclaw"
+version = "0.1.5"
+description = "Architectural code review assistant that perceives code vibes"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [{name = "Ev3lynx", email = "ev3lynx727@example.com"}]
+keywords = ["architecture", "code-review", "code-quality", "code-smell"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "pydantic-settings>=2.0.0",
+    "httpx>=0.27.0",
+    "tenacity>=8.2.0",
+    "rich>=13.0.0",
+    "tiktoken>=0.7.0",
+    "openai>=1.0.0",
+    "anthropic>=0.30.0",
+    "pluggy>=1.0.0",
+    "aiosqlite>=0.20.0",
+]
+
+[project.optional-dependencies]
+full = [
+    "mcp>=1.0.0",
+    "ai-codeindex>=0.1.0",
+    "pyscn>=0.1.0"
+]
+mcp = [
+    "mcp>=1.0.0"
+]
+pyscn = [
+    "pyscn>=0.1.0"
+]
+ai-codeindex = [
+    "ai-codeindex>=0.1.0"
+]
+
+[project.scripts]
+ghostclaw = "ghostclaw.cli.ghostclaw:main"
+ghostclaw-watcher = "ghostclaw.cli.watcher:main"
+ghostclaw-compare = "ghostclaw.cli.compare:main"
+ghostclaw-mcp = "ghostclaw_mcp.server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["ghostclaw", "ghostclaw_mcp"]
+
+[tool.setuptools.package-data]
+"*" = ["references/*.yaml"]
