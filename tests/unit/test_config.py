@@ -26,7 +26,7 @@ def test_config_reject_local_api_key(tmp_path, monkeypatch):
     gc_dir = tmp_path / ".ghostclaw"
     gc_dir.mkdir()
     config_file = gc_dir / "ghostclaw.json"
-    with open(config_file, "w", encoding="utf-8") as f:
+    with open(config_file, "w") as f:
         json.dump({"api_key": "secret-key"}, f)
 
     with pytest.raises(ValueError, match="SECURITY RISK: API key found in local project configuration"):
