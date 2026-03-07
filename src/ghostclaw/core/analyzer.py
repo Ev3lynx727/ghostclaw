@@ -244,9 +244,9 @@ class CodebaseAnalyzer:
             }
         }
 
-        # 9. Ghost Engine Synthesis
+        # 9. Ghost Engine Synthesis Prompt Building
+        # We don't execute the LLM here to keep terminal IO separate (handled by CLI)
         if config.use_ai:
-            llm_client = LLMClient(config, root)
             context_builder = ContextBuilder()
             prompt = context_builder.build_prompt(
                 metrics=base_metrics,
@@ -256,79 +256,18 @@ class CodebaseAnalyzer:
                 coupling_metrics=coupling_metrics,
                 import_edges=import_edges
             )
-
-            # Use asyncio to consume the stream generator with Rich UX
-            async def _consume_stream():
-                content = []
-                import sys
-
-                try:
-                    from rich.console import Console
-                    from rich.markdown import Markdown
-                    from rich.status import Status
-                    has_rich = True
-                    console = Console()
-                except ImportError:
-                    has_rich = False
-
-                print("\n" + "="*50 + "\n")
-                print("🧠 Ghost Engine Synthesis:\n")
-
-                if has_rich:
-                    status = console.status("[bold green]Ghostclaw is analyzing architecture and synthesizing vibes...[/bold green]", spinner="dots")
-                    status.start()
-
-                first_chunk_received = False
-
-                try:
-                    if has_rich:
-                        from rich.live import Live
-                        from rich.text import Text
-
-                        # Buffer to hold full text content
-                        with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
-                            async for chunk in llm_client.stream_analysis(prompt):
-                                if not first_chunk_received:
-                                    first_chunk_received = True
-                                    status.stop()
-
-                                content.append(chunk)
-                                # Render unformatted raw text in the Live context so it automatically clears when finished
-                                # without breaking markdown or leaving dirty lines if terminal wraps
-                                live.update(Text("".join(content)))
-
-                        full_text = "".join(content)
-                        print("\n\n" + "="*50)
-                        if full_text.strip():
-                            console.print(Markdown(full_text))
-                    else:
-                        async for chunk in llm_client.stream_analysis(prompt):
-                            if not first_chunk_received:
-                                first_chunk_received = True
-
-                            # Fallback for systems without Rich
-                            sys.stdout.write(chunk)
-                            sys.stdout.flush()
-                            content.append(chunk)
-
-                        full_text = "".join(content)
-                        print("\n\n" + "="*50)
-
-                    return full_text
-                finally:
-                    if has_rich and not first_chunk_received:
-                        status.stop()
-
-            try:
-                ai_synthesis = asyncio.run(_consume_stream())
-                report["ai_synthesis"] = ai_synthesis
-            except Exception as e:
-                report["ai_synthesis"] = f"Error during AI synthesis: {e}"
+            report["ai_prompt"] = prompt
 
         # Store in cache if enabled and we have a fingerprint
+        # Attach fingerprint to metadata so CLI can update cache after AI synthesis
+        if fingerprint is not None:
+            report["metadata"]["fingerprint"] = fingerprint
+
         if use_cache and self.cache is not None and fingerprint is not None:
             # Only cache if analysis succeeded (has vibe_score)
             if "vibe_score" in report:
+                # We cache the pre-LLM state. The CLI will overwrite this cache entry
+                # with the post-LLM state once synthesis is complete.
                 self.cache.set(fingerprint, report)
 
         return report

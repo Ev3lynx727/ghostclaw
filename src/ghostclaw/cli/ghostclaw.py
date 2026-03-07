@@ -15,7 +15,9 @@ from dotenv import load_dotenv
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.cache import LocalCache
 from ghostclaw.core.config import GhostclawConfig
+from ghostclaw.core.llm_client import LLMClient
 from ghostclaw.cli import __version__
+import asyncio
 
 try:
     from rich.console import Console
@@ -318,8 +320,71 @@ def main():
 
     analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
 
-    # The analyzer will handle its own rich terminal output for streaming AI synthesis
     report = analyzer.analyze(repo_path, use_cache=use_cache, config=config)
+
+    # 0.5. Ghost Engine Synthesis UI Rendering
+    if config.use_ai and "ai_prompt" in report and "ai_synthesis" not in report:
+        llm_client = LLMClient(config, repo_path)
+        prompt = report["ai_prompt"]
+
+        async def _consume_stream():
+            content = []
+
+            print("\n" + "="*50 + "\n")
+            print("🧠 Ghost Engine Synthesis:\n")
+
+            if HAS_RICH and not args.json:
+                console = Console()
+                status = console.status("[bold green]Ghostclaw is analyzing architecture and synthesizing vibes...[/bold green]", spinner="dots")
+                status.start()
+
+            first_chunk_received = False
+
+            try:
+                if HAS_RICH and not args.json:
+                    from rich.live import Live
+                    from rich.text import Text
+
+                    with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
+                        async for chunk in llm_client.stream_analysis(prompt):
+                            if not first_chunk_received:
+                                first_chunk_received = True
+                                status.stop()
+
+                            content.append(chunk)
+                            live.update(Text("".join(content)))
+
+                    full_text = "".join(content)
+                    print("\n\n" + "="*50)
+                    if full_text.strip():
+                        console.print(Markdown(full_text))
+                else:
+                    async for chunk in llm_client.stream_analysis(prompt):
+                        if not first_chunk_received:
+                            first_chunk_received = True
+
+                        sys.stdout.write(chunk)
+                        sys.stdout.flush()
+                        content.append(chunk)
+
+                    full_text = "".join(content)
+                    print("\n\n" + "="*50)
+
+                return full_text
+            finally:
+                if HAS_RICH and not args.json and not first_chunk_received:
+                    status.stop()
+
+        try:
+            ai_synthesis = asyncio.run(_consume_stream())
+            report["ai_synthesis"] = ai_synthesis
+
+            # Re-cache the report with the new AI synthesis if caching is enabled
+            if use_cache and cache and "metadata" in report and "fingerprint" in report["metadata"]:
+                cache.set(report["metadata"]["fingerprint"], report)
+
+        except Exception as e:
+            report["ai_synthesis"] = f"Error during AI synthesis: {e}"
 
     # 1. Prepare and write report file if needed (must happen before stdout)
     report_file_path = None
