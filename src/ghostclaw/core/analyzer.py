@@ -63,7 +63,7 @@ class CodebaseAnalyzer:
         # 0. Cache shortcut if enabled
         if use_cache and self.cache is not None:
             base_fingerprint = compute_fingerprint(root_path)
-            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}"
+            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}:dryrun={config.dry_run}"
             fingerprint = base_fingerprint + config_suffix
 
             cached_report = self.cache.get(fingerprint)
