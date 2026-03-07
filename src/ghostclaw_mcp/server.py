@@ -33,7 +33,7 @@ def get_analyzer() -> CodebaseAnalyzer:
 
 
 @mcp.tool() if HAS_MCP else lambda x: x
-def ghostclaw_analyze(repo_path: str) -> str:
+async def ghostclaw_analyze(repo_path: str) -> str:
     """
     Perform a full architectural vibe analysis of a codebase.
     Returns a detailed JSON report including vibe score, issues, and ghosts.
@@ -42,12 +42,12 @@ def ghostclaw_analyze(repo_path: str) -> str:
         return json.dumps({"error": f"Path not found: {repo_path}"})
 
     analyzer = get_analyzer()
-    report = analyzer.analyze(repo_path)
+    report = await analyzer.analyze(repo_path)
     return json.dumps(report, indent=2)
 
 
 @mcp.tool() if HAS_MCP else lambda x: x
-def ghostclaw_get_ghosts(repo_path: str) -> str:
+async def ghostclaw_get_ghosts(repo_path: str) -> str:
     """
     Analyze architectural smells and 'ghosts' only.
     Returns a list of identified architectural issues.
@@ -56,13 +56,13 @@ def ghostclaw_get_ghosts(repo_path: str) -> str:
         return json.dumps({"error": f"Path not found: {repo_path}"})
 
     analyzer = get_analyzer()
-    report = analyzer.analyze(repo_path)
+    report = await analyzer.analyze(repo_path)
     ghosts = report.get("architectural_ghosts", [])
     return json.dumps({"architectural_ghosts": ghosts}, indent=2)
 
 
 @mcp.tool() if HAS_MCP else lambda x: x
-def ghostclaw_refactor_plan(repo_path: str) -> str:
+async def ghostclaw_refactor_plan(repo_path: str) -> str:
     """
     Generate an automated refactor blueprint based on architectural analysis.
     Identifies the most critical areas for improvement.
@@ -71,7 +71,7 @@ def ghostclaw_refactor_plan(repo_path: str) -> str:
         return json.dumps({"error": f"Path not found: {repo_path}"})
 
     analyzer = get_analyzer()
-    report = analyzer.analyze(repo_path)
+    report = await analyzer.analyze(repo_path)
 
     # Placeholder for advanced refactor planning logic (Phase 2 enhancement)
     issues = report.get("issues", [])

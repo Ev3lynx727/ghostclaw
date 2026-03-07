@@ -82,25 +82,29 @@ Then, configure your MCP client to start the server:
 
 ---
 
-## 3. External Analysis Engines
+## 3. External Analysis Engines (Adapters)
 
-Ghostclaw's core analysis engine (`CodebaseAnalyzer`) can be supercharged by integrating with dedicated AST parsing and logic-graphing tools. Currently, Ghostclaw supports two optional engines:
+Since v0.1.6, Ghostclaw uses the **Ghost Adapter Ecosystem** to integrate with external AST parsing and logic-graphing tools. These are now implemented as `MetricAdapters` and are managed via the `PluginRegistry`.
 
-### PySCN
+### PySCN Adapter
 
-**PySCN** is utilized for high-speed dead code detection and code clone (copy-paste) analysis.
+High-speed dead code detection and code clone analysis.
 
-* **Invocation**: Pass `--pyscn` to the CLI, or `use_pyscn=True` to the Python API.
-* **Wrapper**: `src/ghostclaw/core/pyscn_wrapper.py`
-* **Requirement**: Requires the `pyscn` binary to be installed and available in your system `$PATH`.
+* **Invocation**: Pass `--pyscn` to `ghostclaw analyze`.
+* **Adapter**: `ghostclaw.core.adapters.metric.pyscn.PySCNAdapter`
+* **Discovery**: Automatically loaded if `pyscn` is installed and the adapter is registered in the `PluginRegistry`.
 
-### AI-CodeIndex
+### AI-CodeIndex Adapter
 
-**AI-CodeIndex** replaces the default regex-based dependency graphing with advanced `tree-sitter` analysis, enabling deep inheritance tree mapping and cross-stack complex coupling detection.
+Advanced semantic coupling detection and inheritance tree mapping.
 
-* **Invocation**: Pass `--ai-codeindex` to the CLI, or `use_ai_codeindex=True` to the Python API.
-* **Wrapper**: `src/ghostclaw/core/ai_codeindex_wrapper.py`
-* **Requirement**: Requires the `ai-codeindex` binary to be installed and available in your system `$PATH`.
+* **Invocation**: Pass `--ai-codeindex` to `ghostclaw analyze`.
+* **Adapter**: `ghostclaw.core.adapters.metric.ai_codeindex.AICodeIndexAdapter`
+* **Discovery**: Automatically loaded if `ai-codeindex` is available in the system PATH.
+
+### Custom Adapters
+
+You can create your own adapters by inheriting from `BaseAdapter`. Place them in `.ghostclaw/plugins/` to have Ghostclaw discover and load them at runtime. Use `ghostclaw plugins scaffold <name>` to get started.
 
 ---
 

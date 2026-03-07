@@ -143,6 +143,21 @@ To install:
 pip install ghostclaw[pyscn]
 ```
 
+#### Plugin Management CLI (v0.1.6)
+
+Ghostclaw features a native plugin ecosystem. You can manage built-in and external adapters via the CLI:
+
+```bash
+# List all active adapters
+ghostclaw plugins list
+
+# Install an external adapter from a local folder
+ghostclaw plugins add ./path/to/custom_adapter
+
+# Scaffold a new developer template
+ghostclaw plugins scaffold my-new-adapter
+```
+
 ### Systemd Service (Phase 3)
 
 For a persistent local MCP service, you can use the provided setup script which installs a `systemd` unit on Linux:

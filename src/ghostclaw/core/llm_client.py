@@ -1,10 +1,11 @@
 import json
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from pathlib import Path
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
 
 from ghostclaw.core.config import GhostclawConfig
 
@@ -23,26 +24,43 @@ class TokenBudgetExceededError(Exception):
 
 
 class LLMClient:
-    """Wrapper for connecting to LLM providers (e.g. OpenRouter)."""
+    """Wrapper for connecting to LLM providers using official SDKs."""
 
     def __init__(self, config: GhostclawConfig, repo_path: str):
         self.config = config
         self.repo_path = repo_path
         self.max_tokens = 100000  # Default sensible limit
+        self.client = None
 
         if self.config.ai_provider == "openrouter":
-            self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-            self.model = "anthropic/claude-3.5-sonnet"
+            base_url = "https://openrouter.ai/api/v1"
+            self.model = self.config.ai_model or "anthropic/claude-3.5-sonnet"
+            self.client = AsyncOpenAI(
+                api_key=self.config.api_key,
+                base_url=base_url,
+                default_headers={
+                    "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
+                    "X-Title": "Ghostclaw Architecture Engine",
+                }
+            )
         elif self.config.ai_provider == "openai":
-            self.base_url = "https://api.openai.com/v1/chat/completions"
-            self.model = "gpt-4o"
+            self.model = self.config.ai_model or "gpt-4o"
+            self.client = AsyncOpenAI(api_key=self.config.api_key)
         elif self.config.ai_provider == "anthropic":
-            self.base_url = "https://api.anthropic.com/v1/messages"
-            self.model = "claude-3-5-sonnet-20241022"
+            self.model = self.config.ai_model or "claude-3-5-sonnet-20241022"
+            self.client = AsyncAnthropic(api_key=self.config.api_key)
         else:
             # Default to OpenRouter as fallback
-            self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-            self.model = "anthropic/claude-3.5-sonnet"
+            base_url = "https://openrouter.ai/api/v1"
+            self.model = self.config.ai_model or "anthropic/claude-3.5-sonnet"
+            self.client = AsyncOpenAI(
+                api_key=self.config.api_key,
+                base_url=base_url,
+                default_headers={
+                    "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
+                    "X-Title": "Ghostclaw Architecture Engine",
+                }
+            )
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count for a given text."""
@@ -91,166 +109,125 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Failed to write verbose log: {e}")
 
-    def _get_headers(self) -> dict:
-        if self.config.ai_provider == "anthropic":
-            return {
-                "x-api-key": self.config.api_key,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json"
-            }
-        else:
-            return {
-                "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
-                "X-Title": "Ghostclaw Architecture Engine"
-            }
-
-    @retry(
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError))
-    )
-    async def _make_api_call(self, payload: dict) -> dict:
-        """Make the actual REST API call with retries for 429/50x errors."""
-        headers = self._get_headers()
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                self.base_url,
-                headers=headers,
-                json=payload
-            )
-
-            # Raise exception for 4xx/5xx errors to trigger retry (if applicable)
-            response.raise_for_status()
-
-            return response.json()
-
-    async def generate_analysis(self, prompt: str) -> str:
-        """Generate analysis from the LLM based on the built prompt."""
+    async def generate_analysis(self, prompt: str) -> dict:
+        """Generate analysis from the LLM. Returns dict with 'content' and optional 'reasoning'."""
         prompt = self._check_token_budget(prompt)
 
         if self.config.dry_run:
-            return "Dry run enabled. API call skipped."
+            return {"content": "Dry run enabled. API call skipped."}
 
         if not self.config.api_key:
             raise ValueError("API key not provided. Set GHOSTCLAW_API_KEY environment variable.")
 
-        if self.config.ai_provider == "anthropic":
-            payload = {
-                "model": self.model,
-                "max_tokens": 4096,
-                "system": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices.",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            }
-        else:
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            }
+        system_prompt = "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
 
         try:
-            response_data = await self._make_api_call(payload)
-            self._log_verbose(payload, response_data=response_data)
-
             if self.config.ai_provider == "anthropic":
-                if "content" in response_data and len(response_data["content"]) > 0:
-                    return response_data["content"][0].get("text", "Error: No content returned from model.")
-                else:
-                    raise ValueError(f"Unexpected response format: {json.dumps(response_data)}")
+                response = await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=4096,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                content = response.content[0].text
+                # Capture reasoning if present (Claude 3.7+)
+                reasoning = getattr(response, 'thinking', None)
+                return {"content": content, "reasoning": reasoning}
             else:
-                # Extract content based on standard OpenAI-like schema
-                if "choices" in response_data and len(response_data["choices"]) > 0:
-                    message = response_data["choices"][0].get("message", {})
-                    return message.get("content", "Error: No content returned from model.")
-                else:
-                    raise ValueError(f"Unexpected response format: {json.dumps(response_data)}")
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                message = response.choices[0].message
+                content = message.content
+                reasoning = getattr(message, 'reasoning_content', None)
+                return {"content": content, "reasoning": reasoning}
 
         except Exception as e:
-            self._log_verbose(payload, error=str(e))
+            self._log_verbose({"model": self.model, "prompt_snippet": prompt[:100]}, error=str(e))
             raise e
 
-    async def stream_analysis(self, prompt: str) -> AsyncGenerator[str, None]:
-        """Stream analysis from the LLM based on the built prompt."""
+    async def test_connection(self) -> bool:
+        """Test the connection to the LLM provider."""
+        if not self.client or not self.config.api_key:
+            return False
+
+        try:
+            if self.config.ai_provider == "anthropic":
+                # Anthropic doesn't have a models list endpoint, test with a minimal message
+                await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1,
+                    messages=[{"role": "user", "content": "ping"}]
+                )
+                return True
+            else:
+                # OpenAI and OpenRouter support listing models
+                await self.client.models.list()
+                return True
+        except Exception:
+            return False
+
+    async def list_models(self) -> list:
+        """List available models from the provider."""
+        if not self.client or not self.config.api_key:
+            return []
+
+        try:
+            if self.config.ai_provider in ["openrouter", "openai"]:
+                response = await self.client.models.list()
+                return sorted([m.id for m in response.data])
+            else:
+                return [self.model]
+        except Exception:
+            return [self.model]
+    async def stream_analysis(self, prompt: str) -> AsyncGenerator[dict, None]:
+        """Stream analysis from the LLM. Yields dicts with 'type' and 'content'."""
         prompt = self._check_token_budget(prompt)
 
         if self.config.dry_run:
-            yield "Dry run enabled. API call skipped."
+            yield {"type": "content", "content": "Dry run enabled. API call skipped."}
             return
 
         if not self.config.api_key:
             raise ValueError("API key not provided. Set GHOSTCLAW_API_KEY environment variable.")
 
-        if self.config.ai_provider == "anthropic":
-            payload = {
-                "model": self.model,
-                "max_tokens": 4096,
-                "system": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices.",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "stream": True
-            }
-        else:
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "stream": True
-            }
-
-        headers = self._get_headers()
+        system_prompt = "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", self.base_url, headers=headers, json=payload) as response:
-                    response.raise_for_status()
-                    async for line in response.aiter_lines():
-                        if line.startswith("data: "):
-                            data_str = line[6:]
-                            if data_str.strip() == "[DONE]":
-                                break
-                            try:
-                                chunk = json.loads(data_str)
-                                if self.config.ai_provider == "anthropic":
-                                    if chunk.get("type") == "content_block_delta":
-                                        delta = chunk.get("delta", {})
-                                        if delta.get("type") == "text_delta":
-                                            yield delta.get("text", "")
-                                else:
-                                    if "choices" in chunk and len(chunk["choices"]) > 0:
-                                        delta = chunk["choices"][0].get("delta", {})
-                                        content = delta.get("content", "")
-                                        if content:
-                                            yield content
-                            except json.JSONDecodeError:
-                                pass
+            if self.config.ai_provider == "anthropic":
+                async with self.client.messages.stream(
+                    model=self.model,
+                    max_tokens=4096,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": prompt}]
+                ) as stream:
+                    async for event in stream:
+                        if event.type == "text_delta":
+                            yield {"type": "content", "content": event.text}
+                        elif event.type == "thinking_delta":
+                            yield {"type": "reasoning", "content": event.thinking}
+            else:
+                stream = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    stream=True
+                )
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    delta = chunk.choices[0].delta
+                    if hasattr(delta, 'content') and delta.content:
+                        yield {"type": "content", "content": delta.content}
+                    if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                        yield {"type": "reasoning", "content": delta.reasoning_content}
+
         except Exception as e:
-            self._log_verbose(payload, error=str(e))
+            self._log_verbose({"model": self.model, "prompt_snippet": prompt[:100]}, error=str(e))
             raise e

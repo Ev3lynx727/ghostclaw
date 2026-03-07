@@ -30,45 +30,43 @@ ghostclaw/
 
 ### `src/ghostclaw/core/`
 
-This is the heart of the sentinel. It orchestrates the scanning sequence:
+This is the heart of the system, now refactored for **asynchronous concurrency** and **modular extensibility**:
 
-* **`analyzer.py`**: The primary coordinator. Scans files, initializes the correct `stacks` analyzer, processes optional engine plugins, and calculates the final vibe score.
-* **`detector.py`**: Heuristic analysis. Detects the tech stack of the repository based on file extensions and critical files like `Cargo.toml` or `package.json`.
-* **`validator.py`**: The rules engine. Reads YAML pattern references and validates the codebase against architectural best practices.
-* **`cache.py`**: In-memory and disk caching subsystem to avoid re-parsing unchanged Git commits between runs based on git fingerprints.
-* **External Engine Wrappers**: Contains `pyscn_wrapper.py` and `ai_codeindex_wrapper.py` to seamlessly integrate external CLI AST tools into Ghostclaw's internal issue lists when explicitly requested by users.
+* **`agent.py`**: The high-level orchestrator (`GhostAgent`). Manages the analysis lifecycle, handles event hooks, and broadcasts results to storage and target adapters.
+* **`analyzer.py`**: The technical coordinator (`CodebaseAnalyzer`). Orchestrates stack detection and delegates tool-specific metrics to the `PluginRegistry`.
+* **`adapters/`**: contains the **Ghost Adapter Ecosystem**:
+  * **`registry.py`**: A `pluggy`-powered manager (`PluginRegistry`) that dynamically loads built-in and external adapters.
+  * **`base.py`**: Defines abstract base classes for `MetricAdapter`, `StorageAdapter`, and `TargetAdapter`.
+* **`detector.py`**: Heuristic analysis for tech stack detection.
+* **`validator.py`**: Validates codebases against architectural patterns defined in `references/*.yaml`.
+* **`cache.py`**: Manages the local result cache to accelerate repeated runs.
 
 ### `src/ghostclaw/cli/`
 
-Contains the argument parsers and formatted outputs.
+Handles user interaction and formatted output.
 
-* **`ghostclaw.py`**: Provides the main ad-hoc terminal command. Prints formatted Markdown or JSON.
-* **`compare.py`**: Retrieves cache history to compare trends across multiple repositories.
-
-### `src/ghostclaw/stacks/`
-
-Strategy pattern implementations for parsing language-specific complexities.
-Every language parser must conform to a unified interface (`BaseAnalyzer`) to yield consistent metric scales (0-100 scores, issues, circular dependencies) back to the core analyzer. Support currently includes Python and NodeJS heuristics.
-
-### `src/ghostclaw/lib/`
-
-Houses agnostic utilities used by the system but not specifically related to AST code analysis.
-
-* **`github.py`**: Standardized class for interacting with GitHub's REST API, handling token auth and PR generation.
-* **`cache.py`**: Manages the persistent disk store (`~/.cache/ghostclaw/`) for longitudinal watcher trends.
-* **`notify.py`**: External webhook dispatches (e.g., Telegram bots) when thresholds decay.
-
-### `src/ghostclaw_mcp/`
-
-Provides the `server.py` implementation of the Model Context Protocol (MCP). It wraps `core.analyzer` into distinct JSON endpoints that LLMs like Claude can interface with autonomously.
+* **`ghostclaw.py`**: The unified CLI entry point. Supports `analyze`, `plugins`, `test`, and `init` commands.
+* **`compare.py`**: Compares architectural trends over time.
 
 ---
 
-## Execution Flow
+## Ghost Adapter Ecosystem
 
-1. **Invocation**: Initiated via CLI (`ghostclaw`), MCP server tool call, or cron script (`watcher`).
-2. **Detection**: `core.detector` scans path files to understand stack and scope.
-3. **Graphing**: `core.analyzer` builds base metrics and optionally delegates to PySCN or AI-CodeIndex if higher AST fidelity is requested.
-4. **Validation**: Evaluated AST representations are piped into `core.validator` which diffs against parsed `references/*.yaml` patterns.
-5. **Reporting**: A final `vibe_score`, `issues` array, and structural `ghosts` array are returned up the stack.
-6. **Action**: If triggered by a `watcher`, `lib.github` opens a remediation PR, updates local `lib.cache`, and optionally pings `lib.notify`.
+In v0.1.6, Ghostclaw adopted a modular adapter pattern to decouple core logic from external tools:
+
+1. **Metric Adapters**: Encapsulate tools like `PySCN` or `AI-CodeIndex`. They provide structured issue and ghost data.
+2. **Storage Adapters**: Handle persistence (e.g., `SQLiteStorageAdapter`).
+3. **Target Adapters**: Handle final output delivery (e.g., `JsonTargetAdapter`).
+
+External adapters can be added to `.ghostclaw/plugins/` and are automatically discovered via the `PluginRegistry`.
+
+---
+
+## Execution Flow (Async)
+
+1. **Invocation**: Triggered via `ghostclaw analyze` or the MCP server.
+2. **Discovery**: `PluginRegistry` loads all built-in and local external adapters.
+3. **Detection**: `CodebaseAnalyzer` identifies the tech stack.
+4. **Parallel Analysis**: `PluginRegistry` executes all active `MetricAdapters` concurrently using `asyncio`.
+5. **Synthesis**: `GhostAgent` pipes metadata and metrics to the AI Engine (via `LLMClient`) for high-level architectural vibes.
+6. **Broadcast**: `GhostAgent` emits completion events. `StorageAdapters` persist the report, and `TargetAdapters` deliver the final results.

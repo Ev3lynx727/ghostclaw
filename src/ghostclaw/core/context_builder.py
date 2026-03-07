@@ -3,12 +3,17 @@ import json
 class ContextBuilder:
     """Builds the context prompt for the AI engine."""
 
-    def build_prompt(self, metrics: dict, issues: list, ghosts: list, flags: list, coupling_metrics: dict, import_edges: list) -> str:
+    def build_prompt(self, metrics: dict, issues: list, ghosts: list, flags: list, coupling_metrics: dict, import_edges: list, patch: bool = False) -> str:
         """
         Formats analysis data into an XML-tagged prompt for LLMs.
         """
         prompt = "Analyze the following codebase architecture and provide a 'Vibe Synthesis' report. "
         prompt += "Focus on system-level flow, cohesion, and tech stack best practices.\n\n"
+
+        if patch:
+            prompt += "IMPORTANT: The user has requested a REFACTOR PLAN. "
+            prompt += "In addition to your synthesis, provide specific, actionable refactoring blueprints. "
+            prompt += "If possible, output code snippets or 'Unified Diff' style patches for critical architectural fixes.\n\n"
 
         prompt += "<metrics>\n"
         prompt += json.dumps(metrics, indent=2) + "\n"

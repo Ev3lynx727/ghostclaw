@@ -8,60 +8,49 @@ This document covers all the practical ways you can use Ghostclaw.
 
 ## 1. Using the Command Line Interface (CLI)
 
-The most common way to run Ghostclaw is via the CLI. If you have installed Ghostclaw globally or within a virtual environment using `pip install .` or `pipx install .`, the `ghostclaw` command will be available on your path.
-
-### Basic Usage
-
-To analyze a local repository:
+Since v0.1.6, Ghostclaw uses a **sub-command architecture**. To see all available commands:
 
 ```bash
-ghostclaw /path/to/your/project
+ghostclaw --help
 ```
 
-### Advanced Engine Toggles
+### Analyzing a Repository
 
-Ghostclaw supports switching its internal analysis engines for deeper or faster insights.
+To perform a full architectural review:
 
-* **PySCN (Fast Dead Code & Clones)**: Assumes you have PySCN installed.
+```bash
+ghostclaw analyze /path/to/your/project
+```
 
-    ```bash
-    ghostclaw /path/to/your/project --pyscn
-    ```
+**Common Flags:**
 
-* **AI-CodeIndex (Deep AST Graphing)**: Utilizes `tree-sitter` for advanced semantic coupling detection. Requires `ai-codeindex` to be installed (e.g., `pip install ai-codeindex[all]`).
+- `--patch`: Generate AI-driven refactor blueprints and code diffs.
+- `--no-cache`: Force a fresh analysis (ignore local history).
+- `--json`: Output report in raw JSON format.
 
-    ```bash
-    ghostclaw /path/to/your/project --ai-codeindex
-    ```
+### Plugin Management
 
-* **JSON Output**: Useful for piping results into `jq` or other CI/CD tools.
+Ghostclaw 0.1.6 introduced the **Ghost Adapters** ecosystem. You can manage built-in and external plugins directly:
 
-    ```bash
-    ghostclaw /path/to/your/project --json > report.json
-    ```
+```bash
+# List all active adapters and their status
+ghostclaw plugins list
+
+# Add an external adapter from a local directory
+ghostclaw plugins add /path/to/external-adapter
+
+# Remove a previously added external adapter
+ghostclaw plugins remove adapter-name
+
+# Generate a boilerplate adapter for development
+ghostclaw plugins scaffold my-custom-adapter
+```
 
 ---
 
 ## 2. Using the Shell Scripts (`scripts/`)
 
-If you want to run Ghostclaw directly from the cloned repository **without** installing it via `pip`, you can use the provided wrapper scripts in the `scripts/` directory. These scripts automatically handle `PYTHONPATH` resolution for the `src/` layout.
-
-### Single Repository Review
-
-```bash
-./scripts/ghostclaw.sh /path/to/your/project
-```
-
-### Multi-Repository Watcher
-
-To run Ghostclaw against multiple repositories automatically (useful for cron jobs):
-
-1. Add your repositories to `scripts/repos.txt` (one path/URL per line).
-2. Run the watcher:
-
-    ```bash
-    ./scripts/watcher --repos-file scripts/repos.txt
-    ```
+The wrapper scripts in `scripts/` are legacy-compatible but now delegate to the main `ghostclaw` entry point.
 
 ### Repository Comparison
 
@@ -75,33 +64,26 @@ To compare the architectural trends of multiple repositories and generate a form
 
 ## 3. Using the Python API
 
-You can import Ghostclaw directly into your own Python scripts or automated testing pipelines.
+For advanced integration, use the asynchronous `GhostAgent` or `CodebaseAnalyzer`.
 
 ```python
+import asyncio
 from ghostclaw.core.analyzer import CodebaseAnalyzer
+from ghostclaw.core.agent import GhostAgent
+from ghostclaw.core.config import GhostclawConfig
 
-# Initialize the analyzer
-analyzer = CodebaseAnalyzer()
+async def run_review():
+    config = GhostclawConfig.load("/path/to/repo")
+    analyzer = CodebaseAnalyzer()
+    agent = GhostAgent(config, "/path/to/repo", analyzer=analyzer)
+    
+    # Run the full agent lifecycle
+    report = await agent.run()
+    
+    print(f"Vibe Score: {report['vibe_score']}/100")
 
-# Perform the analysis
-report = analyzer.analyze("/path/to/your/project")
-
-print(f"Overall Architectural Vibe Score: {report['vibe_score']}/100")
-print("Top Issues:")
-for issue in report['issues'][:3]:
-    print(f"- {issue}")
-```
-
-### Enabling Optional Engines in Python
-
-You can specifically request the external analysis wrappers:
-
-```python
-report = analyzer.analyze(
-    "/path/to/your/project",
-    use_pyscn=True,
-    use_ai_codeindex=True
-)
+if __name__ == "__main__":
+    asyncio.run(run_review())
 ```
 
 ---
@@ -144,7 +126,7 @@ git pull origin skills
 
 After copying, your OpenClaw skills directory should look like:
 
-```
+```text
 ~/.openclaw/skills/ghostclaw/
 ├── SKILL.md
 └── ghostclaw/
@@ -158,7 +140,7 @@ After copying, your OpenClaw skills directory should look like:
 
 **Important:** The top-level `ghostclaw/` package directory is required. A common mistake is to copy only the contents of `src/ghostclaw/` directly into `~/.openclaw/skills/ghostclaw/` without the package wrapper, which results in import errors like:
 
-```
+```text
 ModuleNotFoundError: No module named 'ghostclaw'
 ```
 

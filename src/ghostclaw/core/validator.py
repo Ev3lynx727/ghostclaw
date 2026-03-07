@@ -74,6 +74,8 @@ class RuleValidator:
                 coupling_metrics = report.get('coupling_metrics', {})
 
                 for module, metrics in coupling_metrics.items():
+                    if not isinstance(metrics, dict):
+                        continue
                     value = metrics.get(metric_name, 0)
                     applies = False
                     if condition == 'greater_than' and value > threshold:

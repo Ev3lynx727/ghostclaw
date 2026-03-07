@@ -25,7 +25,10 @@ class LocalCache:
     """
 
     def __init__(self, cache_dir: Optional[Path] = None, ttl_days: int = 7):
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".cache" / "ghostclaw"
+        # Default to project-local cache: <repo>/.ghostclaw/cache/
+        if cache_dir is None:
+            cache_dir = Path.cwd() / ".ghostclaw" / "cache"
+        self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.ttl = timedelta(days=ttl_days)
 
@@ -46,7 +49,7 @@ class LocalCache:
             return None
 
         try:
-            data = json.loads(path.read_text(encoding='utf-8'))
+            data = json.loads(path.read_text(encoding="utf-8"))
             cached_at = datetime.fromisoformat(data["cached_at"])
 
             # Check TTL
@@ -64,12 +67,9 @@ class LocalCache:
         key = self._compute_key(fingerprint)
         path = self.cache_dir / f"{key}.json"
 
-        data = {
-            "cached_at": datetime.now().isoformat(),
-            "report": report
-        }
+        data = {"cached_at": datetime.now().isoformat(), "report": report}
 
-        path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def clear(self) -> None:
         """Remove all cache entries."""
@@ -83,14 +83,12 @@ class LocalCache:
         return {
             "entries": len(entries),
             "total_size_bytes": total_size,
-            "cache_dir": str(self.cache_dir)
+            "cache_dir": str(self.cache_dir),
         }
 
 
 def compute_fingerprint(
-    repo_path: Path,
-    git_sha: Optional[str] = None,
-    include_files: bool = False
+    repo_path: Path, git_sha: Optional[str] = None, include_files: bool = False
 ) -> str:
     """
     Compute a fast fingerprint for a repository.
@@ -117,9 +115,13 @@ def compute_fingerprint(
     # Try to get git SHA
     try:
         import subprocess
+
         result = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=False, timeout=5
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
         )
         if result.returncode == 0:
             sha = result.stdout.strip()
@@ -135,11 +137,11 @@ def compute_fingerprint(
         stack = detect_stack(str(repo_path))
         # Determine likely code extensions based on stack
         ext_map = {
-            'node': ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'],
-            'python': ['.py'],
-            'go': ['.go'],
+            "node": [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
+            "python": [".py"],
+            "go": [".go"],
         }
-        extensions = ext_map.get(stack, ['.py', '.js', '.ts', '.go', '.rs', '.java'])
+        extensions = ext_map.get(stack, [".py", ".js", ".ts", ".go", ".rs", ".java"])
 
         # Collect metadata: path, size, mtime
         file_entries = []
@@ -152,11 +154,9 @@ def compute_fingerprint(
                     try:
                         stat = f.stat()
                         rel = str(f.relative_to(repo_path))
-                        file_entries.append({
-                            "p": rel,
-                            "s": stat.st_size,
-                            "m": stat.st_mtime
-                        })
+                        file_entries.append(
+                            {"p": rel, "s": stat.st_size, "m": stat.st_mtime}
+                        )
                         total_size += stat.st_size
                         mtime_sum += stat.st_mtime
                     except Exception:
@@ -170,10 +170,10 @@ def compute_fingerprint(
             "count": len(file_entries),
             "total_size": total_size,
             "mtime_sum": mtime_sum,
-            "files": sorted(file_entries, key=lambda x: x["p"])
+            "files": sorted(file_entries, key=lambda x: x["p"]),
         }
 
-        summary_str = json.dumps(summary, sort_keys=True, separators=(',', ':'))
+        summary_str = json.dumps(summary, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256(summary_str.encode()).hexdigest()
         return version_prefix + f"mtime:{digest}"
 

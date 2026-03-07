@@ -16,6 +16,7 @@ from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.cache import LocalCache
 from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.core.llm_client import LLMClient
+from ghostclaw.core.agent import GhostAgent, AgentEvent
 from ghostclaw.cli import __version__
 import asyncio
 
@@ -23,6 +24,7 @@ try:
     from rich.console import Console
     from rich.markdown import Markdown
     from rich.status import Status
+    from rich.text import Text
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -78,6 +80,18 @@ def generate_markdown_report(report: Dict) -> str:
         lines.append("## 🚨 Red Flags")
         for flag in flags:
             lines.append(f"- {flag}")
+        lines.append("")
+
+    reasoning = report.get('ai_reasoning')
+    if reasoning:
+        lines.append("## AI Architect Reasoning")
+        lines.append(reasoning)
+        lines.append("")
+
+    synthesis = report.get('ai_synthesis')
+    if synthesis:
+        lines.append("## ✨ AI Synthesis")
+        lines.append(synthesis)
         lines.append("")
 
     lines.append("---")
@@ -174,7 +188,7 @@ def print_report(report: Dict):
             print(f"   {flag}")
         print()
 
-    print("💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)")
+    print("💡 Tip: Run with '--patch' to generate refactor suggestions")
 
     if "ai_synthesis" in report:
         # Final formatting was already handled live by the analyzer during generation
@@ -219,42 +233,254 @@ def update_ghostclaw():
 
 def main():
     parser = argparse.ArgumentParser(description="Ghostclaw CLI — Architectural Analyzer")
-    parser.add_argument("repo_path", nargs="?", help="Path to the repository to analyze")
     parser.add_argument("--version", action="version", version=f"Ghostclaw {__version__}")
-    parser.add_argument("--update", action="store_true", help="Self-update Ghostclaw via pip or git")
-    parser.add_argument("--json", action="store_true", help="Output raw JSON")
-    parser.add_argument("--no-write-report", action="store_true", help="Skip writing the .md report file")
-    parser.add_argument("--create-pr", action="store_true", help="Automatically create a GitHub PR with the report")
-    parser.add_argument("--pr-title", help="Custom PR title")
-    parser.add_argument("--pr-body", help="Custom PR body")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
+    # --- ANALYZE COMMAND ---
+    analyze_parser = subparsers.add_parser("analyze", help="Analyze codebase architecture")
+    analyze_parser.add_argument("repo_path", nargs="?", default=".", help="Path to the repository to analyze")
+    analyze_parser.add_argument("--json", action="store_true", help="Output raw JSON")
+    analyze_parser.add_argument("--no-write-report", action="store_true", help="Skip writing the .md report file")
+    analyze_parser.add_argument("--create-pr", action="store_true", help="Automatically create a GitHub PR with the report")
+    analyze_parser.add_argument("--pr-title", help="Custom PR title")
+    analyze_parser.add_argument("--pr-body", help="Custom PR body")
+    
     # Caching options
-    parser.add_argument("--no-cache", action="store_true", help="Disable result caching")
-    parser.add_argument("--cache-dir", type=Path, help="Custom cache directory (default: ~/.cache/ghostclaw)")
-    parser.add_argument("--cache-ttl", type=int, default=7, help="Cache TTL in days (default: 7)")
-    parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
+    analyze_parser.add_argument("--no-cache", action="store_true", help="Disable result caching")
+    analyze_parser.add_argument("--cache-dir", type=Path, help="Custom cache directory (default: ~/.cache/ghostclaw)")
+    analyze_parser.add_argument("--cache-ttl", type=int, default=7, help="Cache TTL in days (default: 7)")
+    analyze_parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
 
     # AI options
-    parser.add_argument("--use-ai", action="store_true", help="Enable Ghost Engine AI synthesis")
-    parser.add_argument("--ai-provider", help="AI Provider (openrouter, openai, anthropic)")
-    parser.add_argument("--dry-run", action="store_true", help="Dry run mode: prints prompt and token count without API call")
-    parser.add_argument("--verbose", action="store_true", help="Verbose mode: saves raw API requests/responses to debug.log")
+    analyze_parser.add_argument("--use-ai", action="store_true", help="Enable Ghost Engine AI synthesis")
+    analyze_parser.add_argument("--ai-provider", help="AI Provider (openrouter, openai, anthropic)")
+    analyze_parser.add_argument("--ai-model", help="Specific LLM model to use")
+    analyze_parser.add_argument("--dry-run", action="store_true", help="Dry run mode: prints prompt and token count without API call")
+    analyze_parser.add_argument("--verbose", action="store_true", help="Verbose mode: saves raw API requests/responses to debug.log")
+    analyze_parser.add_argument("--patch", action="store_true", help="Enable refactor plan/patch suggestions from the AI engine")
 
-    # Engine Integrations (Phase 1)
-    parser.add_argument("--pyscn", action="store_true", help="Enable PySCN integration")
-    parser.add_argument("--no-pyscn", action="store_true", help="Explicitly disable PySCN integration")
-    parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
-    parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
+    # Engine Integrations
+    analyze_parser.add_argument("--pyscn", action="store_true", help="Enable PySCN integration")
+    analyze_parser.add_argument("--no-pyscn", action="store_true", help="Explicitly disable PySCN integration")
+    analyze_parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
+    analyze_parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
+
+    # --- INIT COMMAND ---
+    init_parser = subparsers.add_parser("init", help="Scaffold local project configuration")
+
+    # --- TEST COMMAND ---
+    test_parser = subparsers.add_parser("test", help="Run diagnostic tests")
+    test_parser.add_argument("--llm", action="store_true", help="Test LLM connectivity and list available models")
+    test_parser.add_argument("--ai-provider", help="Provider to test (overrides config)")
+    test_parser.add_argument("--ai-model", help="Model to test (overrides config)")
+
+    # --- UPDATE COMMAND ---
+    subparsers.add_parser("update", help="Self-update Ghostclaw via pip or git")
+
+    # --- PLUGINS COMMAND ---
+    plugins_parser = subparsers.add_parser("plugins", help="Manage architectural adapters/plugins")
+    plugins_subparsers = plugins_parser.add_subparsers(dest="plugin_command", help="Plugin sub-commands")
+    
+    plugins_subparsers.add_parser("list", help="List all discovered plugins")
+    
+    info_parser = plugins_subparsers.add_parser("info", help="Show detailed info for a plugin")
+    info_parser.add_argument("name", help="Name of the plugin")
+    
+    test_parser = plugins_subparsers.add_parser("test", help="Test if a plugin is available and working")
+    test_parser.add_argument("name", help="Name of the plugin")
+
+    add_parser = plugins_subparsers.add_parser("add", help="Install an external plugin from a local path")
+    add_parser.add_argument("source", help="Path to the plugin directory or file")
+    
+    remove_parser = plugins_subparsers.add_parser("remove", help="Remove an external plugin")
+    remove_parser.add_argument("name", help="Name of the plugin to remove")
+
+    scaffold_parser = plugins_subparsers.add_parser("scaffold", help="Generate a boilerplate adapter")
+    scaffold_parser.add_argument("name", help="Name of the new plugin")
+
+    # Backward compatibility: if first arg is a directory, default to 'analyze'
+    if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "-h", "--help", "--version"]:
+        sys.argv.insert(1, "analyze")
 
     args = parser.parse_args()
 
-    if args.update:
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.command == "update":
         update_ghostclaw()
         sys.exit(0)
 
-    repo_path = args.repo_path
-    if repo_path == "init":
-        # Scaffold .ghostclaw.json template
+
+    if args.command == "plugins":
+        import shutil
+        from ghostclaw.core.adapters.registry import registry
+        registry.register_internal_plugins()
+        
+        # Load external plugins from .ghostclaw/plugins if they exist
+        local_plugins = Path.cwd() / ".ghostclaw" / "plugins"
+        if local_plugins.exists():
+            registry.load_external_plugins(local_plugins)
+
+        if args.plugin_command == "list":
+            metadata = registry.get_plugin_metadata()
+            if not metadata:
+                print("No plugins found.")
+            else:
+                from rich.table import Table
+                table = Table(title="Ghostclaw Plugins")
+                table.add_column("Name", style="cyan")
+                table.add_column("Version", style="magenta")
+                table.add_column("Description")
+                table.add_column("Type", style="green")
+                
+                for meta in metadata:
+                    name = meta.get("name", "unknown")
+                    p_type = "Built-in" if name in registry.internal_plugins else "External"
+                    table.add_row(
+                        name,
+                        meta.get("version", "unknown"),
+                        meta.get("description", ""),
+                        p_type
+                    )
+                
+                if HAS_RICH:
+                    Console().print(table)
+                else:
+                    print("Name | Version | Description | Type")
+                    for meta in metadata:
+                        name = meta.get("name")
+                        p_type = "Built-in" if name in registry.internal_plugins else "External"
+                        print(f"{name} | {meta.get('version')} | {meta.get('description')} | {p_type}")
+        
+        elif args.plugin_command == "add":
+            source = Path(args.source)
+            if not source.exists():
+                print(f"❌ Source path '{source}' does not exist.", file=sys.stderr)
+                sys.exit(1)
+            
+            dest_dir = Path.cwd() / ".ghostclaw" / "plugins"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            
+            target = dest_dir / source.name
+            if target.exists():
+                print(f"⚠️ Plugin '{source.name}' already installed at {target}. Overwriting...")
+                if target.is_dir(): shutil.rmtree(target)
+                else: target.unlink()
+            
+            try:
+                if source.is_dir():
+                    shutil.copytree(source, target)
+                else:
+                    shutil.copy2(source, target)
+                print(f"✅ Installed plugin '{source.name}' to {target}")
+            except Exception as e:
+                print(f"❌ Failed to install plugin: {e}", file=sys.stderr)
+                sys.exit(1)
+
+        elif args.plugin_command == "remove":
+            name = args.name.lower()
+            if name in registry.internal_plugins:
+                print(f"🚫 Cannot remove built-in plugin '{name}'.", file=sys.stderr)
+                sys.exit(1)
+            
+            # Look for it in .ghostclaw/plugins
+            local_plugins_dir = Path.cwd() / ".ghostclaw" / "plugins"
+            target = local_plugins_dir / name
+            
+            # Also check if they passed a name that matches a folder
+            if not target.exists():
+                # Search for any folder starting with 'name' (in case of dynamic suffixes)
+                matches = list(local_plugins_dir.glob(f"{name}*"))
+                if matches:
+                    target = matches[0]
+            
+            if target.exists():
+                try:
+                    if target.is_dir(): shutil.rmtree(target)
+                    else: target.unlink()
+                    print(f"🗑️ Removed plugin '{name}' from {target}")
+                except Exception as e:
+                    print(f"❌ Failed to remove plugin: {e}", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                print(f"❌ External plugin '{name}' not found in {local_plugins_dir}.", file=sys.stderr)
+                sys.exit(1)
+
+        elif args.plugin_command == "info":
+            # Finding the metadata for the specific plugin
+            metadata = registry.get_plugin_metadata()
+            plugin_meta = next((m for m in metadata if m.get("name") == args.name), None)
+            if not plugin_meta:
+                print(f"❌ Plugin '{args.name}' not found.", file=sys.stderr)
+            else:
+                print(f"Plugin: {plugin_meta.get('name')}")
+                print(f"Version: {plugin_meta.get('version')}")
+                print(f"Description: {plugin_meta.get('description')}")
+        
+        elif args.plugin_command == "test":
+            # Finding the instance and call is_available
+            print(f"🧪 Testing plugin '{args.name}'...")
+            metadata = registry.get_plugin_metadata()
+            if any(m.get("name") == args.name for m in metadata):
+                print(f"✅ Plugin '{args.name}' is registered.")
+            else:
+                print(f"❌ Plugin '{args.name}' is not registered.")
+        
+        elif args.plugin_command == "scaffold":
+            name = args.name.lower().replace("-", "_")
+            plugin_dir = Path.cwd() / ".ghostclaw" / "plugins" / name
+            plugin_dir.mkdir(parents=True, exist_ok=True)
+            
+            init_file = plugin_dir / "__init__.py"
+            if init_file.exists():
+                print(f"⚠️ Plugin '{name}' already exists.")
+            else:
+                template = f'''"""
+Ghostclaw Adapter: {name}
+"""
+from typing import Dict, List, Any, Optional
+from ghostclaw.core.adapters.base import MetricAdapter, AdapterMetadata
+from ghostclaw.core.adapters.hooks import hookimpl
+
+class CustomAdapter(MetricAdapter):
+    def get_metadata(self) -> AdapterMetadata:
+        return AdapterMetadata(
+            name="{name}",
+            version="0.1.0",
+            description="Custom architectural analysis.",
+            dependencies=[]
+        )
+
+    async def is_available(self) -> bool:
+        return True
+
+    @hookimpl
+    async def ghost_analyze(self, root: str, files: List[str]) -> Dict[str, Any]:
+        return {{
+            "issues": ["Example issue from {name}"],
+            "architectural_ghosts": [],
+            "red_flags": []
+        }}
+
+    @hookimpl
+    def ghost_get_metadata(self) -> Dict[str, Any]:
+        meta = self.get_metadata()
+        return {{
+            "name": meta.name,
+            "version": meta.version,
+            "description": meta.description
+        }}
+'''
+                init_file.write_text(template)
+                print(f"🏗️ Scaffolded plugin '{name}' at {plugin_dir}")
+                print(f"💡 Edit {init_file} to add your logic.")
+        
+        sys.exit(0)
+
+    if args.command == "init":
         cwd = Path.cwd()
         gc_dir = cwd / ".ghostclaw"
         gc_dir.mkdir(parents=True, exist_ok=True)
@@ -266,6 +492,7 @@ def main():
         template = {
             "use_ai": True,
             "ai_provider": "openrouter",
+            "ai_model": None,
             "use_pyscn": False,
             "use_ai_codeindex": False
         }
@@ -275,188 +502,212 @@ def main():
         print("💡 Remember: Do NOT save your GHOSTCLAW_API_KEY in this file. Use an environment variable or ~/.ghostclaw/ghostclaw.json.")
         sys.exit(0)
 
-    if not repo_path:
-        parser.print_help()
-        sys.exit(1)
+    if args.command == "test":
+        if args.llm:
+            async def _run_test():
+                cli_overrides = {}
+                if args.ai_provider: cli_overrides['ai_provider'] = args.ai_provider
+                if args.ai_model: cli_overrides['ai_model'] = args.ai_model
+                
+                config = GhostclawConfig.load(".", **cli_overrides)
+                client = LLMClient(config, ".")
+                
+                print(f"🔍 Testing LLM Connection ({config.ai_provider})...")
+                success = await client.test_connection()
+                if success:
+                    print("✅ Connection successful!")
+                    print("\nFetching available models...")
+                    models = await client.list_models()
+                    for m in models:
+                        print(f"  • {m}")
+                else:
+                    print("❌ Connection failed. Check your API key and provider settings.")
+            
+            asyncio.run(_run_test())
+        else:
+            test_parser.print_help()
+        sys.exit(0)
 
-    if not Path(repo_path).is_dir():
-        print(f"Error: directory not found: {repo_path}", file=sys.stderr)
-        sys.exit(1)
+    if args.command == "analyze":
+        repo_path = args.repo_path
+        if not Path(repo_path).is_dir():
+            print(f"Error: directory not found: {repo_path}", file=sys.stderr)
+            sys.exit(1)
 
-    # Initialize cache if enabled
-    cache = None
-    use_cache = not args.no_cache
-    if use_cache:
-        cache = LocalCache(cache_dir=args.cache_dir, ttl_days=args.cache_ttl)
+        # Initialize cache
+        cache = None
+        use_cache = not args.no_cache
+        if use_cache:
+            cache = LocalCache(cache_dir=args.cache_dir, ttl_days=args.cache_ttl)
 
-    # Initialize Config
-    # Extract known CLI overrides
-    cli_overrides = {}
-    if args.use_ai:
-        cli_overrides['use_ai'] = True
-    if args.ai_provider:
-        cli_overrides['ai_provider'] = args.ai_provider
-    if args.dry_run:
-        cli_overrides['dry_run'] = True
-    if args.verbose:
-        cli_overrides['verbose'] = True
+        # Initialize Config
+        cli_overrides = {}
+        if args.use_ai: cli_overrides['use_ai'] = True
+        if args.ai_provider: cli_overrides['ai_provider'] = args.ai_provider
+        if args.ai_model: cli_overrides['ai_model'] = args.ai_model
+        if args.dry_run: cli_overrides['dry_run'] = True
+        if args.verbose: cli_overrides['verbose'] = True
+        if args.patch: cli_overrides['patch'] = True
+        
+        if args.pyscn: cli_overrides['use_pyscn'] = True
+        elif args.no_pyscn: cli_overrides['use_pyscn'] = False
+        
+        if args.ai_codeindex: cli_overrides['use_ai_codeindex'] = True
+        elif args.no_ai_codeindex: cli_overrides['use_ai_codeindex'] = False
 
-    # Handle backward compatibility flags
-    if args.pyscn:
-        cli_overrides['use_pyscn'] = True
-    elif args.no_pyscn:
-        cli_overrides['use_pyscn'] = False
+        try:
+            config = GhostclawConfig.load(repo_path, **cli_overrides)
+        except Exception as e:
+            print(f"Configuration Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    if args.ai_codeindex:
-        cli_overrides['use_ai_codeindex'] = True
-    elif args.no_ai_codeindex:
-        cli_overrides['use_ai_codeindex'] = False
+        analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
+        agent = GhostAgent(config, repo_path, analyzer=analyzer)
+        
+        # Setup hooks for the CLI
+        console = Console() if HAS_RICH and not args.json else None
+        status = None
+        live = None
+        synthesis_content = []
 
-    try:
-        config = GhostclawConfig.load(repo_path, **cli_overrides)
-    except Exception as e:
-        print(f"Configuration Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
-
-    report = analyzer.analyze(repo_path, use_cache=use_cache, config=config)
-
-    # 0.5. Ghost Engine Synthesis UI Rendering
-    if config.use_ai and "ai_prompt" in report and "ai_synthesis" not in report:
-        llm_client = LLMClient(config, repo_path)
-        prompt = report["ai_prompt"]
-
-        async def _consume_stream():
-            content = []
-
-            print("\n" + "="*50 + "\n")
-            print("🧠 Ghost Engine Synthesis:\n")
-
-            if HAS_RICH and not args.json:
-                console = Console()
-                status = console.status("[bold green]Ghostclaw is analyzing architecture and synthesizing vibes...[/bold green]", spinner="dots")
+        async def on_pre_analyze(data):
+            nonlocal status
+            if console:
+                status = console.status("[bold green]Ghostclaw is analyzing architecture...[/bold green]", spinner="dots")
                 status.start()
 
-            first_chunk_received = False
+        async def on_post_metrics(data):
+            nonlocal status
+            if status:
+                status.update("[bold blue]Metrics collected. Preparing Ghost Engine...[/bold blue]")
 
-            try:
-                if HAS_RICH and not args.json:
-                    from rich.live import Live
-                    from rich.text import Text
+        async def on_pre_synthesis(data):
+            nonlocal status
+            if status:
+                status.update("[bold cyan]🧠 Ghost Engine Synthesis starting...[/bold cyan]")
+                print("\n" + "="*50 + "\n")
+                print("🧠 Ghost Engine Synthesis:\n")
 
-                    with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
-                        async for chunk in llm_client.stream_analysis(prompt):
-                            if not first_chunk_received:
-                                first_chunk_received = True
-                                status.stop()
-
-                            content.append(chunk)
-                            live.update(Text("".join(content)))
-
-                    full_text = "".join(content)
-                    print("\n\n" + "="*50)
-                    if full_text.strip():
-                        console.print(Markdown(full_text))
-                else:
-                    async for chunk in llm_client.stream_analysis(prompt):
-                        if not first_chunk_received:
-                            first_chunk_received = True
-
-                        sys.stdout.write(chunk)
-                        sys.stdout.flush()
-                        content.append(chunk)
-
-                    full_text = "".join(content)
-                    print("\n\n" + "="*50)
-
-                return full_text
-            finally:
-                if HAS_RICH and not args.json and not first_chunk_received:
+        async def on_synthesis_chunk(data):
+            nonlocal status, live
+            chunk = data["chunk"]
+            synthesis_content.append(chunk)
+            
+            if console:
+                if status:
                     status.stop()
+                    status = None
+                
+                if not live:
+                    from rich.live import Live
+                    live = Live(Text(""), console=console, refresh_per_second=10, transient=True)
+                    live.start()
+                
+                live.update(Text("".join(synthesis_content)))
+            else:
+                sys.stdout.write(chunk)
+                sys.stdout.flush()
+
+        async def on_post_synthesis(data):
+            nonlocal live
+            if live:
+                live.stop()
+                live = None
+            
+            print("\n\n" + "="*50)
+            if console and synthesis_content:
+                full_text = "".join(synthesis_content)
+                if full_text.strip(): console.print(Markdown(full_text))
+
+        async def on_reasoning_chunk(data):
+            nonlocal status, live
+            chunk = data["chunk"]
+            if console:
+                if status:
+                    status.stop()
+                    status = None
+                if not live:
+                    from rich.live import Live
+                    live = Live(Text(""), console=console, refresh_per_second=10, transient=True)
+                    live.start()
+                # Display reasoning in dimmed/italicized style
+                current_text = live.get_renderable()
+                if isinstance(current_text, Text):
+                    current_text.append(chunk, style="dim italic")
+                    live.update(current_text)
+            else:
+                sys.stdout.write(f"\033[2m{chunk}\033[0m")
+                sys.stdout.flush()
+
+        agent.on(AgentEvent.PRE_ANALYZE, on_pre_analyze)
+        agent.on(AgentEvent.POST_METRICS, on_post_metrics)
+        agent.on(AgentEvent.PRE_SYNTHESIS, on_pre_synthesis)
+        agent.on(AgentEvent.REASONING_CHUNK, on_reasoning_chunk)
+        agent.on(AgentEvent.SYNTHESIS_CHUNK, on_synthesis_chunk)
+        agent.on(AgentEvent.POST_SYNTHESIS, on_post_synthesis)
 
         try:
-            ai_synthesis = asyncio.run(_consume_stream())
-            report["ai_synthesis"] = ai_synthesis
-
-            # Re-cache the report with the new AI synthesis if caching is enabled
-            # Do NOT cache if it's a dry run (as the synthesis is just a placeholder string)
-            # By this point, any true exceptions raised in stream_analysis will trigger the except block.
+            report = asyncio.run(agent.run())
+            # Update cache if post-synthesis (Agent handles synthesis internally now)
             if use_cache and cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
                 cache.set(report["metadata"]["fingerprint"], report)
-
         except Exception as e:
-            report["ai_synthesis"] = f"Error during AI synthesis: {e}"
+            if status: status.stop()
+            if live: live.stop()
+            print(f"Analysis Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    # 1. Prepare and write report file if needed (must happen before stdout)
-    report_file_path = None
-    if not args.no_write_report:
-        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-        filename = f"ARCHITECTURE-REPORT-{now}.md"
-        ghostclaw_dir = Path(repo_path) / ".ghostclaw"
-        try:
-            ghostclaw_dir.mkdir(parents=True, exist_ok=True)
-            report_file_path = ghostclaw_dir / filename
-            md_content = generate_markdown_report(report)
-            report_file_path.write_text(md_content, encoding='utf-8')
+        # Write Report
+        report_file_path = None
+        if not args.no_write_report:
+            now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            filename = f"ARCHITECTURE-REPORT-{now}.md"
+            ghostclaw_dir = Path(repo_path) / ".ghostclaw"
+            try:
+                ghostclaw_dir.mkdir(parents=True, exist_ok=True)
+                report_file_path = ghostclaw_dir / filename
+                report_file_path.write_text(generate_markdown_report(report), encoding='utf-8')
+                if not args.create_pr:
+                    gitignore_path = Path(repo_path) / ".gitignore"
+                    if gitignore_path.exists():
+                        content = gitignore_path.read_text(encoding='utf-8')
+                        if ".ghostclaw" not in content and ".ghostclaw/" not in content:
+                            newline = "\n" if not content.endswith("\n") else ""
+                            with open(gitignore_path, "a", encoding="utf-8") as f:
+                                f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
+            except Exception as e:
+                print(f"Error writing report: {e}", file=sys.stderr)
 
-            # Phase 0: Gitignore Injection (Skip if creating a PR, so git add will work)
-            if not args.create_pr:
-                gitignore_path = Path(repo_path) / ".gitignore"
-                if gitignore_path.exists():
-                    content = gitignore_path.read_text(encoding='utf-8')
-                    if ".ghostclaw" not in content and ".ghostclaw/" not in content:
-                        # Append it
-                        newline = "\n" if not content.endswith("\n") else ""
-                        with open(gitignore_path, "a", encoding="utf-8") as f:
-                            f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
-                else:
-                    # Optionally, we could create it, but usually we just warn or leave it alone.
-                    pass
+        # Output
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            print_report(report)
 
-        except Exception as e:
-            print(f"Error writing report file or updating gitignore: {e}", file=sys.stderr)
-            report_file_path = None
+        info_file = sys.stderr if args.json else sys.stdout
+        if report_file_path:
+            print(f"📝 Report written to: {report_file_path.absolute()}", file=info_file)
 
-    # 2. Output to stdout
-    if args.json:
-        print(json.dumps(report, indent=2))
-    else:
-        print_report(report)
+        remote_url = detect_github_remote(repo_path)
+        if remote_url and not args.create_pr:
+            print(f"💡 Tip: This repository has a GitHub remote.", file=info_file)
+            print(f"   To create a PR with this report, run:", file=info_file)
+            print(f"   ghostclaw analyze \"{repo_path}\" --create-pr", file=info_file)
 
-    # 3. Print confirmations and suggestions
-    # Use stderr for these if --json is active, to keep stdout pipeable
-    info_file = sys.stderr if args.json else sys.stdout
+        if args.create_pr:
+            if not report_file_path:
+                print("Error: Report file missing.", file=sys.stderr)
+            else:
+                title = args.pr_title or f"🏰 Architecture Report - {datetime.datetime.now().strftime('%Y-%m-%d')}"
+                body = args.pr_body or f"Ghostclaw has completed an architectural review of the codebase.\n\n**Vibe Score: {report['vibe_score']}/100**\n\nPlease review the attached report for details."
+                create_github_pr(repo_path, report_file_path, title, body)
 
-    if report_file_path:
-        print(f"📝 Report written to: {report_file_path.absolute()}", file=info_file)
+        if args.cache_stats and cache:
+            info = cache.info()
+            print(f"📊 Cache: {info['entries']} entries, {info['total_size_bytes']} bytes total ({info['cache_dir']})", file=info_file)
 
-    remote_url = detect_github_remote(repo_path)
-    if remote_url and not args.create_pr:
-        print(f"💡 Tip: This repository has a GitHub remote.", file=info_file)
-        print(f"   To create a PR with this report, run:", file=info_file)
-        print(f"   ghostclaw \"{repo_path}\" --create-pr", file=info_file)
-
-    # 4. Create PR if requested
-    if args.create_pr:
-        if not report_file_path:
-            print("Error: Cannot create PR because report file was not written.", file=sys.stderr)
-            return
-
-        title = args.pr_title or f"🏰 Architecture Report - {datetime.datetime.now().strftime('%Y-%m-%d')}"
-        body = args.pr_body or f"Ghostclaw has completed an architectural review of the codebase.\n\n**Vibe Score: {report['vibe_score']}/100**\n\nPlease review the attached report for details."
-        create_github_pr(repo_path, report_file_path, title, body)
-
-    # 5. Cache statistics if requested
-    if args.cache_stats and cache:
-        info = cache.info()
-        stats_line = f"📊 Cache: {info['entries']} entries, {info['total_size_bytes']} bytes total ({info['cache_dir']})"
-        print(stats_line, file=sys.stderr if args.json else sys.stdout)
-
-    # If this was a cache hit, optionally indicate (not needed if --json but could still show in stderr)
-    if not args.json and report.get('metadata', {}).get('cache_hit'):
-        print("⚡ Cache hit!", file=sys.stderr)
-
+        if not args.json and report.get('metadata', {}).get('cache_hit'):
+            print("⚡ Cache hit!", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
