@@ -277,43 +277,50 @@ class CodebaseAnalyzer:
 
                 first_chunk_received = False
 
-                if has_rich:
-                    from rich.live import Live
-                    from rich.text import Text
+                try:
+                    if has_rich:
+                        from rich.live import Live
+                        from rich.text import Text
 
-                    # Buffer to hold full text content
-                    with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
+                        # Buffer to hold full text content
+                        with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
+                            async for chunk in llm_client.stream_analysis(prompt):
+                                if not first_chunk_received:
+                                    first_chunk_received = True
+                                    status.stop()
+
+                                content.append(chunk)
+                                # Render unformatted raw text in the Live context so it automatically clears when finished
+                                # without breaking markdown or leaving dirty lines if terminal wraps
+                                live.update(Text("".join(content)))
+
+                        full_text = "".join(content)
+                        print("\n\n" + "="*50)
+                        if full_text.strip():
+                            console.print(Markdown(full_text))
+                    else:
                         async for chunk in llm_client.stream_analysis(prompt):
                             if not first_chunk_received:
                                 first_chunk_received = True
-                                status.stop()
 
+                            # Fallback for systems without Rich
+                            sys.stdout.write(chunk)
+                            sys.stdout.flush()
                             content.append(chunk)
-                            # Render unformatted raw text in the Live context so it automatically clears when finished
-                            # without breaking markdown or leaving dirty lines if terminal wraps
-                            live.update(Text("".join(content)))
 
-                    full_text = "".join(content)
-                    print("\n\n" + "="*50)
-                    if full_text.strip():
-                        console.print(Markdown(full_text))
-                else:
-                    async for chunk in llm_client.stream_analysis(prompt):
-                        if not first_chunk_received:
-                            first_chunk_received = True
+                        full_text = "".join(content)
+                        print("\n\n" + "="*50)
 
-                        # Fallback for systems without Rich
-                        sys.stdout.write(chunk)
-                        sys.stdout.flush()
-                        content.append(chunk)
+                    return full_text
+                finally:
+                    if has_rich and not first_chunk_received:
+                        status.stop()
 
-                    full_text = "".join(content)
-                    print("\n\n" + "="*50)
-
-                return full_text
-
-            ai_synthesis = asyncio.run(_consume_stream())
-            report["ai_synthesis"] = ai_synthesis
+            try:
+                ai_synthesis = asyncio.run(_consume_stream())
+                report["ai_synthesis"] = ai_synthesis
+            except Exception as e:
+                report["ai_synthesis"] = f"Error during AI synthesis: {e}"
 
         # Store in cache if enabled and we have a fingerprint
         if use_cache and self.cache is not None and fingerprint is not None:

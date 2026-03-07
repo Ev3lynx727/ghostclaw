@@ -38,13 +38,11 @@ class LLMClient:
             self.model = "gpt-4o"
         elif self.config.ai_provider == "anthropic":
             self.base_url = "https://api.anthropic.com/v1/messages"
-            self.model = "claude-sonnet-4-20250514"
+            self.model = "claude-3-5-sonnet-20241022"
         else:
-            raise ValueError(
-                f"Unsupported AI provider: '{self.config.ai_provider}'. "
-                "Supported providers: openrouter, openai, anthropic"
-            )
-
+            # Default to OpenRouter as fallback
+            self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+            self.model = "anthropic/claude-3.5-sonnet"
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count for a given text."""
@@ -93,6 +91,21 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Failed to write verbose log: {e}")
 
+    def _get_headers(self) -> dict:
+        if self.config.ai_provider == "anthropic":
+            return {
+                "x-api-key": self.config.api_key,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json"
+            }
+        else:
+            return {
+                "Authorization": f"Bearer {self.config.api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
+                "X-Title": "Ghostclaw Architecture Engine"
+            }
+
     @retry(
         wait=wait_exponential(multiplier=1, min=4, max=10),
         stop=stop_after_attempt(3),
@@ -100,12 +113,7 @@ class LLMClient:
     )
     async def _make_api_call(self, payload: dict) -> dict:
         """Make the actual REST API call with retries for 429/50x errors."""
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
-            "X-Title": "Ghostclaw Architecture Engine"
-        }
+        headers = self._get_headers()
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -129,30 +137,49 @@ class LLMClient:
         if not self.config.api_key:
             return "Error: API key not provided. Set GHOSTCLAW_API_KEY environment variable."
 
-        payload = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        }
+        if self.config.ai_provider == "anthropic":
+            payload = {
+                "model": self.model,
+                "max_tokens": 4096,
+                "system": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices.",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            }
+        else:
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            }
 
         try:
             response_data = await self._make_api_call(payload)
             self._log_verbose(payload, response_data=response_data)
 
-            # Extract content based on standard OpenAI-like schema
-            if "choices" in response_data and len(response_data["choices"]) > 0:
-                message = response_data["choices"][0].get("message", {})
-                return message.get("content", "Error: No content returned from model.")
+            if self.config.ai_provider == "anthropic":
+                if "content" in response_data and len(response_data["content"]) > 0:
+                    return response_data["content"][0].get("text", "Error: No content returned from model.")
+                else:
+                    return f"Error: Unexpected response format: {json.dumps(response_data)}"
             else:
-                return f"Error: Unexpected response format: {json.dumps(response_data)}"
+                # Extract content based on standard OpenAI-like schema
+                if "choices" in response_data and len(response_data["choices"]) > 0:
+                    message = response_data["choices"][0].get("message", {})
+                    return message.get("content", "Error: No content returned from model.")
+                else:
+                    return f"Error: Unexpected response format: {json.dumps(response_data)}"
 
         except Exception as e:
             self._log_verbose(payload, error=str(e))
@@ -170,27 +197,36 @@ class LLMClient:
             yield "Error: API key not provided. Set GHOSTCLAW_API_KEY environment variable."
             return
 
-        payload = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "stream": True
-        }
+        if self.config.ai_provider == "anthropic":
+            payload = {
+                "model": self.model,
+                "max_tokens": 4096,
+                "system": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices.",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "stream": True
+            }
+        else:
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "stream": True
+            }
 
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
-            "X-Title": "Ghostclaw Architecture Engine"
-        }
+        headers = self._get_headers()
 
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
@@ -203,11 +239,17 @@ class LLMClient:
                                 break
                             try:
                                 chunk = json.loads(data_str)
-                                if "choices" in chunk and len(chunk["choices"]) > 0:
-                                    delta = chunk["choices"][0].get("delta", {})
-                                    content = delta.get("content", "")
-                                    if content:
-                                        yield content
+                                if self.config.ai_provider == "anthropic":
+                                    if chunk.get("type") == "content_block_delta":
+                                        delta = chunk.get("delta", {})
+                                        if delta.get("type") == "text_delta":
+                                            yield delta.get("text", "")
+                                else:
+                                    if "choices" in chunk and len(chunk["choices"]) > 0:
+                                        delta = chunk["choices"][0].get("delta", {})
+                                        content = delta.get("content", "")
+                                        if content:
+                                            yield content
                             except json.JSONDecodeError:
                                 pass
         except Exception as e:
