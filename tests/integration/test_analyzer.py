@@ -40,4 +40,4 @@ def test_analyze_unknown_stack(tmp_path):
     analyzer = CodebaseAnalyzer()
     report = analyzer.analyze(str(tmp_path))
     assert report["stack"] == "unknown"
-    assert "Cannot detect tech stack" in report["issues"][0]
+    assert "Standard stack detection failed" in report["issues"][0]

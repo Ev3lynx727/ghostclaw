@@ -7,6 +7,9 @@ from ghostclaw.core.detector import detect_stack, find_files
 from ghostclaw.core.validator import RuleValidator
 from ghostclaw.stacks import get_analyzer
 from ghostclaw.core.cache import LocalCache, compute_fingerprint
+from ghostclaw.core.config import GhostclawConfig
+from ghostclaw.core.llm_client import LLMClient
+from ghostclaw.core.context_builder import ContextBuilder
 
 # Defensive import for Phase 1: pyscn Integration
 try:
@@ -37,26 +40,31 @@ class CodebaseAnalyzer:
         self.validator = validator or RuleValidator()
         self.cache = cache
 
-    def analyze(self, root: str, use_cache: bool = True, use_pyscn: bool = None, use_ai_codeindex: bool = None) -> Dict:
+    def analyze(self, root: str, use_cache: bool = True, config: Optional[GhostclawConfig] = None) -> Dict:
         """
         Perform a complete architectural analysis of a codebase.
 
         Args:
             root: Path to repository root
             use_cache: Whether to use/write cache (if cache enabled)
-            use_pyscn: Explicitly enable/disable PySCN integration
-            use_ai_codeindex: Explicitly enable/disable AI-CodeIndex integration
+            config: GhostclawConfig instance with user settings
 
 
         Returns:
             Complete analysis report with vibe score, issues, ghosts, etc.
         """
         root_path = Path(root)
+        config = config or GhostclawConfig()
+        use_pyscn = config.use_pyscn
+        use_ai_codeindex = config.use_ai_codeindex
 
         fingerprint = None
         # 0. Cache shortcut if enabled
         if use_cache and self.cache is not None:
-            fingerprint = compute_fingerprint(root_path)
+            base_fingerprint = compute_fingerprint(root_path)
+            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}"
+            fingerprint = base_fingerprint + config_suffix
+
             cached_report = self.cache.get(fingerprint)
             if cached_report is not None:
                 # Mark as cache hit for transparency
@@ -169,22 +177,21 @@ class CodebaseAnalyzer:
                         issues.append("Info: Optional dependency 'ai-codeindex' not found. Install for AST graphs.")
 
         else:
-            # Upgrade: Attempt AI-driven fallback ingestion if standard stack detection fails
+            # Upgrade: Fallback logic for unknown stacks
             issues = ["Standard stack detection failed."]
-            ghosts = ["Attempting AI Token Ingestion fallback (AI Ghostclaw)"]
-            
-            # Instead of failing immediately, hook into AI CodeIndex to parse the structure
-            if HAS_AI_CODEINDEX:
-                ai_codeindex = AICodeIndexWrapper(root)
-                if ai_codeindex.is_available():
-                    ai_codeindex_used = True
-                    ghosts.append("Successfully hooked into AI CodeIndex to ingest unknown architecture.")
-                    # In a full implementation, you'd feed `ai_codeindex.build_graph()` to the LLM here!
-                else:
-                    issues.append("AI-CodeIndex unavailable for fallback ingestion.")
-            
+            ghosts = []
             flags = []
             coupling_metrics = {}
+
+            if config.use_ai:
+                ghosts.append("Attempting AI Synthesis fallback (Ghost Engine)")
+                if HAS_AI_CODEINDEX:
+                    ai_codeindex = AICodeIndexWrapper(root)
+                    if ai_codeindex.is_available():
+                        ai_codeindex_used = True
+                        ghosts.append("Successfully hooked into AI CodeIndex to ingest unknown architecture.")
+                    else:
+                        issues.append("AI-CodeIndex unavailable for fallback ingestion.")
         # 5. Merge metrics for vibe score
         combined_metrics = {**base_metrics, "coupling_metrics": coupling_metrics}
 
@@ -236,10 +243,30 @@ class CodebaseAnalyzer:
             }
         }
 
+        # 9. Ghost Engine Synthesis Prompt Building
+        # We don't execute the LLM here to keep terminal IO separate (handled by CLI)
+        if config.use_ai:
+            context_builder = ContextBuilder()
+            prompt = context_builder.build_prompt(
+                metrics=base_metrics,
+                issues=issues,
+                ghosts=ghosts,
+                flags=flags,
+                coupling_metrics=coupling_metrics,
+                import_edges=import_edges
+            )
+            report["ai_prompt"] = prompt
+
         # Store in cache if enabled and we have a fingerprint
+        # Attach fingerprint to metadata so CLI can update cache after AI synthesis
+        if fingerprint is not None:
+            report["metadata"]["fingerprint"] = fingerprint
+
         if use_cache and self.cache is not None and fingerprint is not None:
             # Only cache if analysis succeeded (has vibe_score)
             if "vibe_score" in report:
+                # We cache the pre-LLM state. The CLI will overwrite this cache entry
+                # with the post-LLM state once synthesis is complete.
                 self.cache.set(fingerprint, report)
 
         return report

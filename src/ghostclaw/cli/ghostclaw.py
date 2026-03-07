@@ -14,7 +14,18 @@ from typing import Dict, Optional
 from dotenv import load_dotenv
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.cache import LocalCache
+from ghostclaw.core.config import GhostclawConfig
+from ghostclaw.core.llm_client import LLMClient
 from ghostclaw.cli import __version__
+import asyncio
+
+try:
+    from rich.console import Console
+    from rich.markdown import Markdown
+    from rich.status import Status
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
 
 load_dotenv()
 
@@ -102,8 +113,10 @@ def create_github_pr(repo_path: str, report_file: Path, title: str, body: str):
     try:
         # Create branch
         subprocess.run(["git", "checkout", "-b", branch_name], cwd=repo_path, check=True, capture_output=True, text=True)
-        # Add report
-        subprocess.run(["git", "add", report_file.name], cwd=repo_path, check=True, capture_output=True, text=True)
+        # Add report with force (to bypass gitignore if needed)
+        # Convert absolute report file path to relative path
+        rel_report_path = report_file.relative_to(Path(repo_path))
+        subprocess.run(["git", "add", "-f", str(rel_report_path)], cwd=repo_path, check=True, capture_output=True, text=True)
         # Commit
         subprocess.run(["git", "commit", "-m", f"Add architecture report: {report_file.name}"], cwd=repo_path, check=True, capture_output=True, text=True)
         # Push
@@ -163,6 +176,10 @@ def print_report(report: Dict):
 
     print("💡 Tip: Run with '--patch' to generate refactor suggestions (not yet implemented)")
 
+    if "ai_synthesis" in report:
+        # Final formatting was already handled live by the analyzer during generation
+        pass
+
 
 def update_ghostclaw():
     """Perform self-update via pip or git."""
@@ -217,6 +234,18 @@ def main():
     parser.add_argument("--cache-ttl", type=int, default=7, help="Cache TTL in days (default: 7)")
     parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
 
+    # AI options
+    parser.add_argument("--use-ai", action="store_true", help="Enable Ghost Engine AI synthesis")
+    parser.add_argument("--ai-provider", help="AI Provider (openrouter, openai, anthropic)")
+    parser.add_argument("--dry-run", action="store_true", help="Dry run mode: prints prompt and token count without API call")
+    parser.add_argument("--verbose", action="store_true", help="Verbose mode: saves raw API requests/responses to debug.log")
+
+    # Engine Integrations (Phase 1)
+    parser.add_argument("--pyscn", action="store_true", help="Enable PySCN integration")
+    parser.add_argument("--no-pyscn", action="store_true", help="Explicitly disable PySCN integration")
+    parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
+    parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
+
     args = parser.parse_args()
 
     if args.update:
@@ -224,6 +253,28 @@ def main():
         sys.exit(0)
 
     repo_path = args.repo_path
+    if repo_path == "init":
+        # Scaffold .ghostclaw.json template
+        cwd = Path.cwd()
+        gc_dir = cwd / ".ghostclaw"
+        gc_dir.mkdir(parents=True, exist_ok=True)
+        config_file = gc_dir / "ghostclaw.json"
+        if config_file.exists():
+            print(f"⚠️ {config_file} already exists. Skipping initialization.")
+            sys.exit(0)
+
+        template = {
+            "use_ai": True,
+            "ai_provider": "openrouter",
+            "use_pyscn": False,
+            "use_ai_codeindex": False
+        }
+        with open(config_file, "w", encoding="utf-8") as f:
+            json.dump(template, f, indent=2)
+        print(f"✅ Created template config at {config_file}")
+        print("💡 Remember: Do NOT save your GHOSTCLAW_API_KEY in this file. Use an environment variable or ~/.ghostclaw/ghostclaw.json.")
+        sys.exit(0)
+
     if not repo_path:
         parser.print_help()
         sys.exit(1)
@@ -238,20 +289,133 @@ def main():
     if use_cache:
         cache = LocalCache(cache_dir=args.cache_dir, ttl_days=args.cache_ttl)
 
+    # Initialize Config
+    # Extract known CLI overrides
+    cli_overrides = {}
+    if args.use_ai:
+        cli_overrides['use_ai'] = True
+    if args.ai_provider:
+        cli_overrides['ai_provider'] = args.ai_provider
+    if args.dry_run:
+        cli_overrides['dry_run'] = True
+    if args.verbose:
+        cli_overrides['verbose'] = True
+
+    # Handle backward compatibility flags
+    if args.pyscn:
+        cli_overrides['use_pyscn'] = True
+    elif args.no_pyscn:
+        cli_overrides['use_pyscn'] = False
+
+    if args.ai_codeindex:
+        cli_overrides['use_ai_codeindex'] = True
+    elif args.no_ai_codeindex:
+        cli_overrides['use_ai_codeindex'] = False
+
+    try:
+        config = GhostclawConfig.load(repo_path, **cli_overrides)
+    except Exception as e:
+        print(f"Configuration Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
-    report = analyzer.analyze(repo_path, use_cache=use_cache)
+
+    report = analyzer.analyze(repo_path, use_cache=use_cache, config=config)
+
+    # 0.5. Ghost Engine Synthesis UI Rendering
+    if config.use_ai and "ai_prompt" in report and "ai_synthesis" not in report:
+        llm_client = LLMClient(config, repo_path)
+        prompt = report["ai_prompt"]
+
+        async def _consume_stream():
+            content = []
+
+            print("\n" + "="*50 + "\n")
+            print("🧠 Ghost Engine Synthesis:\n")
+
+            if HAS_RICH and not args.json:
+                console = Console()
+                status = console.status("[bold green]Ghostclaw is analyzing architecture and synthesizing vibes...[/bold green]", spinner="dots")
+                status.start()
+
+            first_chunk_received = False
+
+            try:
+                if HAS_RICH and not args.json:
+                    from rich.live import Live
+                    from rich.text import Text
+
+                    with Live(Text(""), console=console, refresh_per_second=10, transient=True) as live:
+                        async for chunk in llm_client.stream_analysis(prompt):
+                            if not first_chunk_received:
+                                first_chunk_received = True
+                                status.stop()
+
+                            content.append(chunk)
+                            live.update(Text("".join(content)))
+
+                    full_text = "".join(content)
+                    print("\n\n" + "="*50)
+                    if full_text.strip():
+                        console.print(Markdown(full_text))
+                else:
+                    async for chunk in llm_client.stream_analysis(prompt):
+                        if not first_chunk_received:
+                            first_chunk_received = True
+
+                        sys.stdout.write(chunk)
+                        sys.stdout.flush()
+                        content.append(chunk)
+
+                    full_text = "".join(content)
+                    print("\n\n" + "="*50)
+
+                return full_text
+            finally:
+                if HAS_RICH and not args.json and not first_chunk_received:
+                    status.stop()
+
+        try:
+            ai_synthesis = asyncio.run(_consume_stream())
+            report["ai_synthesis"] = ai_synthesis
+
+            # Re-cache the report with the new AI synthesis if caching is enabled
+            # Do NOT cache if it's a dry run (as the synthesis is just a placeholder string)
+            # By this point, any true exceptions raised in stream_analysis will trigger the except block.
+            if use_cache and cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
+                cache.set(report["metadata"]["fingerprint"], report)
+
+        except Exception as e:
+            report["ai_synthesis"] = f"Error during AI synthesis: {e}"
 
     # 1. Prepare and write report file if needed (must happen before stdout)
     report_file_path = None
     if not args.no_write_report:
         now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         filename = f"ARCHITECTURE-REPORT-{now}.md"
-        report_file_path = Path(repo_path) / filename
-        md_content = generate_markdown_report(report)
+        ghostclaw_dir = Path(repo_path) / ".ghostclaw"
         try:
+            ghostclaw_dir.mkdir(parents=True, exist_ok=True)
+            report_file_path = ghostclaw_dir / filename
+            md_content = generate_markdown_report(report)
             report_file_path.write_text(md_content, encoding='utf-8')
+
+            # Phase 0: Gitignore Injection (Skip if creating a PR, so git add will work)
+            if not args.create_pr:
+                gitignore_path = Path(repo_path) / ".gitignore"
+                if gitignore_path.exists():
+                    content = gitignore_path.read_text(encoding='utf-8')
+                    if ".ghostclaw" not in content and ".ghostclaw/" not in content:
+                        # Append it
+                        newline = "\n" if not content.endswith("\n") else ""
+                        with open(gitignore_path, "a", encoding="utf-8") as f:
+                            f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
+                else:
+                    # Optionally, we could create it, but usually we just warn or leave it alone.
+                    pass
+
         except Exception as e:
-            print(f"Error writing report file: {e}", file=sys.stderr)
+            print(f"Error writing report file or updating gitignore: {e}", file=sys.stderr)
             report_file_path = None
 
     # 2. Output to stdout
