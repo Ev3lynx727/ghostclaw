@@ -380,7 +380,9 @@ def main():
             report["ai_synthesis"] = ai_synthesis
 
             # Re-cache the report with the new AI synthesis if caching is enabled
-            if use_cache and cache and "metadata" in report and "fingerprint" in report["metadata"]:
+            # Do NOT cache if it's a dry run (as the synthesis is just a placeholder string)
+            # By this point, any true exceptions raised in stream_analysis will trigger the except block.
+            if use_cache and cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
                 cache.set(report["metadata"]["fingerprint"], report)
 
         except Exception as e:

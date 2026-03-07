@@ -135,7 +135,7 @@ class LLMClient:
             return "Dry run enabled. API call skipped."
 
         if not self.config.api_key:
-            return "Error: API key not provided. Set GHOSTCLAW_API_KEY environment variable."
+            raise ValueError("API key not provided. Set GHOSTCLAW_API_KEY environment variable.")
 
         if self.config.ai_provider == "anthropic":
             payload = {
@@ -172,18 +172,18 @@ class LLMClient:
                 if "content" in response_data and len(response_data["content"]) > 0:
                     return response_data["content"][0].get("text", "Error: No content returned from model.")
                 else:
-                    return f"Error: Unexpected response format: {json.dumps(response_data)}"
+                    raise ValueError(f"Unexpected response format: {json.dumps(response_data)}")
             else:
                 # Extract content based on standard OpenAI-like schema
                 if "choices" in response_data and len(response_data["choices"]) > 0:
                     message = response_data["choices"][0].get("message", {})
                     return message.get("content", "Error: No content returned from model.")
                 else:
-                    return f"Error: Unexpected response format: {json.dumps(response_data)}"
+                    raise ValueError(f"Unexpected response format: {json.dumps(response_data)}")
 
         except Exception as e:
             self._log_verbose(payload, error=str(e))
-            return f"Error during AI synthesis: {str(e)}"
+            raise e
 
     async def stream_analysis(self, prompt: str) -> AsyncGenerator[str, None]:
         """Stream analysis from the LLM based on the built prompt."""
@@ -194,8 +194,7 @@ class LLMClient:
             return
 
         if not self.config.api_key:
-            yield "Error: API key not provided. Set GHOSTCLAW_API_KEY environment variable."
-            return
+            raise ValueError("API key not provided. Set GHOSTCLAW_API_KEY environment variable.")
 
         if self.config.ai_provider == "anthropic":
             payload = {
@@ -254,4 +253,4 @@ class LLMClient:
                                 pass
         except Exception as e:
             self._log_verbose(payload, error=str(e))
-            yield f"\nError during streaming: {str(e)}"
+            raise e

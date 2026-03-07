@@ -1,7 +1,6 @@
 """Core analyzer — orchestrates stack detection, metrics, and stack-specific analysis."""
 
 import datetime
-import asyncio
 from pathlib import Path
 from typing import Dict, Optional
 from ghostclaw.core.detector import detect_stack, find_files
@@ -63,7 +62,7 @@ class CodebaseAnalyzer:
         # 0. Cache shortcut if enabled
         if use_cache and self.cache is not None:
             base_fingerprint = compute_fingerprint(root_path)
-            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}:dryrun={config.dry_run}"
+            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}"
             fingerprint = base_fingerprint + config_suffix
 
             cached_report = self.cache.get(fingerprint)

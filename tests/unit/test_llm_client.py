@@ -19,8 +19,8 @@ async def test_generate_analysis_dry_run():
 async def test_generate_analysis_missing_api_key():
     config = GhostclawConfig(api_key=None, use_ai=True)
     client = LLMClient(config, ".")
-    result = await client.generate_analysis("test prompt")
-    assert "Error: API key not provided" in result
+    with pytest.raises(ValueError, match="API key not provided"):
+        await client.generate_analysis("test prompt")
 
 def test_token_budget_exceeded(config):
     client = LLMClient(config, ".")
