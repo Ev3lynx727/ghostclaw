@@ -57,7 +57,7 @@ async def test_agent_lifecycle_hooks(config):
     ]
     
     for event in expected_events:
-        assert event in events_triggered
+        assert event.name in events_triggered
 
 @pytest.mark.asyncio
 async def test_agent_error_hook(config):
