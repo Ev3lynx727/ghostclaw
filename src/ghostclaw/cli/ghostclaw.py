@@ -334,7 +334,7 @@ def main():
     disable_parser.add_argument("name", help="Name of the plugin to disable")
 
     # Backward compatibility: if first arg is a directory, default to 'analyze'
-    if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "-h", "--help", "--version"]:
+    if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "doctor", "bridge", "-h", "--help", "--version"]:
         sys.argv.insert(1, "analyze")
 
     args = parser.parse_args()
