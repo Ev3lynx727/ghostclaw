@@ -1,13 +1,12 @@
-"""Tests for core stack detector."""
-
 import sys
-import os
-import pytest
 from pathlib import Path
-from ghostclaw.core.detector import detect_stack, find_files
 
 # Add repo root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+import os
+import pytest
+from ghostclaw.core.detector import detect_stack, find_files
 
 
 def test_detect_node_by_package_json(tmp_path):

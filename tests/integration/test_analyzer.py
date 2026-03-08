@@ -1,12 +1,12 @@
-"""Integration tests for CodebaseAnalyzer."""
-
 import sys
+from pathlib import Path
+
+# Add repo root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
 import asyncio
 import pytest
-from pathlib import Path
 from ghostclaw.core.analyzer import CodebaseAnalyzer
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 @pytest.mark.asyncio

@@ -1,11 +1,13 @@
 """Tests for rule validator."""
 
 import sys
-import pytest
 from pathlib import Path
-from ghostclaw.core.validator import RuleValidator
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add repo root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+import pytest
+from ghostclaw.core.validator import RuleValidator
 
 
 def test_node_average_file_size_rule():

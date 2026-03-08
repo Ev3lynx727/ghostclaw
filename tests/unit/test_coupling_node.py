@@ -1,11 +1,13 @@
 """Tests for Node.js import coupling analysis."""
 
 import sys
-import pytest
 from pathlib import Path
-from ghostclaw.core.node_coupling import NodeImportAnalyzer
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add repo root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+import pytest
+from ghostclaw.core.node_coupling import NodeImportAnalyzer
 
 
 def create_node_repo(tmp_path: Path, structure: dict):

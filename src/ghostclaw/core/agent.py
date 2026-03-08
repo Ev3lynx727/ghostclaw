@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from enum import Enum, auto
 from typing import Dict, List, Callable, Any, Optional
 from ghostclaw.core.config import GhostclawConfig
@@ -32,6 +33,8 @@ class GhostAgent:
         self.hooks: Dict[AgentEvent, List[Callable[[Dict], Any]]] = {
             event: [] for event in AgentEvent
         }
+        self.timings: Dict[str, float] = {}
+        self._start_time: float = 0.0
 
     def on(self, event: AgentEvent, callback: Callable[[Dict], Any]):
         """Register a callback for a specific AgentEvent."""
@@ -60,6 +63,7 @@ class GhostAgent:
 
     async def run(self) -> Dict:
         """Execute the full agent workflow with lifecycle hooks and persistence."""
+        self._start_time = time.perf_counter()
         try:
             from ghostclaw.core.adapters.registry import registry
             registry.register_internal_plugins()
@@ -92,9 +96,9 @@ class GhostAgent:
                 await registry.save_report(report)
                 
                 await self._emit(AgentEvent.POST_SYNTHESIS, report)
-                
+            
             self.timings['total'] = time.perf_counter() - self._start_time
-        return report
+            return report
         except Exception as e:
             await self._emit(AgentEvent.ERROR, {"error": str(e)})
             raise e

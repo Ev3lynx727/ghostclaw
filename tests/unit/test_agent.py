@@ -78,3 +78,4 @@ async def test_agent_error_hook(config):
         await agent.run()
     
     assert error_triggered is True
+

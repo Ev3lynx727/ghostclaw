@@ -764,20 +764,20 @@ class CustomAdapter(MetricAdapter):
 
         try:
             report = asyncio.run(agent.run())
-        if args.benchmark:
-            timings = getattr(agent, 'timings', {})
-            if timings:
-                print("\n=== Benchmark Results (seconds) ===", file=sys.stderr)
-                for phase, duration in sorted(timings.items()):
-                    print(f"{phase:20} {duration:>8.3f}s", file=sys.stderr)
-            # Also show cache stats if used
-            if use_cache and cache:
-                info = cache.info()
-                print(f"Cache entries: {info['entries']}, size: {info['total_size_bytes']} bytes", file=sys.stderr)
-            report["_synthesis_streamed"] = synthesis_streamed
-            # Update cache if post-synthesis (Agent handles synthesis internally now)
-            if use_cache and cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
-                cache.set(report["metadata"]["fingerprint"], report)
+            if args.benchmark:
+                timings = getattr(agent, 'timings', {})
+                if timings:
+                    print("\n=== Benchmark Results (seconds) ===", file=sys.stderr)
+                    for phase, duration in sorted(timings.items()):
+                        print(f"{phase:20} {duration:>8.3f}s", file=sys.stderr)
+                # Also show cache stats if used
+                if use_cache and cache:
+                    info = cache.info()
+                    print(f"Cache entries: {info['entries']}, size: {info['total_size_bytes']} bytes", file=sys.stderr)
+                report["_synthesis_streamed"] = synthesis_streamed
+                # Update cache if post-synthesis (Agent handles synthesis internally now)
+                if use_cache and cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
+                    cache.set(report["metadata"]["fingerprint"], report)
         except Exception as e:
             if status: status.stop()
             if live: live.stop()

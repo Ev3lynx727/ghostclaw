@@ -1,11 +1,13 @@
 """Tests for Python import coupling analysis."""
 
 import sys
-import pytest
 from pathlib import Path
-from ghostclaw.core.coupling import PythonImportAnalyzer
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add repo root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+import pytest
+from ghostclaw.core.coupling import PythonImportAnalyzer
 
 
 def create_python_repo(tmp_path: Path, structure: dict):

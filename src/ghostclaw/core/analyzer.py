@@ -29,6 +29,7 @@ class CodebaseAnalyzer:
         """
         self.validator = validator or RuleValidator()
         self.cache = cache
+        self.progress_cb = None
 
     async def analyze(self, root: str, use_cache: bool = True, config: Optional[GhostclawConfig] = None) -> ArchitectureReport:
         """

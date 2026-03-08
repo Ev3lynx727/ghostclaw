@@ -9,7 +9,7 @@ from ghostclaw.core.adapters.base import BaseAdapter, AdapterMetadata
 class DummyAdapter(BaseAdapter):
     def __init__(self, name="dummy", issues=None):
         self.name = name
-        self.issues = issues or ["dummy ran"]
+        self.issues = issues or [f"{name} ran"]
 
     def get_metadata(self):
         return AdapterMetadata(
@@ -22,6 +22,9 @@ class DummyAdapter(BaseAdapter):
 
     async def ghost_analyze(self, root, files):
         return {"issues": self.issues}
+
+    async def is_available(self) -> bool:
+        return True
 
 
 @pytest.fixture
@@ -86,3 +89,6 @@ async def test_plugin_filtering_by_enabled_plugins(fresh_registry):
     fresh_registry.enabled_plugins = set()
     results = await fresh_registry.run_analysis("/", [])
     assert len(results) == 0
+
+
+

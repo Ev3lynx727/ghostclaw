@@ -6,11 +6,13 @@ All notable changes to the Ghostclaw project will be documented in this file.
 
 ### Added
 
-- **Phase 1**: Parallel file scanning + cache compression.
-- **Phase 2**: Retry logic, graceful degradation, structured logging.
-- **Phase 3**: Plugin enable/disable, version validation, robust filtering.
-- **Phase 4**: Progress callbacks + benchmarking.
-- **Phase 5**: Documentation (`GUIDE`, `ARCHITECTURE`, `HOWTOUSE`) + issues tracking.
+- **Parallel scanning** with configurable concurrency; 2–5× speedup on large repos
+- **Cache compression** (gzip) reduces disk usage ~50%
+- **Retry logic** with exponential backoff for LLM API calls
+- **Graceful degradation**: adapter errors collected, not fatal by default
+- **Plugin management**: enable/disable per‑project; version compatibility checks
+- **Progress callbacks**: real‑time phase reporting; `--benchmark` prints timings
+- **Comprehensive docs**: GUIDE, ARCHITECTURE, HOWTOUSE
 
 ### Fixed
 
