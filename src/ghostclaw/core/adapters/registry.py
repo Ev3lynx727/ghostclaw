@@ -116,7 +116,7 @@ class PluginRegistry:
 
                             self.pm.register(instance, name=plugin_name)
 
-                            self._registered_plugins.append((plugin_name, instance))
+
                             self.external_plugins.add(plugin_name)
                         except Exception as e:
                             logger.error(f"Failed to load plugin class {obj.__name__}: {e}")
