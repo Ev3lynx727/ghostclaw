@@ -1,0 +1,29 @@
+name: Aderyn CI
+
+on:
+  push:
+    branches: [ "main", "master", "develop", "v0.1.6" ]
+  pull_request:
+    branches: [ "main", "master", "develop", "v0.1.6" ]
+
+jobs:
+  check:
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run tests
+        run: forge test -vvv
+
+      - name: Aderyn Check
+        uses: Cyfrin/aderyn-ci@v0
+        with:
+          fail-on: high
