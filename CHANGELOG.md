@@ -2,9 +2,24 @@
 
 All notable changes to the Ghostclaw project will be documented in this file.
 
-## [0.1.5] - 2026-03-07 ([#9](https://github.com/Ev3lynx727/ghostclaw/pull/9))
+## [0.1.6] - 2026-03-08
 
 ### Added
+
+- **Phase 1**: Parallel file scanning + cache compression.
+- **Phase 2**: Retry logic, graceful degradation, structured logging.
+- **Phase 3**: Plugin enable/disable, version validation, robust filtering.
+- **Phase 4**: Progress callbacks + benchmarking.
+- **Phase 5**: Documentation (`GUIDE`, `ARCHITECTURE`, `HOWTOUSE`) + issues tracking.
+
+### Fixed
+
+- **TokenBudgetExceededError**: Resolved token budgeting issues in the LLM client.
+- **Plugin Filtering**: Fixed plugin filtering at registration.
+- **Version Import Cycle**: Resolved cyclical import issues related to versioning.
+- **Tests**: All unit and integration tests are passing after fixes.
+
+## [0.1.5] - 2026-03-07 ([#9](https://github.com/Ev3lynx727/ghostclaw/pull/9))### Added
 
 - **Ghost Adapters Architecture**: Replaced monolithic tool logic with a modular **Adapter Pattern** ecosystem powered by `pluggy`.
 - **Plugin Lifecycle Management**: Added a full suite of CLI commands for plugin management:
