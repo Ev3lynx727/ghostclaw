@@ -6,20 +6,24 @@ All notable changes to the Ghostclaw project will be documented in this file.
 
 ### Added
 
-- **Parallel scanning** with configurable concurrency; 2–5× speedup on large repos
-- **Cache compression** (gzip) reduces disk usage ~50%
-- **Retry logic** with exponential backoff for LLM API calls
-- **Graceful degradation**: adapter errors collected, not fatal by default
-- **Plugin management**: enable/disable per‑project; version compatibility checks
-- **Progress callbacks**: real‑time phase reporting; `--benchmark` prints timings
-- **Comprehensive docs**: GUIDE, ARCHITECTURE, HOWTOUSE
+- **Full Shell Stack Support**: Automated detection and specialized analysis for Bash/Zsh scripts.
+- **First-Class TypeScript Support**: Dedicated stack detection and rules (interface naming, DDD patterns, optimized thresholds).
+- **Docker Tech Stack**: Infrastructure as Code analysis for `Dockerfile` and Compose files with hygiene rules.
+- **Enhanced Go Stack**: Improved validation of Go project layouts (`cmd/`, `internal/`) and naming conventions.
+- **Global Empty Codebase Rules**: Specialized handling/reporting for projects with zero files to prevent hallucinatory analysis.
+- **AI-CodeIndex deep-proxy**: Restored deep symbol telemetry flow into AI prompts for richer architectural context.
+- **Parallel scanning** with configurable concurrency; 2–5× speedup on large repos.
+- **Cache compression** (gzip) reduces disk usage ~50%.
+- **Retry logic** with exponential backoff for LLM API calls.
+- **Plugin management**: enable/disable per‑project; version compatibility checks.
 
 ### Fixed
 
+- **JSON Serialization Error**: Fixed `AgentEvent` Enum serialization failure in the final analysis reports.
+- **Lifecycle Clarity**: Standardized the `GhostAgent` execution flow into explicit "Diagnostics" and "Synthesis" phases.
 - **TokenBudgetExceededError**: Resolved token budgeting issues in the LLM client.
 - **Plugin Filtering**: Fixed plugin filtering at registration.
 - **Version Import Cycle**: Resolved cyclical import issues related to versioning.
-- **Tests**: All unit and integration tests are passing after fixes.
 
 ## [0.1.5] - 2026-03-07 ([#9](https://github.com/Ev3lynx727/ghostclaw/pull/9))### Added
 
