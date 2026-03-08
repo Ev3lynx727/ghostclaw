@@ -37,12 +37,22 @@ class AICodeIndexAdapter(AsyncProcessMetricAdapter):
         if result.get("returncode") != 0:
             return {"issues": [f"AI-CodeIndex error: {result.get('stderr')}"]}
 
-        # For now, it produces a file PROJECT_SYMBOLS.md.
-        # In the future, we would parse it or use its JSON output if available.
+        # Read the generated symbols file
+        from pathlib import Path
+        symbols_path = Path(root) / "PROJECT_SYMBOLS.md"
+        symbols_content = ""
+        if symbols_path.exists():
+            try:
+                with open(symbols_path, 'r', encoding='utf-8') as f:
+                    symbols_content = f.read()
+            except Exception as e:
+                return {"issues": [f"AI-CodeIndex: Failed to read symbols file: {e}"]}
+
         return {
             "issues": [],
-            "architectural_ghosts": ["Symbols indexed and PROJECT_SYMBOLS.md updated."],
-            "red_flags": []
+            "architectural_ghosts": ["Symbols indexed and PROJECT_SYMBOLS.md read."],
+            "red_flags": [],
+            "symbol_index": symbols_content
         }
 
     @hookimpl

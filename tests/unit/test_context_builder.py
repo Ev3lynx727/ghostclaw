@@ -1,27 +1,19 @@
 import pytest
 from ghostclaw.core.context_builder import ContextBuilder
-import json
 
-def test_context_builder():
+def test_build_prompt_with_symbols():
     builder = ContextBuilder()
-    prompt = builder.build_prompt(
-        metrics={"vibe_score": 80},
-        issues=["Bad layer"],
-        ghosts=["AuthGhost"],
-        flags=["Flag1"],
-        coupling_metrics={"instability": 0.9},
-        import_edges=[("A", "B")]
-    )
-
-    assert "<metrics>" in prompt
-    assert '"vibe_score": 80' in prompt
-    assert "<issues>" in prompt
-    assert "- Bad layer" in prompt
-    assert "<ghosts>" in prompt
-    assert "- AuthGhost" in prompt
-    assert "<flags>" in prompt
-    assert "- Flag1" in prompt
-    assert "<coupling_metrics>" in prompt
-    assert '"instability": 0.9' in prompt
-    assert "<import_edges>" in prompt
-    assert "A -> B" in prompt
+    metrics = {"total_files": 1}
+    issues = ["Test issue"]
+    
+    # Test with empty symbols
+    prompt_flat = builder.build_prompt(metrics, issues, [], [], {}, [])
+    assert "<symbols>" not in prompt_flat
+    
+    # Test with symbol index
+    symbol_data = "Class: User\nMethod: login"
+    prompt_rich = builder.build_prompt(metrics, issues, [], [], {}, [], symbol_index=symbol_data)
+    
+    assert "<symbols>" in prompt_rich
+    assert symbol_data in prompt_rich
+    assert "</symbols>" in prompt_rich

@@ -143,6 +143,7 @@ class CodebaseAnalyzer:
         flags = []
         coupling_metrics = {}
         import_edges = []
+        symbol_index = ""
 
         # Collect errors from adapter registry (if any)
         errors = list(getattr(registry, 'errors', []))
@@ -152,6 +153,8 @@ class CodebaseAnalyzer:
             ghosts.extend(res.get("architectural_ghosts", []))
             flags.extend(res.get("red_flags", []))
             coupling_metrics.update(res.get("coupling_metrics", {}))
+            if "symbol_index" in res:
+                symbol_index += res["symbol_index"] + "\n"
 
         # 5. Legacy Stack-specific analysis (Pre-adapter porting)
         if analyzer:
@@ -224,7 +227,8 @@ class CodebaseAnalyzer:
                 flags=flags,
                 coupling_metrics=coupling_metrics,
                 import_edges=import_edges,
-                patch=config.patch
+                patch=config.patch,
+                symbol_index=symbol_index
             )
             report_data["ai_prompt"] = prompt
 

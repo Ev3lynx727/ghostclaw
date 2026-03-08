@@ -3,7 +3,7 @@ import json
 class ContextBuilder:
     """Builds the context prompt for the AI engine."""
 
-    def build_prompt(self, metrics: dict, issues: list, ghosts: list, flags: list, coupling_metrics: dict, import_edges: list, patch: bool = False) -> str:
+    def build_prompt(self, metrics: dict, issues: list, ghosts: list, flags: list, coupling_metrics: dict, import_edges: list, patch: bool = False, symbol_index: str = "") -> str:
         """
         Formats analysis data into an XML-tagged prompt for LLMs.
         """
@@ -48,6 +48,11 @@ class ContextBuilder:
             for edge in import_edges:
                 prompt += f"{edge[0]} -> {edge[1]}\n"
             prompt += "</import_edges>\n\n"
+
+        if symbol_index:
+            prompt += "<symbols>\n"
+            prompt += symbol_index + "\n"
+            prompt += "</symbols>\n\n"
 
         prompt += "Return your synthesis as a structured Markdown document."
         return prompt
