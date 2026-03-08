@@ -4,19 +4,28 @@ from .base import StackAnalyzer
 from .node import NodeAnalyzer
 from .python import PythonAnalyzer
 from .go import GoAnalyzer
+from .shell import ShellAnalyzer
+from .typescript import TypeScriptAnalyzer
+from .docker import DockerAnalyzer
 
 __all__ = [
     'StackAnalyzer',
     'NodeAnalyzer',
     'PythonAnalyzer',
-    'GoAnalyzer'
+    'GoAnalyzer',
+    'ShellAnalyzer',
+    'TypeScriptAnalyzer',
+    'DockerAnalyzer'
 ]
 
 # Registry mapping stack names to their analyzers
 STACK_REGISTRY = {
     'node': NodeAnalyzer(),
     'python': PythonAnalyzer(),
-    'go': GoAnalyzer()
+    'go': GoAnalyzer(),
+    'shell': ShellAnalyzer(),
+    'typescript': TypeScriptAnalyzer(),
+    'docker': DockerAnalyzer()
 }
 
 
