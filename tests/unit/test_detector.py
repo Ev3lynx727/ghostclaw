@@ -28,7 +28,7 @@ def test_detect_node_without_openclaw(tmp_path):
 def test_detect_node_by_tsconfig(tmp_path):
     p = tmp_path / "tsconfig.json"
     p.write_text('{"compilerOptions": {}}')
-    assert detect_stack(str(tmp_path)) == "node"
+    assert detect_stack(str(tmp_path)) == "typescript"
 
 def test_detect_python_by_requirements(tmp_path):
     p = tmp_path / "requirements.txt"

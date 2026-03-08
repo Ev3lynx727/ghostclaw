@@ -204,5 +204,32 @@ class PluginRegistry:
         """Get metadata for all registered plugins."""
         return self.pm.hook.ghost_get_metadata()
 
+    async def compute_custom_vibe(self, context: Any) -> Optional[float]:
+        """Invoke the first available ScoringAdapter to compute the vibe score."""
+        import asyncio
+        coroutines = self.pm.hook.ghost_compute_vibe(context=context)
+        if not coroutines:
+            return None
+
+        results = await asyncio.gather(*coroutines)
+
+        for res in results:
+            if res is not None:
+                return res
+        return None
+
+    async def validate_all(self) -> Dict[str, bool]:
+        """Validate all registered plugins by calling is_available."""
+        results = {}
+        for name, plugin in self._registered_plugins:
+            if hasattr(plugin, 'is_available'):
+                try:
+                    results[name] = await plugin.is_available()
+                except Exception:
+                    results[name] = False
+            else:
+                results[name] = True
+        return results
+
 # Global registry instance
 registry = PluginRegistry()
