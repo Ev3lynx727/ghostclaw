@@ -289,11 +289,19 @@ def main():
     # --- INIT COMMAND ---
     init_parser = subparsers.add_parser("init", help="Scaffold local project configuration")
 
+    # --- DOCTOR COMMAND ---
+    doctor_parser = subparsers.add_parser("doctor", help="Run diagnostic checks on environment and plugins")
+    doctor_parser.add_argument("--ai-provider", help="Provider to test (overrides config)")
+    doctor_parser.add_argument("--ai-model", help="Model to test (overrides config)")
+
     # --- TEST COMMAND ---
     test_parser = subparsers.add_parser("test", help="Run diagnostic tests")
     test_parser.add_argument("--llm", action="store_true", help="Test LLM connectivity and list available models")
     test_parser.add_argument("--ai-provider", help="Provider to test (overrides config)")
     test_parser.add_argument("--ai-model", help="Model to test (overrides config)")
+
+    # --- BRIDGE COMMAND ---
+    subparsers.add_parser("bridge", help="Start the JSON-RPC 2.0 bridge server")
 
     # --- UPDATE COMMAND ---
     subparsers.add_parser("update", help="Self-update Ghostclaw via pip or git")
@@ -573,6 +581,95 @@ class CustomAdapter(MetricAdapter):
                 print(f"🏗️ Scaffolded plugin '{name}' at {plugin_dir}")
                 print(f"💡 Edit {init_file} to add your logic.")
         
+        sys.exit(0)
+
+    if args.command == "bridge":
+        from ghostclaw.core.bridge import BridgeHandler
+        async def _run_bridge():
+            handler = BridgeHandler()
+
+            async def handle_analyze(repo_path: str = "."):
+                config = GhostclawConfig.load(repo_path)
+                from ghostclaw.core.analyzer import CodebaseAnalyzer
+                from ghostclaw.core.agent import GhostAgent
+
+                analyzer = CodebaseAnalyzer()
+                agent = GhostAgent(config, repo_path, analyzer=analyzer, bridge=handler)
+
+                report = await agent.run()
+                return report
+
+            async def handle_status():
+                return {"status": "ok", "version": __version__}
+
+            async def handle_plugins():
+                from ghostclaw.core.adapters.registry import registry
+                registry.register_internal_plugins()
+                return registry.get_plugin_metadata()
+
+            handler.register("analyze", handle_analyze)
+            handler.register("status", handle_status)
+            handler.register("plugins", handle_plugins)
+
+            await handler.run()
+
+        try:
+            asyncio.run(_run_bridge())
+        except KeyboardInterrupt:
+            pass
+        sys.exit(0)
+
+    if args.command == "doctor":
+        async def _run_doctor():
+            print("🏥 Ghostclaw Doctor\n")
+
+            # 1. Check Directories
+            print("1. Directory Structure")
+            gc_dir = Path.cwd() / ".ghostclaw"
+            if gc_dir.exists():
+                print(f"  ✅ .ghostclaw/ exists at {gc_dir}")
+                cache_dir = gc_dir / "cache"
+                plugins_dir = gc_dir / "plugins"
+                if cache_dir.exists(): print(f"  ✅ Cache dir exists")
+                else: print(f"  ⚠️ Cache dir missing (will be created automatically)")
+                if plugins_dir.exists(): print(f"  ✅ Plugins dir exists")
+                else: print(f"  ⚠️ Plugins dir missing (will be created automatically)")
+            else:
+                print(f"  ⚠️ .ghostclaw/ directory missing in current path. Run 'ghostclaw init' to scaffold.")
+            print()
+
+            # 2. Check Dependencies/Plugins
+            print("2. Environment & Plugins")
+            from ghostclaw.core.adapters.registry import registry
+            registry.register_internal_plugins()
+            if gc_dir.exists() and (gc_dir / "plugins").exists():
+                registry.load_external_plugins(gc_dir / "plugins")
+
+            validation_results = await registry.validate_all()
+            for name, is_valid in validation_results.items():
+                status = "✅ available" if is_valid else "❌ unavailable"
+                print(f"  • {name}: {status}")
+            print()
+
+            # 3. Check LLM Connectivity
+            print("3. AI Provider Connectivity")
+            cli_overrides = {}
+            if args.ai_provider: cli_overrides['ai_provider'] = args.ai_provider
+            if args.ai_model: cli_overrides['ai_model'] = args.ai_model
+            config = GhostclawConfig.load(".", **cli_overrides)
+            client = LLMClient(config, ".")
+
+            print(f"  Testing connection to {config.ai_provider}...")
+            if not config.api_key:
+                print("  ❌ API Key not found. Set GHOSTCLAW_API_KEY environment variable.")
+            else:
+                success = await client.test_connection()
+                if success:
+                    print(f"  ✅ Connection successful! Model: {client.model}")
+                else:
+                    print("  ❌ Connection failed. Check provider configuration or network.")
+
+        asyncio.run(_run_doctor())
         sys.exit(0)
 
     if args.command == "init":

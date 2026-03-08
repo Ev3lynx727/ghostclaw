@@ -25,11 +25,12 @@ class GhostAgent:
     Encapsulates metrics collection and LLM synthesis with hooks for monitoring.
     """
 
-    def __init__(self, config: GhostclawConfig, repo_path: str, analyzer: Optional[CodebaseAnalyzer] = None):
+    def __init__(self, config: GhostclawConfig, repo_path: str, analyzer: Optional[CodebaseAnalyzer] = None, bridge=None):
         self.config = config
         self.repo_path = repo_path
         self.analyzer = analyzer or CodebaseAnalyzer()
         self.llm_client = LLMClient(config, repo_path)
+        self.bridge = bridge
         self.hooks: Dict[AgentEvent, List[Callable[[Dict], Any]]] = {
             event: [] for event in AgentEvent
         }
@@ -41,10 +42,19 @@ class GhostAgent:
         self.hooks[event].append(callback)
 
     async def _emit(self, event: AgentEvent, data: Dict = None):
-        """Emit an event and trigger all registered hooks and adapters."""
+        """Emit an event and trigger all registered hooks and adapters using formal notification schema."""
         data = data or {}
         event_data = dict(data)
         event_data["event"] = event.name
+
+        # Map internal events to formal schema
+        formal_event = "events.log"
+        if event in (AgentEvent.INIT, AgentEvent.PRE_ANALYZE, AgentEvent.POST_METRICS, AgentEvent.PRE_SYNTHESIS, AgentEvent.POST_SYNTHESIS):
+            formal_event = "events.progress"
+        elif event in (AgentEvent.SYNTHESIS_CHUNK, AgentEvent.REASONING_CHUNK):
+            formal_event = "events.stream"
+
+        event_data["formal_event"] = formal_event
 
         # 1. Trigger internal hooks
         for hook in self.hooks[event]:
@@ -59,6 +69,10 @@ class GhostAgent:
         # 2. Trigger TargetAdapters
         from ghostclaw.core.adapters.registry import registry
         await registry.emit_event(event.name, event_data)
+
+        # 3. Emit to bridge if present
+        if hasattr(self, 'bridge') and self.bridge:
+            self.bridge.emit_event(formal_event, event_data)
 
     async def run(self) -> Dict:
         """Execute the full agent workflow with lifecycle hooks and persistence."""

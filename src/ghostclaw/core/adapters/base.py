@@ -60,3 +60,16 @@ class StorageAdapter(BaseAdapter):
     async def get_history(self, limit: int = 10) -> List[Any]:
         """Retrieve recent reports."""
         pass
+
+class ScoringAdapter(BaseAdapter):
+    """Adapter for custom vibe score calculation algorithms (e.g., CodeBERTScore)."""
+
+    @abc.abstractmethod
+    async def compute_vibe(self, context: Any) -> float:
+        """
+        Calculate a vibe score based on the provided analysis context.
+
+        Returns:
+            A float representing the vibe score (0-100).
+        """
+        pass

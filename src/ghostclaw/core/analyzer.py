@@ -12,6 +12,7 @@ from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.core.llm_client import LLMClient
 from ghostclaw.core.context_builder import ContextBuilder
 from ghostclaw.core.models import ArchitectureReport
+from ghostclaw.core.score import ScoringEngine
 
 
 
@@ -189,8 +190,22 @@ class CodebaseAnalyzer:
         except Exception as e:
             issues.append(f"Rule validation failed: {str(e)}")
 
-        # 6. Finalibe score
-        vibe_score = self._compute_vibe_score(base_metrics, len(issues), len(ghosts))
+        # 6. Final vibe score
+        # Attempt to use a custom ScoringAdapter first
+        context_data = {
+            "metrics": base_metrics,
+            "issues": issues,
+            "ghosts": ghosts,
+            "flags": flags,
+            "stack": stack
+        }
+
+        from ghostclaw.core.adapters.registry import registry
+        custom_score = await registry.compute_custom_vibe(context=context_data)
+        if custom_score is not None:
+            vibe_score = int(custom_score)
+        else:
+            vibe_score = ScoringEngine.compute_vibe_score(base_metrics, len(issues), len(ghosts))
 
         # 7. Metadata
         try:
@@ -239,14 +254,3 @@ class CodebaseAnalyzer:
                 await asyncio.to_thread(self.cache.set, fingerprint, report_data)
 
         return ArchitectureReport(**report_data)
-
-    def _compute_vibe_score(self, metrics: Dict, issue_count: int, ghost_count: int) -> int:
-        """Calculate the final vibe score (0-100)."""
-        score = 100
-        large_file_penalty = min(30, metrics['large_file_count'] * 5)
-        score -= large_file_penalty
-        avg = metrics.get('average_lines', 0)
-        if avg > 200: score -= 10
-        score -= min(20, issue_count * 3)
-        score -= min(15, ghost_count * 5)
-        return max(0, min(100, score))
