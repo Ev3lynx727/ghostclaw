@@ -29,18 +29,13 @@ def detect_stack(root: str) -> str:
     if any((root_path / f).exists() for f in python_indicators):
         return 'python'
 
-    # Node.js / TypeScript / React
-    node_indicators = ['package.json', 'tsconfig.json', 'vite.config.ts', 'next.config.js']
-    package_json = root_path / 'package.json'
-    if package_json.exists():
-        try:
-            with open(package_json, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # If it's an OpenClaw skill metadata, return 'unknown' to allow other checks
-                if 'openclaw' in data:
-                    return 'unknown'
-        except Exception:
-            pass
+    # Node / TypeScript / React setup
+    node_indicators = ['package.json', 'vite.config.ts', 'next.config.js', 'remix.config.js']
+    typescript_indicators = ['tsconfig.json']
+
+    # Prioritize TypeScript if tsconfig.json or many .ts files are present
+    if any((root_path / f).exists() for f in typescript_indicators):
+        return 'typescript'
 
     if any((root_path / f).exists() for f in node_indicators):
         return 'node'
@@ -48,6 +43,16 @@ def detect_stack(root: str) -> str:
     # Go
     if any((root_path / f).exists() for f in ['go.mod', 'go.sum']):
         return 'go'
+
+    # Shell
+    shell_indicators = ['.shellcheckrc', '.sh', '.bash', '.zsh']
+    if any((root_path / ext).exists() or any(root_path.glob(f"*{ext}")) for ext in shell_indicators):
+        return 'shell'
+
+    # Docker
+    docker_indicators = ['Dockerfile', 'docker-compose.yml', 'compose.yaml', '.dockerignore']
+    if any((root_path / f).exists() for f in docker_indicators):
+        return 'docker'
 
     return 'unknown'
 
