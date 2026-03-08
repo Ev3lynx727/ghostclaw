@@ -25,7 +25,7 @@ class GhostAgent:
     Encapsulates metrics collection and LLM synthesis with hooks for monitoring.
     """
 
-    def __init__(self, config: GhostclawConfig, repo_path: str, analyzer: Optional[CodebaseAnalyzer] = None):
+    def __init__(self, config: GhostclawConfig, repo_path: str, analyzer: Optional[CodebaseAnalyzer] = None, bridge=None):
         self.config = config
         self.repo_path = repo_path
         self.analyzer = analyzer or CodebaseAnalyzer()
