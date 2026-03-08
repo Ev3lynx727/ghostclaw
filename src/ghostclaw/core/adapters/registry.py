@@ -33,7 +33,7 @@ class PluginRegistry:
 
         # Plugin enable/disable filter (None = all enabled)
         self.enabled_plugins: Optional[Set[str]] = None
-
+        self._registered_plugins: List[Tuple[str, Any]] = []  # List of (name, plugin instance)
 
         # Internal registry of plugins for runtime filtering
         
@@ -116,7 +116,7 @@ class PluginRegistry:
 
                             self.pm.register(instance, name=plugin_name)
 
-
+                            self._registered_plugins.append((plugin_name, instance))
                             self.external_plugins.add(plugin_name)
                         except Exception as e:
                             logger.error(f"Failed to load plugin class {obj.__name__}: {e}")
