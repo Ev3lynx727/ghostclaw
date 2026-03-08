@@ -64,40 +64,82 @@ class GhostAgent:
         """Execute the full agent workflow with lifecycle hooks and persistence."""
         self._start_time = time.perf_counter()
         try:
-            from ghostclaw.core.adapters.registry import registry
-            registry.register_internal_plugins()
-
-            await self._emit(AgentEvent.INIT)
+            # Phase 1: Diagnostics
+            report = await self._collect_diagnostics()
             
-            await self._emit(AgentEvent.PRE_ANALYZE)
-            report_model = await self.analyzer.analyze(self.repo_path, config=self.config)
-            report = report_model.model_dump()
-            await self._emit(AgentEvent.POST_METRICS, report)
-            
-            if self.config.use_ai and "ai_prompt" in report:
-                await self._emit(AgentEvent.PRE_SYNTHESIS, report)
-                
-                content = []
-                reasoning = []
-                async for chunk_info in self.llm_client.stream_analysis(report["ai_prompt"]):
-                    chunk = chunk_info["content"]
-                    if chunk_info["type"] == "reasoning":
-                        reasoning.append(chunk)
-                        await self._emit(AgentEvent.REASONING_CHUNK, {"chunk": chunk})
-                    else:
-                        content.append(chunk)
-                        await self._emit(AgentEvent.SYNTHESIS_CHUNK, {"chunk": chunk})
-                
-                report["ai_synthesis"] = "".join(content)
-                report["ai_reasoning"] = "".join(reasoning)
-                
-                # Persist via StorageAdapters
-                await registry.save_report(report)
-                
-                await self._emit(AgentEvent.POST_SYNTHESIS, report)
+            # Phase 2: Synthesis (Enhanced Intelligence)
+            if self.config.use_ai:
+                report = await self._perform_synthesis(report)
             
             self.timings['total'] = time.perf_counter() - self._start_time
             return report
         except Exception as e:
             await self._emit(AgentEvent.ERROR, {"error": str(e)})
             raise e
+
+    async def _collect_diagnostics(self) -> Dict:
+        """Run core analysis and collection phase."""
+        from ghostclaw.core.adapters.registry import registry
+        registry.register_internal_plugins()
+        
+        logger.info("Phase 1: Starting Core Diagnostics...")
+        await self._emit(AgentEvent.INIT)
+        await self._emit(AgentEvent.PRE_ANALYZE)
+        
+        report_model = await self.analyzer.analyze(self.repo_path, config=self.config)
+        report = report_model.model_dump()
+        
+        await self._emit(AgentEvent.POST_METRICS, report)
+        logger.info(f"Diagnostics complete. Analyzed {report.get('files_analyzed', 0)} files.")
+        return report
+
+    async def _perform_synthesis(self, report: Dict) -> Dict:
+        """Perform AI synthesis or static summary based on report state."""
+        if "ai_prompt" not in report:
+            return report
+
+        logger.info("Phase 2: Starting Synthesis...")
+
+        # Case 1: Empty Codebase Handling
+        if report.get("files_analyzed", 0) == 0:
+            logger.info("Empty codebase detected. Providing static advisory.")
+            report["ai_synthesis"] = (
+                "# Codebase Architecture Vibe Synthesis Report\n\n"
+                "## Executive Summary\n\n"
+                "Ghostclaw detected an **empty codebase** or a setup where no supported source files "
+                "were found. Consequently, no architectural patterns, flows, or cohesion metrics "
+                "could be evaluated.\n\n"
+                "## Recommendations\n"
+                "1. **Initialize your project**: Add source files (Python, Node.js, Go) to the repository root.\n"
+                "2. **Check configuration**: Ensure that your `include_extensions` and `exclude_patterns` "
+                "correctly target your source code.\n"
+                "3. **Verify stack detection**: If this is a supported stack, ensure standard indicators "
+                "(like `requirements.txt` or `package.json`) are present.\n"
+            )
+            report["ai_reasoning"] = "Skipped LLM synthesis for empty codebase to provide a more accurate static summary."
+        
+        # Case 2: Standard AI Synthesis
+        else:
+            await self._emit(AgentEvent.PRE_SYNTHESIS, report)
+            
+            content = []
+            reasoning = []
+            async for chunk_info in self.llm_client.stream_analysis(report["ai_prompt"]):
+                chunk = chunk_info["content"]
+                if chunk_info["type"] == "reasoning":
+                    reasoning.append(chunk)
+                    await self._emit(AgentEvent.REASONING_CHUNK, {"chunk": chunk})
+                else:
+                    content.append(chunk)
+                    await self._emit(AgentEvent.SYNTHESIS_CHUNK, {"chunk": chunk})
+            
+            report["ai_synthesis"] = "".join(content)
+            report["ai_reasoning"] = "".join(reasoning)
+
+        # Persistence & Final Broadcast
+        from ghostclaw.core.adapters.registry import registry
+        await registry.save_report(report)
+        await self._emit(AgentEvent.POST_SYNTHESIS, report)
+        
+        logger.info("Synthesis complete.")
+        return report
