@@ -62,6 +62,7 @@ def test_unknown_stack_passes_through():
     validator = RuleValidator()
     report = {
         "stack": "unknown",
+        "files_analyzed": 10,
         "average_lines": 100,
         "large_file_count": 0,
         "coupling_metrics": {},
@@ -90,3 +91,21 @@ def test_import_dependency_rule():
     issues = result["issues"]
     assert any("Forbidden dependency" in i for i in issues)
     assert any("UserRepo" in i and "UserController" in i for i in issues)
+
+
+def test_global_empty_codebase_rule():
+    validator = RuleValidator()
+    # Mock report with 0 files analyzed
+    report = {
+        "stack": "unknown",
+        "files_analyzed": 0,
+        "average_lines": 0,
+        "large_file_count": 0,
+        "issues": [],
+        "architectural_ghosts": [],
+        "red_flags": []
+    }
+    result = validator.validate("unknown", report)
+    issues = result["issues"]
+    assert any("Empty codebase detected" in i for i in issues)
+    assert any("empty_codebase" in g for g in result["architectural_ghosts"])

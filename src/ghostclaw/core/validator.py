@@ -29,19 +29,21 @@ class RuleValidator:
         Returns:
             Updated report with additional issues/ghosts from rule violations
         """
-        if stack not in self.rules:
+        if stack not in self.rules and "global" not in self.rules:
             return report
 
-        stack_rules = self.rules[stack].get('rules', [])
+        # Collect applicable rules
+        applicable_rules = []
+        if "global" in self.rules:
+            applicable_rules.extend(self.rules["global"].get('rules', []))
+        if stack in self.rules:
+            applicable_rules.extend(self.rules[stack].get('rules', []))
+
         new_issues = list(report.get('issues', []))
         new_ghosts = list(report.get('architectural_ghosts', []))
         new_flags = list(report.get('red_flags', []))
 
-        # Gather file list for name-based rules (need to be passed in or recomputed)
-        # For now we can't do file pattern matching without original file list
-        # We'll focus on metrics and coupling rules
-
-        for rule in stack_rules:
+        for rule in applicable_rules:
             rule_type = rule.get('type')
             rule_id = rule.get('id')
             message = rule.get('message', '')
@@ -61,7 +63,7 @@ class RuleValidator:
                 elif condition == 'equals' and value == threshold:
                     applies = True
 
-                if applies and value != 0:  # Avoid false positives when metric is zero
+                if applies:  # Previously value != 0 guard prevented empty codebase detection
                     formatted_msg = message.format(value=value, threshold=threshold, count=value)
                     new_issues.append(formatted_msg)
                     new_ghosts.append(f"[{rule_id}] {formatted_msg}")
