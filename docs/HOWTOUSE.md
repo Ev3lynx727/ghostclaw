@@ -1,171 +1,171 @@
 # How to Use Ghostclaw
 
-Ghostclaw is an architectural sentinel designed to analyze your codebase's health, dependencies, and "vibes". Because of its solid `src/` layout, it can be executed in several robust ways depending on your environment.
-
-This document covers all the practical ways you can use Ghostclaw.
-
----
-
-## 1. Using the Command Line Interface (CLI)
-
-Since v0.1.6, Ghostclaw uses a **sub-command architecture**. To see all available commands:
+## Installation
 
 ```bash
-ghostclaw --help
+pip install ghostclaw
 ```
 
-### Analyzing a Repository
-
-To perform a full architectural review:
+Make sure you have an LLM API key if you plan to use `--use-ai`:
 
 ```bash
-ghostclaw analyze /path/to/your/project
+export GHOSTCLAW_API_KEY="your_key"
 ```
 
-**Common Flags:**
+## Basic Analysis
 
-- `--patch`: Generate AI-driven refactor blueprints and code diffs.
-- `--no-cache`: Force a fresh analysis (ignore local history).
-- `--json`: Output report in raw JSON format.
-
-### Plugin Management
-
-Ghostclaw 0.1.6 introduced the **Ghost Adapters** ecosystem. You can manage built-in and external plugins directly:
+Analyze the current directory:
 
 ```bash
-# List all active adapters and their status
+ghostclaw analyze .
+```
+
+Produce JSON output for machine consumption:
+
+```bash
+ghostclaw analyze . --json
+```
+
+## Caching
+
+Cache results to avoid re‑analysis of unchanged code:
+
+```bash
+ghostclaw analyze .            # cache on by default
+ghostclaw analyze . --no-cache  # disable cache
+```
+
+Cache directory defaults to `~/.cache/ghostclaw` but can be changed:
+
+```bash
+ghostclaw analyze . --cache-dir /tmp/my-cache
+```
+
+Cache entries expire after a configurable TTL (7 days default). Set `cache_ttl_hours` in config or via `--cache-ttl` days (note: CLI flag is in days): `ghostclaw analyze . --cache-ttl 2` (2 days).
+
+## Parallel Scanning
+
+Large repositories benefit from parallel file discovery:
+
+```bash
+ghostclaw analyze . --no-parallel         # disable parallelism
+ghostclaw analyze . --concurrency-limit 64  # increase from default (32)
+```
+
+Configure defaults via config: `parallel_enabled`, `concurrency_limit`.
+
+## AI Integration
+
+Use AI to generate a narrative synthesis:
+
+```bash
+ghostclaw analyze . --use-ai
+```
+
+You can select provider and model:
+
+```bash
+ghostclaw analyze . --use-ai --ai-provider anthropic --ai-model claude-3-opus
+```
+
+With `--json`, the AI synthesis is included in the JSON payload; streaming characters appear on stderr during generation.
+
+## Plugin Management
+
+List available plugins (internal and external):
+
+```bash
 ghostclaw plugins list
-
-# Add an external adapter from a local directory
-ghostclaw plugins add /path/to/external-adapter
-
-# Remove a previously added external adapter
-ghostclaw plugins remove adapter-name
-
-# Generate a boilerplate adapter for development
-ghostclaw plugins scaffold my-custom-adapter
 ```
 
----
-
-## 2. Using the Shell Scripts (`scripts/`)
-
-The wrapper scripts in `scripts/` are legacy-compatible but now delegate to the main `ghostclaw` entry point.
-
-### Repository Comparison
-
-To compare the architectural trends of multiple repositories and generate a formatted report:
+Enable or disable plugins (writes to project-local config `.ghostclaw/ghostclaw.json`):
 
 ```bash
-./scripts/compare.sh --repos-file scripts/repos.txt
+ghostclaw plugins enable pyscn
+ghostclaw plugins disable ai-codeindex
 ```
 
----
+By default, all plugins are enabled. Set `plugins_enabled` in your config file to create a whitelist.
 
-## 3. Using the Python API
+## Reliability & Strict Mode
 
-For advanced integration, use the asynchronous `GhostAgent` or `CodebaseAnalyzer`.
-
-```python
-import asyncio
-from ghostclaw.core.analyzer import CodebaseAnalyzer
-from ghostclaw.core.agent import GhostAgent
-from ghostclaw.core.config import GhostclawConfig
-
-async def run_review():
-    config = GhostclawConfig.load("/path/to/repo")
-    analyzer = CodebaseAnalyzer()
-    agent = GhostAgent(config, "/path/to/repo", analyzer=analyzer)
-    
-    # Run the full agent lifecycle
-    report = await agent.run()
-    
-    print(f"Vibe Score: {report['vibe_score']}/100")
-
-if __name__ == "__main__":
-    asyncio.run(run_review())
-```
-
----
-
-## 4. Agentic Integrations (OpenClaw & MCP)
-
-If you are using LLMs or autonomous agents, Ghostclaw serves as a powerful architectural context provider.
-
-### OpenClaw
-
-If installed via `npx clawhub-cli install ghostclaw`, your OpenClaw agents can autonomously trigger Ghostclaw using natural language:
-> *"Ghostclaw, check the architectural integrity of this repository before we open the Pull Request."*
-
-### Model Context Protocol (MCP)
-
-If you are using Claude Desktop or another MCP-compatible client, Ghostclaw exposes MCP tools (`ghostclaw_analyze`, `ghostclaw_get_ghosts`, `ghostclaw_refactor_plan`).
-Please see [docs/INTEGRATION.md](./INTEGRATION.md) for detailed MCP server configuration instructions.
-
----
-
-## 5. Manual Installation as an OpenClaw Skill
-
-If you prefer not to use `npx` or want a local copy of the skill, you can manually install Ghostclaw into your OpenClaw skills directory.
-
-### The `skills` Branch: Ready-to-Copy Artifact
-
-The repository maintains a `skills` branch that contains a self-contained package layout suitable for dropping directly into `~/.openclaw/skills/`. Do **not** use the `develop` branch for manual installation; it requires a full install via `pip` or the wrapper scripts.
+If you want the analysis to treat adapter errors as fatal, use `--strict`:
 
 ```bash
-# Clone the repository (if you haven't already)
-git clone https://github.com/Ev3lynx727/ghostclaw.git
-cd ghostclaw
-
-# Ensure you have the latest skills branch
-git checkout skills
-git pull origin skills
+ghostclaw analyze . --strict
 ```
 
-### Correct Directory Structure
+Without `--strict`, errors from adapters are collected and reported, but the exit code is 0.
 
-After copying, your OpenClaw skills directory should look like:
+LLM API calls are automatically retried on transient failures (configurable via `retry_attempts`, `retry_backoff_factor`, `retry_max_delay`).
 
-```text
-~/.openclaw/skills/ghostclaw/
-├── SKILL.md
-└── ghostclaw/
-    ├── __init__.py
-    ├── cli/
-    ├── core/
-    ├── lib/
-    ├── stacks/
-    └── references/
-```
+## Observability & Benchmarking
 
-**Important:** The top-level `ghostclaw/` package directory is required. A common mistake is to copy only the contents of `src/ghostclaw/` directly into `~/.openclaw/skills/ghostclaw/` without the package wrapper, which results in import errors like:
-
-```text
-ModuleNotFoundError: No module named 'ghostclaw'
-```
-
-The `skills` branch already has the correct layout: the `ghostclaw/` package resides at the skill root alongside `SKILL.md`.
-
-### Copy vs Symlink
-
-You can either copy the files or create symlinks for live updates:
+Show progress phases:
 
 ```bash
-# Option A: Copy (static)
-cp -r /path/to/ghostclaw/skills/* ~/.openclaw/skills/ghostclaw/
-
-# Option B: Symlink (recommended for development)
-rm -rf ~/.openclaw/skills/ghostclaw
-ln -s /path/to/ghostclaw/ghostclaw ~/.openclaw/skills/ghostclaw/ghostclaw
-ln -s /path/to/ghostclaw/SKILL.md ~/.openclaw/skills/ghostclaw/SKILL.md
+ghostclaw analyze . --verbose
 ```
 
-### Verification
-
-Test that the skill is importable by OpenClaw:
+Print timing benchmark after analysis:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0, str(Path.home() / '.openclaw/skills/ghostclaw')); from ghostclaw.core.analyzer import CodebaseAnalyzer; print('Ghostclaw skill loaded OK')"
+ghostclaw analyze . --benchmark
 ```
 
-If you see no errors, the skill is ready. OpenClaw agents will now be able to invoke Ghostclaw.
+This writes a small table (seconds) to stderr. Combine with cache stats.
+
+## PR Creation
+
+Create a GitHub PR with the report:
+
+```bash
+ghostclaw analyze . --create-pr
+```
+
+The report is temporarily written to the repository root, committed, and then cleaned up after PR creation. The PR title and body can be customized:
+
+```bash
+ghostclaw analyze . --create-pr --pr-title "Architecture Review" --pr-body "Please review the findings."
+```
+
+## Configuration
+
+Ghostclaw can read a global config file (`~/.config/ghostclaw/ghostclaw.json`) and a project‑local config (`.ghostclaw/ghostclaw.json`). CLI arguments take precedence.
+
+Example config snippet:
+
+```json
+{
+  "cache_enabled": true,
+  "cache_compression": true,
+  "cache_ttl_hours": 168,
+  "parallel_enabled": true,
+  "concurrency_limit": 32,
+  "retry_attempts": 3,
+  "plugins_enabled": ["pyscn", "ai-codeindex"]
+}
+```
+
+## Summary of Important CLI Flags
+
+| Category | Flag | Description |
+|----------|------|-------------|
+| Caching | `--no-cache` | Disable caching |
+| | `--cache-dir PATH` | Custom cache directory |
+| | `--cache-ttl DAYS` | TTL in days |
+| | `--cache-stats` | Show cache statistics |
+| Parallel | `--no-parallel` | Disable parallel scanning |
+| | `--concurrency-limit N` | Max concurrent operations (default 32) |
+| LLM | `--use-ai` | Enable AI synthesis |
+| | `--ai-provider PROVIDER` | e.g., `openrouter`, `anthropic`, `openai` |
+| | `--ai-model MODEL` | Model identifier |
+| Reliability | `--strict` | Exit non‑zero on adapter errors |
+| Observability | `--benchmark` | Print timing breakdown |
+| | `--verbose` | Increase output |
+| PR | `--create-pr` | Create PR on GitHub |
+| | `--pr-title TITLE` | Custom PR title |
+| | `--pr-body BODY` | Custom PR body |
+| Output | `--json` | JSON output to stdout |
+
+That’s it! 🎯

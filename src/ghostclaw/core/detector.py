@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from typing import List, Set
+import asyncio
 
 # Directories that should always be excluded from analysis
 EXCLUDE_DIRS: Set[str] = {
@@ -59,4 +60,61 @@ def find_files(root: str, extensions: List[str]) -> List[str]:
         for f in root_path.rglob(f"*{ext}"):
             if not _should_exclude(f.relative_to(root_path)):
                 all_files.append(str(f))
+    return sorted(all_files)
+
+
+async def find_files_parallel(root: str, extensions: List[str], limit: int = 32) -> List[str]:
+    """
+    Parallel file discovery using multiple threads for I/O.
+
+    Scans root-level files directly and processes top-level subdirectories concurrently.
+    The concurrency 'limit' controls max simultaneous directory scans.
+    """
+    root_path = Path(root)
+    all_files: List[str] = []
+
+    # 1. Collect root-level files (non-recursive)
+    for ext in extensions:
+        for f in root_path.glob(f"*{ext}"):
+            if f.is_file() and not _should_exclude(f.relative_to(root_path)):
+                all_files.append(str(f))
+
+    # 2. Determine top-level subdirectories to scan recursively
+    subdirs = []
+    try:
+        for child in root_path.iterdir():
+            if child.is_dir() and not _should_exclude(child.relative_to(root_path)):
+                subdirs.append(child)
+    except Exception:
+        subdirs = []
+
+    if not subdirs:
+        return sorted(all_files)
+
+    # 3. Define per-directory scanner with semaphore to respect concurrency limit
+    semaphore = asyncio.Semaphore(limit)
+
+    async def scan_dir(dir_path: Path) -> List[str]:
+        async with semaphore:
+            # Run blocking rglob in a thread to avoid blocking event loop
+            def _blocking_scan():
+                files = []
+                for ext in extensions:
+                    for f in dir_path.rglob(f"*{ext}"):
+                        try:
+                            rel = f.relative_to(root_path)
+                        except ValueError:
+                            # Should not happen, but skip if not under root
+                            continue
+                        if not _should_exclude(rel):
+                            files.append(str(f))
+                return files
+            return await asyncio.to_thread(_blocking_scan)
+
+    # 4. Launch tasks for all subdirs
+    tasks = [scan_dir(d) for d in subdirs]
+    for task in asyncio.as_completed(tasks):
+        result = await task
+        all_files.extend(result)
+
     return sorted(all_files)

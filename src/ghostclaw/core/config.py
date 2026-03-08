@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, get_origin, get_args, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -55,6 +55,9 @@ class GhostclawConfig(BaseSettings):
     cache_ttl_hours: int = Field(
         default=168, description="Cache TTL in hours (default: 7 days)"
     )
+    cache_compression: bool = Field(
+        default=True, description="Enable compression for cached reports"
+    )
     parallel_enabled: bool = Field(
         default=True, description="Enable parallel file processing"
     )
@@ -62,6 +65,22 @@ class GhostclawConfig(BaseSettings):
         default=32, description="Max concurrent file operations"
     )
     batch_size: int = Field(default=50, description="Files per batch for processing")
+
+    # Reliability
+    retry_attempts: int = Field(
+        default=3, description="Number of retry attempts for transient API failures"
+    )
+    retry_backoff_factor: float = Field(
+        default=1.0, description="Exponential backoff factor (seconds) for retries"
+    )
+    retry_max_delay: float = Field(
+        default=60.0, description="Maximum delay between retry attempts (seconds)"
+    )
+
+    # Plugin Management
+    plugins_enabled: Optional[List[str]] = Field(
+        default=None, description="List of enabled plugin names. None means all enabled."
+    )
 
     # Analysis Thresholds
     large_file_threshold: int = Field(
@@ -160,8 +179,10 @@ class GhostclawConfig(BaseSettings):
             env_key = f"{env_prefix}{k}".upper()
             if env_key in os.environ:
                 val = os.environ[env_key]
-                # Convert string to bool for boolean fields
-                if cls.model_fields[k].annotation is bool:
+                # Convert string to bool for boolean fields (including Optional[bool])
+                annotation = cls.model_fields[k].annotation
+                is_bool_type = annotation is bool or (get_origin(annotation) is Union and bool in get_args(annotation))
+                if is_bool_type:
                     val = val.lower() in ("true", "1", "yes")
                 resolved_config[k] = val
 

@@ -35,16 +35,24 @@ def test_cache_ttl_expiration(temp_cache):
 
     temp_cache.set(fingerprint, report)
 
-    # Find the cache file and modify its cached_at to be old
-    cache_files = list(temp_cache.cache_dir.glob("*.json"))
+    # Find the cache file (compressed or uncompressed)
+    cache_files = list(temp_cache.cache_dir.glob("*.json.gz"))
+    if not cache_files:
+        cache_files = list(temp_cache.cache_dir.glob("*.json"))
     assert len(cache_files) == 1
     cache_file = cache_files[0]
 
-    # Load JSON, set cached_at to 2 days ago, write back
-    data = json.loads(cache_file.read_text(encoding='utf-8'))
-    old_time = (datetime.now() - timedelta(days=2)).isoformat()
-    data["cached_at"] = old_time
-    cache_file.write_text(json.dumps(data), encoding='utf-8')
+    # Load JSON (handle compressed or plain), set cached_at to 2 days ago, write back
+    if cache_file.suffix == ".gz":
+        import gzip
+        data = json.loads(gzip.decompress(cache_file.read_bytes()).decode('utf-8'))
+        data["cached_at"] = (datetime.now() - timedelta(days=2)).isoformat()
+        new_content = gzip.compress(json.dumps(data).encode('utf-8'))
+        cache_file.write_bytes(new_content)
+    else:
+        data = json.loads(cache_file.read_text(encoding='utf-8'))
+        data["cached_at"] = (datetime.now() - timedelta(days=2)).isoformat()
+        cache_file.write_text(json.dumps(data), encoding='utf-8')
 
     # Should be expired (None)
     assert temp_cache.get(fingerprint) is None

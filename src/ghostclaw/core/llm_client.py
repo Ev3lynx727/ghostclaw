@@ -1,5 +1,6 @@
 import json
 import logging
+import asyncio
 from typing import AsyncGenerator, Optional
 from pathlib import Path
 
@@ -8,6 +9,11 @@ from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 
 from ghostclaw.core.config import GhostclawConfig
+
+
+class TokenBudgetExceededError(ValueError):
+    """Raised when token budget for LLM prompt is exceeded."""
+    pass
 
 # Setup logger for the file
 logger = logging.getLogger("ghostclaw.llm_client")
@@ -184,6 +190,80 @@ class LLMClient:
                 return [self.model]
         except Exception:
             return [self.model]
+
+    async def _retry(self, func, *args, **kwargs):
+        """Retry wrapper for async non-generator functions."""
+        attempts = 0
+        while attempts < self.config.retry_attempts:
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                attempts += 1
+                if attempts >= self.config.retry_attempts:
+                    raise
+                # Do not retry on non-transient errors
+                if isinstance(e, (TokenBudgetExceededError, ValueError)):
+                    raise
+                delay = min(self.config.retry_backoff_factor * (2 ** (attempts - 1)), self.config.retry_max_delay)
+                logger.warning(f"Retry {attempts}/{self.config.retry_attempts} for {func.__name__} after error: {type(e).__name__}: {e}")
+                await asyncio.sleep(delay)
+
+    async def _retry_stream(self, gen_func, *args, **kwargs):
+        """Retry wrapper for async generator functions."""
+        attempts = 0
+        while attempts < self.config.retry_attempts:
+            try:
+                async for item in gen_func(*args, **kwargs):
+                    yield item
+                return
+            except Exception as e:
+                attempts += 1
+                if attempts >= self.config.retry_attempts:
+                    raise
+                if isinstance(e, (TokenBudgetExceededError, ValueError)):
+                    raise
+                delay = min(self.config.retry_backoff_factor * (2 ** (attempts - 1)), self.config.retry_max_delay)
+                logger.warning(f"Retry stream {attempts}/{self.config.retry_attempts} for {gen_func.__name__} after error: {type(e).__name__}: {e}")
+                await asyncio.sleep(delay)
+
+    async def generate_analysis(self, prompt: str) -> dict:
+        """Generate analysis from the LLM. Returns dict with 'content' and optional 'reasoning'."""
+        prompt = self._check_token_budget(prompt)
+
+        if self.config.dry_run:
+            return {"content": "Dry run enabled. API call skipped."}
+
+        if not self.config.api_key:
+            raise ValueError("API key not provided. Set GHOSTCLAW_API_KEY environment variable.")
+
+        system_prompt = "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
+
+        async def _api_call():
+            if self.config.ai_provider == "anthropic":
+                response = await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=4096,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                content = response.content[0].text
+                reasoning = getattr(response, 'thinking', None)
+                return {"content": content, "reasoning": reasoning}
+            else:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                message = response.choices[0].message
+                content = message.content
+                reasoning = getattr(message, 'reasoning_content', None)
+                return {"content": content, "reasoning": reasoning}
+
+        return await self._retry(_api_call)
+
     async def stream_analysis(self, prompt: str) -> AsyncGenerator[dict, None]:
         """Stream analysis from the LLM. Yields dicts with 'type' and 'content'."""
         prompt = self._check_token_budget(prompt)
@@ -195,9 +275,9 @@ class LLMClient:
         if not self.config.api_key:
             raise ValueError("API key not provided. Set GHOSTCLAW_API_KEY environment variable.")
 
-        system_prompt = "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context, and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
+        system_prompt = "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
 
-        try:
+        async def _stream_call():
             if self.config.ai_provider == "anthropic":
                 async with self.client.messages.stream(
                     model=self.model,
@@ -228,6 +308,5 @@ class LLMClient:
                     if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
                         yield {"type": "reasoning", "content": delta.reasoning_content}
 
-        except Exception as e:
-            self._log_verbose({"model": self.model, "prompt_snippet": prompt[:100]}, error=str(e))
-            raise e
+        async for item in self._retry_stream(_stream_call):
+            yield item

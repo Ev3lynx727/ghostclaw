@@ -40,21 +40,23 @@ class GhostAgent:
     async def _emit(self, event: AgentEvent, data: Dict = None):
         """Emit an event and trigger all registered hooks and adapters."""
         data = data or {}
-        data["event"] = event
-        
-        # 1. Trigger internal hooks
+        # Create a copy for hooks and adapters to avoid mutating caller's dict
+        event_data = dict(data)
+        event_data["event"] = event
+
+        # 1. Trigger internal hooks with event_data (includes event)
         for hook in self.hooks[event]:
             try:
                 if asyncio.iscoroutinefunction(hook):
-                    await hook(data)
+                    await hook(event_data)
                 else:
-                    hook(data)
+                    hook(event_data)
             except Exception as e:
                 logger.error(f"Error in hook {hook} for event {event}: {e}")
 
-        # 2. Trigger TargetAdapters via PluginRegistry
+        # 2. Trigger TargetAdapters via PluginRegistry with event_data
         from ghostclaw.core.adapters.registry import registry
-        await registry.emit_event(event.name, data)
+        await registry.emit_event(event.name, event_data)
 
     async def run(self) -> Dict:
         """Execute the full agent workflow with lifecycle hooks and persistence."""
@@ -91,7 +93,8 @@ class GhostAgent:
                 
                 await self._emit(AgentEvent.POST_SYNTHESIS, report)
                 
-            return report
+            self.timings['total'] = time.perf_counter() - self._start_time
+        return report
         except Exception as e:
             await self._emit(AgentEvent.ERROR, {"error": str(e)})
             raise e

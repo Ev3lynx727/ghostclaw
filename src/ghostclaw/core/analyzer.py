@@ -4,7 +4,7 @@ import datetime
 import asyncio
 from pathlib import Path
 from typing import Dict, Optional, List
-from ghostclaw.core.detector import detect_stack, find_files
+from ghostclaw.core.detector import detect_stack, find_files, find_files_parallel
 from ghostclaw.core.validator import RuleValidator
 from ghostclaw.stacks import get_analyzer
 from ghostclaw.core.cache import LocalCache, compute_fingerprint
@@ -67,7 +67,16 @@ class CodebaseAnalyzer:
         # 2. Find relevant files based on stack
         analyzer = get_analyzer(stack)
         extensions = analyzer.get_extensions() if analyzer else []
-        files = await asyncio.to_thread(find_files, root, extensions) if extensions else []
+        if self.progress_cb: self.progress_cb("Scanning files")
+
+        # Use parallel file scanning if enabled and available
+        if extensions:
+            if config.parallel_enabled:
+                files = await find_files_parallel(root, extensions, config.concurrency_limit)
+            else:
+                files = await asyncio.to_thread(find_files, root, extensions)
+        else:
+            files = []
 
         # 3. Compute base metrics
         def _get_metrics(file_list, threshold):
@@ -116,16 +125,27 @@ class CodebaseAnalyzer:
         local_plugins = root_path / ".ghostclaw" / "plugins"
         if local_plugins.exists():
             registry.load_external_plugins(local_plugins)
-            
+
+        # Apply plugin enable/disable filter from config
+        if config.plugins_enabled is not None:
+            registry.enabled_plugins = set(config.plugins_enabled)
+        else:
+            registry.enabled_plugins = None
+
+        if self.progress_cb: self.progress_cb("Running adapters")
         adapter_results = await registry.run_analysis(root, files)
-        
+        if self.progress_cb: self.progress_cb("Adapters completed")
+
         # Unify findings from all adapters
         issues = []
         ghosts = []
         flags = []
         coupling_metrics = {}
         import_edges = []
-        
+
+        # Collect errors from adapter registry (if any)
+        errors = list(getattr(registry, 'errors', []))
+
         for res in adapter_results:
             issues.extend(res.get("issues", []))
             ghosts.extend(res.get("architectural_ghosts", []))
@@ -182,6 +202,7 @@ class CodebaseAnalyzer:
             "issues": issues,
             "architectural_ghosts": ghosts,
             "red_flags": flags,
+            "errors": errors,
             "metadata": {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "analyzer": "ghostclaw-async",

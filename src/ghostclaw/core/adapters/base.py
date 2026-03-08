@@ -10,7 +10,9 @@ class AdapterMetadata(BaseModel):
     version: str
     description: str
     author: Optional[str] = None
-    dependencies: List[str] = [] # External binaries required
+    dependencies: List[str] = []  # External binaries required
+    min_ghostclaw_version: Optional[str] = None
+    max_ghostclaw_version: Optional[str] = None
 
 class BaseAdapter(abc.ABC):
     """Abstract base class for all Ghostclaw adapters."""

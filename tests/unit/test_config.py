@@ -32,3 +32,39 @@ def test_config_reject_local_api_key(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="SECURITY RISK: API key found in local project configuration"):
         # The validation is now correctly in the `load` classmethod to check the specific repo path
         GhostclawConfig.load(".")
+
+
+def test_config_optional_bool_env_vars(monkeypatch):
+    """Test that Optional[bool] env vars are correctly converted from strings."""
+    # Test use_pyscn (Optional[bool])
+    monkeypatch.setenv("GHOSTCLAW_USE_PYSCN", "true")
+    config = GhostclawConfig.load(".")
+    assert config.use_pyscn is True
+
+    monkeypatch.setenv("GHOSTCLAW_USE_PYSCN", "false")
+    config = GhostclawConfig.load(".")
+    assert config.use_pyscn is False
+
+    monkeypatch.setenv("GHOSTCLAW_USE_PYSCN", "1")
+    config = GhostclawConfig.load(".")
+    assert config.use_pyscn is True
+
+    monkeypatch.setenv("GHOSTCLAW_USE_PYSCN", "0")
+    config = GhostclawConfig.load(".")
+    assert config.use_pyscn is False
+
+    # Test use_ai_codeindex (Optional[bool])
+    monkeypatch.setenv("GHOSTCLAW_USE_AI_CODEINDEX", "yes")
+    config = GhostclawConfig.load(".")
+    assert config.use_ai_codeindex is True
+
+    monkeypatch.setenv("GHOSTCLAW_USE_AI_CODEINDEX", "no")
+    config = GhostclawConfig.load(".")
+    assert config.use_ai_codeindex is False
+
+    # Test that empty string results in None (optional)
+    monkeypatch.delenv("GHOSTCLAW_USE_PYSCN", raising=False)
+    monkeypatch.delenv("GHOSTCLAW_USE_AI_CODEINDEX", raising=False)
+    config = GhostclawConfig.load(".")
+    assert config.use_pyscn is None
+    assert config.use_ai_codeindex is None

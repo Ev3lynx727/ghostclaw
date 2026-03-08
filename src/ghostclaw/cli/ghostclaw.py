@@ -188,11 +188,21 @@ def print_report(report: Dict):
             print(f"   {flag}")
         print()
 
+    errors = report.get('errors', [])
+    if errors:
+        print("⚠️ Adapter Errors:")
+        for err in errors:
+            print(f"   {err}")
+        print()
+
     print("💡 Tip: Run with '--patch' to generate refactor suggestions")
 
-    if "ai_synthesis" in report:
-        # Final formatting was already handled live by the analyzer during generation
-        pass
+    # Print AI synthesis if present and not already streamed (e.g., from cache)
+    if "ai_synthesis" in report and not report.get("_synthesis_streamed", False):
+        print("\n✨ AI Synthesis:")
+        if report.get("metadata", {}).get("cache_hit"):
+            print("(cached)")
+        print(report["ai_synthesis"])
 
 
 def update_ghostclaw():
@@ -252,6 +262,10 @@ def main():
     analyze_parser.add_argument("--cache-ttl", type=int, default=7, help="Cache TTL in days (default: 7)")
     analyze_parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
 
+    # Parallel processing options
+    analyze_parser.add_argument("--no-parallel", action="store_true", help="Disable parallel file scanning")
+    analyze_parser.add_argument("--concurrency-limit", type=int, help="Max concurrent file operations (default: 32)")
+
     # AI options
     analyze_parser.add_argument("--use-ai", action="store_true", help="Enable Ghost Engine AI synthesis")
     analyze_parser.add_argument("--ai-provider", help="AI Provider (openrouter, openai, anthropic)")
@@ -265,6 +279,12 @@ def main():
     analyze_parser.add_argument("--no-pyscn", action="store_true", help="Explicitly disable PySCN integration")
     analyze_parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
     analyze_parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
+
+    # Reliability
+    analyze_parser.add_argument("--strict", action="store_true", help="Treat adapter errors as fatal (non-zero exit)")
+
+    # Observability
+    analyze_parser.add_argument("--benchmark", action="store_true", help="Print performance timings after analysis")
 
     # --- INIT COMMAND ---
     init_parser = subparsers.add_parser("init", help="Scaffold local project configuration")
@@ -298,6 +318,12 @@ def main():
 
     scaffold_parser = plugins_subparsers.add_parser("scaffold", help="Generate a boilerplate adapter")
     scaffold_parser.add_argument("name", help="Name of the new plugin")
+
+    enable_parser = plugins_subparsers.add_parser("enable", help="Enable a plugin")
+    enable_parser.add_argument("name", help="Name of the plugin to enable")
+
+    disable_parser = plugins_subparsers.add_parser("disable", help="Disable a plugin")
+    disable_parser.add_argument("name", help="Name of the plugin to disable")
 
     # Backward compatibility: if first arg is a directory, default to 'analyze'
     if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "-h", "--help", "--version"]:
@@ -420,6 +446,75 @@ def main():
                 print(f"Version: {plugin_meta.get('version')}")
                 print(f"Description: {plugin_meta.get('description')}")
         
+        elif args.plugin_command == "enable":
+            config_path = Path.cwd() / ".ghostclaw" / "ghostclaw.json"
+            metadata = registry.get_plugin_metadata()
+            all_names = [m.get("name") for m in metadata]
+            if args.name not in all_names:
+                print(f"❌ Plugin '{args.name}' not found. Available: {', '.join(all_names)}", file=sys.stderr)
+                sys.exit(1)
+            config_data = {}
+            if config_path.exists():
+                try:
+                    config_data = json.loads(config_path.read_text())
+                except Exception as e:
+                    print(f"❌ Failed to read config: {e}", file=sys.stderr)
+                    sys.exit(1)
+            enabled = config_data.get("plugins_enabled")
+            if enabled is None:
+                # All enabled by default; nothing to do
+                print(f"ℹ️ Plugin '{args.name}' is already enabled (all plugins enabled by default).")
+                sys.exit(0)
+            if args.name in enabled:
+                print(f"ℹ️ Plugin '{args.name}' is already enabled.")
+                sys.exit(0)
+            enabled.append(args.name)
+            config_data["plugins_enabled"] = enabled
+            try:
+                config_path.write_text(json.dumps(config_data, indent=2))
+                print(f"✅ Enabled plugin '{args.name}'.")
+            except Exception as e:
+                print(f"❌ Failed to write config: {e}", file=sys.stderr)
+                sys.exit(1)
+
+        elif args.plugin_command == "disable":
+            config_path = Path.cwd() / ".ghostclaw" / "ghostclaw.json"
+            metadata = registry.get_plugin_metadata()
+            all_names = [m.get("name") for m in metadata]
+            if args.name not in all_names:
+                print(f"❌ Plugin '{args.name}' not found. Available: {', '.join(all_names)}", file=sys.stderr)
+                sys.exit(1)
+            config_data = {}
+            if config_path.exists():
+                try:
+                    config_data = json.loads(config_path.read_text())
+                except Exception as e:
+                    print(f"❌ Failed to read config: {e}", file=sys.stderr)
+                    sys.exit(1)
+            enabled = config_data.get("plugins_enabled")
+            if enabled is None:
+                # All enabled; create whitelist excluding this plugin
+                enabled = [n for n in all_names if n != args.name]
+                config_data["plugins_enabled"] = enabled
+                try:
+                    config_path.write_text(json.dumps(config_data, indent=2))
+                    print(f"✅ Disabled plugin '{args.name}'. {len(enabled)} plugins remain enabled.")
+                except Exception as e:
+                    print(f"❌ Failed to write config: {e}", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                if args.name not in enabled:
+                    print(f"ℹ️ Plugin '{args.name}' is already disabled (not in whitelist).")
+                    sys.exit(0)
+                enabled.remove(args.name)
+                config_data["plugins_enabled"] = enabled
+                try:
+                    config_path.write_text(json.dumps(config_data, indent=2))
+                    print(f"✅ Disabled plugin '{args.name}'.")
+                except Exception as e:
+                    print(f"❌ Failed to write config: {e}", file=sys.stderr)
+                    sys.exit(1)
+
         elif args.plugin_command == "test":
             # Finding the instance and call is_available
             print(f"🧪 Testing plugin '{args.name}'...")
@@ -534,11 +629,8 @@ class CustomAdapter(MetricAdapter):
             print(f"Error: directory not found: {repo_path}", file=sys.stderr)
             sys.exit(1)
 
-        # Initialize cache
-        cache = None
+        # Determine cache usage
         use_cache = not args.no_cache
-        if use_cache:
-            cache = LocalCache(cache_dir=args.cache_dir, ttl_days=args.cache_ttl)
 
         # Initialize Config
         cli_overrides = {}
@@ -548,18 +640,33 @@ class CustomAdapter(MetricAdapter):
         if args.dry_run: cli_overrides['dry_run'] = True
         if args.verbose: cli_overrides['verbose'] = True
         if args.patch: cli_overrides['patch'] = True
-        
+
         if args.pyscn: cli_overrides['use_pyscn'] = True
         elif args.no_pyscn: cli_overrides['use_pyscn'] = False
-        
+
         if args.ai_codeindex: cli_overrides['use_ai_codeindex'] = True
         elif args.no_ai_codeindex: cli_overrides['use_ai_codeindex'] = False
+
+        # Parallel processing overrides
+        if args.no_parallel:
+            cli_overrides['parallel_enabled'] = False
+        if args.concurrency_limit is not None:
+            cli_overrides['concurrency_limit'] = args.concurrency_limit
 
         try:
             config = GhostclawConfig.load(repo_path, **cli_overrides)
         except Exception as e:
             print(f"Configuration Error: {e}", file=sys.stderr)
             sys.exit(1)
+
+        # Initialize cache if needed, with compression from config
+        cache = None
+        if use_cache:
+            cache = LocalCache(
+                cache_dir=args.cache_dir,
+                ttl_days=args.cache_ttl,
+                compression=config.cache_compression
+            )
 
         analyzer = CodebaseAnalyzer(cache=cache if use_cache else None)
         agent = GhostAgent(config, repo_path, analyzer=analyzer)
@@ -569,6 +676,7 @@ class CustomAdapter(MetricAdapter):
         status = None
         live = None
         synthesis_content = []
+        synthesis_streamed = False
 
         async def on_pre_analyze(data):
             nonlocal status
@@ -589,7 +697,8 @@ class CustomAdapter(MetricAdapter):
                 print("🧠 Ghost Engine Synthesis:\n")
 
         async def on_synthesis_chunk(data):
-            nonlocal status, live
+            nonlocal status, live, synthesis_streamed
+            synthesis_streamed = True
             chunk = data["chunk"]
             synthesis_content.append(chunk)
             
@@ -605,16 +714,22 @@ class CustomAdapter(MetricAdapter):
                 
                 live.update(Text("".join(synthesis_content)))
             else:
-                sys.stdout.write(chunk)
-                sys.stdout.flush()
+                output_stream = sys.stderr if args.json else sys.stdout
+                output_stream.write(chunk)
+                output_stream.flush()
 
         async def on_post_synthesis(data):
-            nonlocal live
+            nonlocal live, status
             if live:
                 live.stop()
                 live = None
+            if status:
+                status.stop()
+                status = None
             
-            print("\n\n" + "="*50)
+            output_stream = sys.stderr if args.json else sys.stdout
+            output_stream.write("\n\n" + "="*50)
+            output_stream.flush()
             if console and synthesis_content:
                 full_text = "".join(synthesis_content)
                 if full_text.strip(): console.print(Markdown(full_text))
@@ -636,8 +751,9 @@ class CustomAdapter(MetricAdapter):
                     current_text.append(chunk, style="dim italic")
                     live.update(current_text)
             else:
-                sys.stdout.write(f"\033[2m{chunk}\033[0m")
-                sys.stdout.flush()
+                output_stream = sys.stderr if args.json else sys.stdout
+                output_stream.write(f"\033[2m{chunk}\033[0m")
+                output_stream.flush()
 
         agent.on(AgentEvent.PRE_ANALYZE, on_pre_analyze)
         agent.on(AgentEvent.POST_METRICS, on_post_metrics)
@@ -648,6 +764,17 @@ class CustomAdapter(MetricAdapter):
 
         try:
             report = asyncio.run(agent.run())
+        if args.benchmark:
+            timings = getattr(agent, 'timings', {})
+            if timings:
+                print("\n=== Benchmark Results (seconds) ===", file=sys.stderr)
+                for phase, duration in sorted(timings.items()):
+                    print(f"{phase:20} {duration:>8.3f}s", file=sys.stderr)
+            # Also show cache stats if used
+            if use_cache and cache:
+                info = cache.info()
+                print(f"Cache entries: {info['entries']}, size: {info['total_size_bytes']} bytes", file=sys.stderr)
+            report["_synthesis_streamed"] = synthesis_streamed
             # Update cache if post-synthesis (Agent handles synthesis internally now)
             if use_cache and cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
                 cache.set(report["metadata"]["fingerprint"], report)
@@ -662,19 +789,25 @@ class CustomAdapter(MetricAdapter):
         if not args.no_write_report:
             now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
             filename = f"ARCHITECTURE-REPORT-{now}.md"
-            ghostclaw_dir = Path(repo_path) / ".ghostclaw"
+            
+            # For PR creation, write to repo root (outside .ghostclaw/) to avoid gitignore issues
+            if args.create_pr:
+                report_dir = Path(repo_path)
+            else:
+                report_dir = Path(repo_path) / ".ghostclaw"
+                report_dir.mkdir(parents=True, exist_ok=True)
+                # Add .ghostclaw to .gitignore if not already present (only for non-PR runs)
+                gitignore_path = Path(repo_path) / ".gitignore"
+                if gitignore_path.exists():
+                    content = gitignore_path.read_text(encoding='utf-8')
+                    if ".ghostclaw" not in content and ".ghostclaw/" not in content:
+                        newline = "\n" if not content.endswith("\n") else ""
+                        with open(gitignore_path, "a", encoding="utf-8") as f:
+                            f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
+            
+            report_file_path = report_dir / filename
             try:
-                ghostclaw_dir.mkdir(parents=True, exist_ok=True)
-                report_file_path = ghostclaw_dir / filename
                 report_file_path.write_text(generate_markdown_report(report), encoding='utf-8')
-                if not args.create_pr:
-                    gitignore_path = Path(repo_path) / ".gitignore"
-                    if gitignore_path.exists():
-                        content = gitignore_path.read_text(encoding='utf-8')
-                        if ".ghostclaw" not in content and ".ghostclaw/" not in content:
-                            newline = "\n" if not content.endswith("\n") else ""
-                            with open(gitignore_path, "a", encoding="utf-8") as f:
-                                f.write(f"{newline}# Added by Ghostclaw\n.ghostclaw/\n")
             except Exception as e:
                 print(f"Error writing report: {e}", file=sys.stderr)
 
@@ -701,6 +834,11 @@ class CustomAdapter(MetricAdapter):
                 title = args.pr_title or f"🏰 Architecture Report - {datetime.datetime.now().strftime('%Y-%m-%d')}"
                 body = args.pr_body or f"Ghostclaw has completed an architectural review of the codebase.\n\n**Vibe Score: {report['vibe_score']}/100**\n\nPlease review the attached report for details."
                 create_github_pr(repo_path, report_file_path, title, body)
+                # Cleanup: remove the temporary PR report from repo root
+                try:
+                    report_file_path.unlink(missing_ok=True)
+                except Exception as e:
+                    print(f"Warning: could not delete temporary PR report: {e}", file=sys.stderr)
 
         if args.cache_stats and cache:
             info = cache.info()
@@ -708,6 +846,11 @@ class CustomAdapter(MetricAdapter):
 
         if not args.json and report.get('metadata', {}).get('cache_hit'):
             print("⚡ Cache hit!", file=sys.stderr)
+
+        # Strict mode: exit with non-zero if adapter errors occurred
+        if args.strict and report.get('errors'):
+            print(f"❌ {len(report['errors'])} adapter error(s) occurred (--strict). Exiting with failure.", file=sys.stderr)
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

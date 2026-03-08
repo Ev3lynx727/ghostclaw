@@ -1,82 +1,25 @@
-# GUIDE: Installing Ghostclaw
+# Ghostclaw Guide
 
-This guide explains how to install and integrate the **Ghostclaw** skill into your OpenClaw environment.
+Ghostclaw is an architectural analysis tool for codebases. It examines your project's structure, metrics, and dependencies to produce a comprehensive report with a vibe score, architectural ghosts, and actionable suggestions.
 
-## Prerequisites
+## Core Concepts
 
-- **OpenClaw** installed on your system.
-- **Node.js** and **npm**.
-- **Python 3.8+** (required to run Ghostclaw's core analyzer).
+1. **Stack Detection** – Identifies the primary technology (Python, Node, Go, etc.) via heuristics.
+2. **File Scanning** – Recursively discovers source files, with optional parallel I/O for speed.
+3. **Metrics Computation** – Calculates size, complexity, coupling, and file‑level health.
+4. **Adapters** – Pluggable modules that add custom analyses (e.g., PySCN for Python dependencies, AI‑CodeIndex for index‑based insights).
+5. **AI Synthesis** – Optionally sends metrics to an LLM to generate a narrative analysis.
 
-## Installation Methods
+## Output
 
-### Method 1: ClawHub (Recommended)
+Ghostclaw writes a markdown report (by default to `.ghostclaw/` locally) and optionally creates a GitHub PR with the findings. It also provides a terminal summary with issues, red flags, and tips.
 
-Ghostclaw is available on ClawHub. You can install it using the `clawdhub`:
-
-```bash
-clawhub install skill ghostclaw
-```
-
-### Method 2: NPX Skills CLI
-
-You can also install via the generic skills manager:
+## Getting Started
 
 ```bash
-npx skills add ghostclaw
+ghostclaw analyze .
+ghostclaw analyze . --json > report.json
+ghostclaw analyze . --create-pr
 ```
 
-### Method 3: Build from source
-
-If you want to contribute or run from the latest source code:
-
-```bash
-git clone https://github.com/Ev3lynx727/ghostclaw.git
-cd ghostclaw
-# Install dependencies
-pip install .
-# Or for development
-pip install -e .
-```
-
-## Configuration
-
-Once installed, Ghostclaw is located in your OpenClaw skills directory (usually `~/.openclaw/skills/ghostclaw`).
-
-### Setting up Repositories to Watch
-
-Add your repository paths to `scripts/repos.txt`:
-
-```text
-/path/to/your/project-a
-/path/to/your/project-b
-```
-
-### GitHub Integration (Optional)
-
-To allow Ghostclaw to open Pull Requests, set your `GH_TOKEN`:
-
-```bash
-export GH_TOKEN=your_github_token_here
-```
-
-## Usage
-
-### 1. Ad-hoc Review
-
-Ask your agent:
-> "ghostclaw, review the current repository for architectural issues"
-
-### 3. Comparing Trends
-
-View health trends across multiple repositories:
-
-```bash
-./scripts/compare.sh --repos-file scripts/repos.txt
-```
-
-## Troubleshooting
-
-- **Python not found**: Ensure `python3` is in your PATH.
-- **ClawHub Errors**: Ensure you have the latest version of `clawdhub`.
-- **Permission issues**: Check that `~/.openclaw` is writable.
+Explore the options for caching, parallelism, and AI integration to suit your workflow.
