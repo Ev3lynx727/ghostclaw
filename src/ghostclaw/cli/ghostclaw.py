@@ -22,7 +22,7 @@ from ghostclaw.core.agent import GhostAgent, AgentEvent
 from ghostclaw.cli import __version__
 import asyncio
 
-from ghostclaw.cli.commander.registry import registry
+from ghostclaw.cli.commander import registry
 
 try:
     from rich.console import Console
@@ -51,7 +51,7 @@ def setup_logging(verbose: bool = False):
     )
 
 def generate_markdown_report(report: Dict) -> str:
-    from ghostclaw.cli.formatters.markdown import MarkdownFormatter
+    from ghostclaw.cli.formatters import MarkdownFormatter
     return MarkdownFormatter().format(report)
 
 def detect_github_remote(repo_path: str) -> Optional[str]:
@@ -72,12 +72,12 @@ def detect_github_remote(repo_path: str) -> Optional[str]:
     return None
 
 def create_github_pr(repo_path: str, report_file: Path, title: str, body: str):
-    from ghostclaw.cli.services.pr_service import PRService
+    from ghostclaw.cli.services import PRService
     import asyncio
     asyncio.run(PRService(repo_path).create_pr(report_file, title, body))
 
 def print_report(report: Dict):
-    from ghostclaw.cli.formatters.terminal import TerminalFormatter
+    from ghostclaw.cli.formatters import TerminalFormatter
     TerminalFormatter().print_to_terminal(report)
 
 def update_ghostclaw():
@@ -180,7 +180,7 @@ def legacy_main(args: argparse.Namespace) -> int:
         return 0
 
     if args.command == "init":
-        from ghostclaw.cli.services.config_service import ConfigService
+        from ghostclaw.cli.services import ConfigService
         ConfigService.init_project()
         return 0
 

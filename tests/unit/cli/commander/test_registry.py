@@ -1,7 +1,7 @@
 import pytest
 from argparse import ArgumentParser, Namespace
-from ghostclaw.cli.commander.base import Command
-from ghostclaw.cli.commander.registry import CommandRegistry
+from ghostclaw.cli.commander import Command
+from ghostclaw.cli.commander import CommandRegistry
 
 class Cmd1(Command):
     @property

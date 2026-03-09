@@ -1,6 +1,6 @@
 import pytest
 from argparse import ArgumentParser, Namespace
-from ghostclaw.cli.commander.base import Command
+from ghostclaw.cli.commander import Command
 
 class DummyCommand(Command):
     @property

@@ -8,11 +8,11 @@ from typing import Dict, Any, Optional
 from argparse import ArgumentParser, Namespace
 
 from ghostclaw.cli.commander import Command
-from ghostclaw.cli.services.analyzer_service import AnalyzerService
-from ghostclaw.cli.services.pr_service import PRService
-from ghostclaw.cli.formatters.markdown import MarkdownFormatter
-from ghostclaw.cli.formatters.terminal import TerminalFormatter
-from ghostclaw.cli.formatters.json import JSONFormatter
+from ghostclaw.cli.services import AnalyzerService
+from ghostclaw.cli.services import PRService
+from ghostclaw.cli.formatters import MarkdownFormatter
+from ghostclaw.cli.formatters import TerminalFormatter
+from ghostclaw.cli.formatters import JSONFormatter
 import subprocess
 
 def detect_github_remote(repo_path: str) -> Optional[str]:

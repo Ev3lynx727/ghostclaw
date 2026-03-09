@@ -1,5 +1,5 @@
 import pytest
-from ghostclaw.cli.formatters.markdown import MarkdownFormatter
+from ghostclaw.cli.formatters import MarkdownFormatter
 from typing import Dict, Any
 
 @pytest.fixture

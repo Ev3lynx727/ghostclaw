@@ -1,10 +1,10 @@
 import pytest
 from pathlib import Path
-from ghostclaw.cli.services.plugin_service import PluginService
+from ghostclaw.cli.services import PluginService
 
 def test_plugin_service_list_plugins(mocker):
     service = PluginService()
-    mock_registry = mocker.patch("ghostclaw.cli.services.plugin_service.registry")
+    mock_registry = mocker.patch("ghostclaw.cli.services.registry")
     mock_registry.get_plugin_metadata.return_value = [{"name": "test-plugin", "version": "1.0"}]
 
     plugins = service.list_plugins()
@@ -13,7 +13,7 @@ def test_plugin_service_list_plugins(mocker):
 
 def test_plugin_service_get_plugin_info(mocker):
     service = PluginService()
-    mock_registry = mocker.patch("ghostclaw.cli.services.plugin_service.registry")
+    mock_registry = mocker.patch("ghostclaw.cli.services.registry")
     mock_registry.get_plugin_metadata.return_value = [{"name": "test-plugin", "version": "1.0"}]
 
     info = service.get_plugin_info("test-plugin")
@@ -37,7 +37,7 @@ def test_plugin_service_remove_plugin(mocker, tmp_path):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("print('hello')")
 
-    mock_registry = mocker.patch("ghostclaw.cli.services.plugin_service.registry")
+    mock_registry = mocker.patch("ghostclaw.cli.services.registry")
     mock_registry.internal_plugins = []
 
     service.remove_plugin("myplugin.py")

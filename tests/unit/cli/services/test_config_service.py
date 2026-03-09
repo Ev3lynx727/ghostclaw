@@ -1,7 +1,7 @@
 import pytest
 import json
 from pathlib import Path
-from ghostclaw.cli.services.config_service import ConfigService
+from ghostclaw.cli.services import ConfigService
 
 def test_config_service_init_project(tmp_path):
     ConfigService.init_project(str(tmp_path))

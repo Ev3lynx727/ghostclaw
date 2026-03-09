@@ -1,5 +1,5 @@
 import pytest
-from ghostclaw.cli.formatters.terminal import TerminalFormatter
+from ghostclaw.cli.formatters import TerminalFormatter
 from typing import Dict, Any
 
 @pytest.fixture

@@ -34,7 +34,7 @@ from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.cache import LocalCache
 from ghostclaw.core.agent import GhostAgent
-from ghostclaw.cli.services.analyzer_service import AnalyzerService
+from ghostclaw.cli.services import AnalyzerService
 
 # Global debugger state (shared across phases)
 _debug_context = {}

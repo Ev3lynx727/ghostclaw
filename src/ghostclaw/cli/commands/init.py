@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from ghostclaw.cli.commander import Command
-from ghostclaw.cli.services.config_service import ConfigService
+from ghostclaw.cli.services import ConfigService
 import sys
 
 class InitCommand(Command):

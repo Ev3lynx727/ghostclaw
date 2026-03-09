@@ -1,6 +1,6 @@
 import pytest
 import json
-from ghostclaw.cli.formatters.json import JSONFormatter
+from ghostclaw.cli.formatters import JSONFormatter
 
 def test_json_formatter():
     report = {"vibe_score": 90, "stack": "Python"}

@@ -1,5 +1,5 @@
 import pytest
-from ghostclaw.cli.services.analyzer_service import AnalyzerService
+from ghostclaw.cli.services import AnalyzerService
 
 @pytest.mark.asyncio
 async def test_analyzer_service_initialization():
@@ -16,7 +16,7 @@ async def test_analyzer_service_initialization():
 
 @pytest.mark.asyncio
 async def test_analyzer_service_run_mocked(mocker):
-    mock_agent = mocker.patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+    mock_agent = mocker.patch("ghostclaw.cli.services.GhostAgent")
     mock_instance = mock_agent.return_value
     mock_instance.run = mocker.AsyncMock(return_value={"vibe_score": 90, "metadata": {"cache_hit": False}})
     mock_instance.on = mocker.MagicMock()
@@ -34,7 +34,7 @@ async def test_analyzer_service_run_mocked(mocker):
 
 @pytest.mark.asyncio
 async def test_analyzer_service_invalid_config(mocker):
-    mock_config_load = mocker.patch("ghostclaw.cli.services.analyzer_service.GhostclawConfig.load")
+    mock_config_load = mocker.patch("ghostclaw.cli.services.GhostclawConfig.load")
     mock_config_load.side_effect = Exception("Invalid config")
 
     service = AnalyzerService(
