@@ -18,7 +18,10 @@ async def test_analyzer_service_initialization():
 async def test_analyzer_service_run_mocked(mocker):
     mock_agent = mocker.patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
     mock_instance = mock_agent.return_value
-    mock_instance.run.return_value = {"vibe_score": 90, "metadata": {"cache_hit": False}}
+    # Use AsyncMock for async run()
+    async def mock_run():
+        return {"vibe_score": 90, "metadata": {"cache_hit": False}}
+    mock_instance.run = mock_run
     mock_instance.on = mocker.MagicMock()
 
     service = AnalyzerService(
@@ -45,5 +48,5 @@ async def test_analyzer_service_invalid_config(mocker):
         benchmark=False
     )
 
-    with pytest.raises(Exception, match="Analysis Error: Configuration Error: Invalid config"):
+    with pytest.raises(ValueError, match="Configuration Error: Invalid config"):
         await service.run()

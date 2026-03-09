@@ -9,16 +9,19 @@ async def test_analyze_command_execute(mocker, tmp_path):
 
     mock_service = mocker.patch("ghostclaw.cli.commands.analyze.AnalyzerService")
     mock_instance = mock_service.return_value
-    mock_instance.run.return_value = {
-        "vibe_score": 85,
-        "stack": "Python",
-        "files_analyzed": 10,
-        "total_lines": 500,
-        "metadata": {"timestamp": "2023-10-27T10:00:00Z"},
-        "issues": [],
-        "architectural_ghosts": [],
-        "red_flags": []
-    }
+    # Use AsyncMock for async run() method
+    async def mock_run():
+        return {
+            "vibe_score": 85,
+            "stack": "Python",
+            "files_analyzed": 10,
+            "total_lines": 500,
+            "metadata": {"timestamp": "2023-10-27T10:00:00Z"},
+            "issues": [],
+            "architectural_ghosts": [],
+            "red_flags": []
+        }
+    mock_instance.run = mock_run
 
     cmd = AnalyzeCommand()
     args = Namespace(

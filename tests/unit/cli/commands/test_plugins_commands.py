@@ -92,12 +92,18 @@ async def test_plugins_test_command(mocker, capsys):
     assert "✅ Plugin 'test-plugin' is registered." in captured.out
 
 @pytest.mark.asyncio
-async def test_plugins_scaffold_command(mocker):
+async def test_plugins_scaffold_command(mocker, capsys):
     mock_service = mocker.patch("ghostclaw.cli.commands.plugins.scaffold.PluginService")
     mock_instance = mock_service.return_value
-    mock_instance.scaffold_plugin.return_value = "target_path"
+    # Mock a Path-like object
+    mock_path = mocker.MagicMock()
+    mock_path.__truediv__.return_value = mocker.MagicMock()
+    mock_path.__str__.return_value = "/path/to/plugin"
+    mock_instance.scaffold_plugin.return_value = mock_path
 
     cmd = PluginsScaffoldCommand()
     args = Namespace(name="new-plugin")
     result = await cmd.execute(args)
     assert result == 0
+    captured = capsys.readouterr()
+    assert "🏗️ Scaffolded plugin" in captured.out
