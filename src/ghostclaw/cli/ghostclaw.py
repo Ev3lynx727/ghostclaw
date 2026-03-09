@@ -252,7 +252,8 @@ def main():
     # Pre-parse handling: directory shortcut and unknown command fallback
     if len(sys.argv) > 1:
         raw = sys.argv[1]
-        if raw not in top_level_commands:
+        # Only apply shortcut/fallback for non-option arguments (skip flags like --help)
+        if not raw.startswith('-') and raw not in top_level_commands:
             if os.path.isdir(raw):
                 sys.argv.insert(1, "analyze")
             else:
