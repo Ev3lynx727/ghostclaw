@@ -49,12 +49,10 @@ class BridgeHandler:
                     "id": request_id
                 }
         except JSONRPCError as e:
-            if request_id is not None:
-                return self._build_error(request_id, e.code, e.message, e.data)
+            return self._build_error(request_id, e.code, e.message, e.data)
         except Exception as e:
             logger.exception("Internal error in JSON-RPC handler")
-            if request_id is not None:
-                return self._build_error(request_id, -32603, "Internal error", str(e))
+            return self._build_error(request_id, -32603, "Internal error", str(e))
 
         return None
 
