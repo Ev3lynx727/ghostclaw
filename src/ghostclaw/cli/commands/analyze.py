@@ -93,6 +93,11 @@ class AnalyzeCommand(Command):
             action="store_true",
             help="Drop into pdb post-mortem debugger on error (for development only)"
         )
+        parser.add_argument(
+            "--show-tokens",
+            action="store_true",
+            help="Show token usage statistics after AI synthesis (if --use-ai)"
+        )
 
     def validate(self, args: Namespace) -> None:
         if not Path(args.repo_path).is_dir():
@@ -171,6 +176,17 @@ class AnalyzeCommand(Command):
             if use_cache and service.cache:
                 info = service.cache.info()
                 print(f"Cache entries: {info['entries']}, size: {info['total_size_bytes']} bytes", file=sys.stderr)
+
+        # Show token usage if requested
+        if getattr(args, 'show_tokens', False):
+            tokens = report.get('metadata', {}).get('tokens')
+            if tokens:
+                print("\n=== Token Usage ===", file=sys.stderr)
+                print(f"Prompt tokens:     {tokens.get('prompt', 0):>10}", file=sys.stderr)
+                print(f"Completion tokens: {tokens.get('completion', 0):>10}", file=sys.stderr)
+                print(f"Total tokens:      {tokens.get('total', 0):>10}", file=sys.stderr)
+            else:
+                print("\n⚠️  No token data available (AI synthesis may have been disabled or failed).", file=sys.stderr)
 
         report_file_path = None
         if not args.no_write_report:

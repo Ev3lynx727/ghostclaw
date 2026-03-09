@@ -37,6 +37,10 @@ class LLMClient:
         self.repo_path = repo_path
         self.max_tokens = 100000  # Default sensible limit
         self.client = None
+        # Token usage tracking
+        self.prompt_tokens: int = 0
+        self.completion_tokens: int = 0
+        self.total_tokens: int = 0
 
         if self.config.ai_provider == "openrouter":
             base_url = "https://openrouter.ai/api/v1"
@@ -138,6 +142,11 @@ class LLMClient:
                 content = response.content[0].text
                 # Capture reasoning if present (Claude 3.7+)
                 reasoning = getattr(response, 'thinking', None)
+                # Track token usage
+                if hasattr(response, 'usage') and response.usage:
+                    self.prompt_tokens += response.usage.input_tokens
+                    self.completion_tokens += response.usage.output_tokens
+                    self.total_tokens = self.prompt_tokens + self.completion_tokens
                 return {"content": content, "reasoning": reasoning}
             else:
                 response = await self.client.chat.completions.create(
@@ -150,6 +159,11 @@ class LLMClient:
                 message = response.choices[0].message
                 content = message.content
                 reasoning = getattr(message, 'reasoning_content', None)
+                # Track token usage
+                if hasattr(response, 'usage') and response.usage:
+                    self.prompt_tokens += response.usage.prompt_tokens
+                    self.completion_tokens += response.usage.completion_tokens
+                    self.total_tokens = self.prompt_tokens + self.completion_tokens
                 return {"content": content, "reasoning": reasoning}
 
         except Exception as e:
@@ -277,6 +291,11 @@ class LLMClient:
 
         system_prompt = "You are Ghostclaw, an expert software architect. Analyze the provided codebase metrics and context and output a markdown report detailing system-level flow, cohesion, and tech stack best practices."
 
+        # Reset token counters for this stream
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.total_tokens = 0
+
         async def _stream_call():
             if self.config.ai_provider == "anthropic":
                 async with self.client.messages.stream(
@@ -290,6 +309,12 @@ class LLMClient:
                             yield {"type": "content", "content": event.text}
                         elif event.type == "thinking_delta":
                             yield {"type": "reasoning", "content": event.thinking}
+                    # After stream completes, capture usage
+                    usage = stream.get_final_usage()
+                    if usage:
+                        self.prompt_tokens += usage.input_tokens
+                        self.completion_tokens += usage.output_tokens
+                        self.total_tokens = self.prompt_tokens + self.completion_tokens
             else:
                 stream = await self.client.chat.completions.create(
                     model=self.model,
@@ -307,6 +332,11 @@ class LLMClient:
                         yield {"type": "content", "content": delta.content}
                     if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
                         yield {"type": "reasoning", "content": delta.reasoning_content}
+                    # Some providers include usage in the last chunk
+                    if hasattr(chunk, 'usage') and chunk.usage:
+                        self.prompt_tokens += chunk.usage.prompt_tokens
+                        self.completion_tokens += chunk.usage.completion_tokens
+                        self.total_tokens = self.prompt_tokens + self.completion_tokens
 
         async for item in self._retry_stream(_stream_call):
             yield item

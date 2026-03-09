@@ -153,6 +153,23 @@ class AnalyzerService:
 
             report["_synthesis_streamed"] = self.synthesis_streamed
 
+            # Add token usage to metadata if available (only if AI was used)
+            if config.use_ai and hasattr(agent, 'llm_client'):
+                lc = agent.llm_client
+                # Safely retrieve token counts, handling mocks in tests
+                try:
+                    total = lc.total_tokens
+                    # Only add if total is a number > 0 (skip mocks)
+                    if isinstance(total, (int, float)) and total > 0:
+                        report.setdefault('metadata', {})['tokens'] = {
+                            'prompt': int(getattr(lc, 'prompt_tokens', 0)),
+                            'completion': int(getattr(lc, 'completion_tokens', 0)),
+                            'total': int(total)
+                        }
+                except Exception:
+                    # If llm_client is a mock or attributes missing, skip
+                    pass
+
             if self.use_cache and self.cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
                 self.cache.set(report["metadata"]["fingerprint"], report)
 
