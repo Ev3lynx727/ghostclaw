@@ -78,9 +78,10 @@ class BridgeHandler:
 
     async def run(self):
         """Read lines from stdin and process them as JSON-RPC requests."""
-        loop = asyncio.get_running_loop()
+        # Fix for some environments where sys.stdin might be wrapped
         reader = asyncio.StreamReader()
         protocol = asyncio.StreamReaderProtocol(reader)
+        loop = asyncio.get_running_loop()
         await loop.connect_read_pipe(lambda: protocol, sys.stdin)
 
         while True:
@@ -94,18 +95,87 @@ class BridgeHandler:
                     continue
 
                 try:
-                    request = json.loads(line_str)
+                    data = json.loads(line_str)
                 except json.JSONDecodeError:
                     response = self._build_error(None, -32700, "Parse error")
-                    sys.stdout.write(json.dumps(response) + "\n")
-                    sys.stdout.flush()
+                    self._send_response(response)
                     continue
 
-                response = await self._handle_request(request)
-                if response is not None:
-                    sys.stdout.write(json.dumps(response) + "\n")
-                    sys.stdout.flush()
+                if isinstance(data, list):
+                    # Batch request
+                    responses = []
+                    for req in data:
+                        resp = await self._handle_request(req)
+                        if resp:
+                            responses.append(resp)
+                    if responses:
+                        self._send_response(responses)
+                else:
+                    # Single request
+                    response = await self._handle_request(data)
+                    if response is not None:
+                        self._send_response(response)
 
             except Exception as e:
                 logger.error(f"Bridge loop error: {e}")
                 break
+
+    def _send_response(self, response: Any):
+        """Helper to write to stdout."""
+        sys.stdout.write(json.dumps(response) + "\n")
+        sys.stdout.flush()
+
+class GhostBridge(BridgeHandler):
+    """
+    Ghostclaw-specific Bridge implementation.
+    Connects JSON-RPC methods to internal Ghostclaw logic.
+    """
+    def __init__(self, analyzer: Optional[Any] = None):
+        super().__init__()
+        self.analyzer = analyzer
+        self.register("analyze", self.analyze)
+        self.register("status", self.status)
+        self.register("plugins", self.plugins)
+        self.register("ping", self.ping)
+
+    async def ping(self):
+        return "pong"
+
+    async def plugins(self):
+        from ghostclaw.core.adapters.registry import registry
+        registry.register_internal_plugins()
+        return registry.get_plugin_metadata()
+
+    async def get_metadata(self):
+        # Keeps for internal use
+        from ghostclaw.version import __version__
+        return {
+            "version": __version__,
+            "name": "ghostclaw",
+            "capabilities": ["analyze", "refactor_proposal"]
+        }
+
+    async def status(self):
+        from ghostclaw.version import __version__
+        return {"status": "ready", "version": __version__, "pid": sys.argv[0]}
+
+    async def analyze(self, path: str = ".", verbose: bool = False):
+        """Run a full codebase analysis via the bridge."""
+        if not self.analyzer:
+            from ghostclaw.core.analyzer import CodebaseAnalyzer
+            self.analyzer = CodebaseAnalyzer(path)
+
+        try:
+            # We assume analyzer.analyze returns a result dict
+            result = await self.analyzer.analyze()
+            return result
+        except Exception as e:
+            raise JSONRPCError(-32000, f"Analysis failed: {str(e)}")
+
+async def start_bridge():
+    """Entry point for the ghostclaw bridge command."""
+    bridge = GhostBridge()
+    await bridge.run()
+
+if __name__ == "__main__":
+    asyncio.run(start_bridge())

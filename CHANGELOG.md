@@ -2,6 +2,46 @@
 
 All notable changes to the Ghostclaw project will be documented in this file.
 
+## [0.1.8-draft] - Unreleased
+
+### Added
+
+- **Scoring Engine Refinement**: Implemented `ghost_analyze` in the Lizard adapter to gather detailed architectural metrics (CCN, Nesting Depth).
+- **Structural Weighted Formula**: Implemented a 30/50/20 (CCN/Avg-ND/Avg-LoC) split, placing high priority on cognitive debt and readability.
+- **Advanced Metrics Output**: CLI now displays `Avg CCN` and `Avg Nesting Depth` in terminal and Markdown reports.
+- **`--no-ai` Flag**: New CLI flag to explicitly skip LLM synthesis while preserving high-fidelity metrics.
+- **JSON-RPC 2.0 Bridge Server**: Rebuilt the communication layer for full specification compliance, including support for batch requests and standard RPC error codes.
+- **`GhostBridge` Interface**: Standardized methods (`analyze`, `status`, `plugins`) to facilitate IDE extension and VS Code integration.
+
+### Fixed
+
+- **Config Precedence**: Fixed resolution order to ensure CLI flags correctly override environment variables and configuration files (`CLI > Env > Local > Global`).
+- **Analyzer Detection**: Fixed a critical issue where Lizard extensions skipped function detection due to missing core processors in `FileAnalyzer`.
+- **Bridge Import Errors**: Resolved `ImportError` for package version telemetry within the bridge execution context.
+- **Architecture Model**: Added missing `coupling_metrics` field to `ArchitectureReport` for robust validation.
+
+### Changed
+
+- **Agent Guidelines**: Modernized `AGENTS.md` with up-to-date architectural patterns, extensibility hooks, and project structure.
+- **CLI Command Redundancy**: Refactored the `bridge` command to use a unified server class, improving maintainability.
+
+## [0.1.7] - 2026-03-09
+
+### Added
+
+- **Bridge Protocol**: Initial implementation of JSON-RPC 2.0 for external tool and IDE integration.
+- **`ghostclaw doctor`**: New diagnostic command for environment, API, and plugin verification.
+- **Event Bus**: Standardized internal notification system for progress, streaming, and logging.
+- **Multi-Model Synthesis**: Experimental support for separate "Fast" and "Deep" models in analysis.
+- **Scoring Engine**: Centralized core for "Vibe Score" calculations, supporting `ScoringAdapter` plugins.
+- **Pyre-Check**: High-performance static type auditing integrated into `doctor` and future sentinel loops.
+- **Dynamic `base_url`**: Support for custom API endpoints and local proxies (Ollama/VLLM).
+
+### Changed
+
+- **Adapter Registry**: Refactored for asynchronous result streaming.
+- **LLM Client**: Enhanced streaming with support for "reasoning" deltas.
+
 ## [0.1.6] - 2026-03-08
 
 ### Added

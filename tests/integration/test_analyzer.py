@@ -13,8 +13,15 @@ from ghostclaw.core.analyzer import CodebaseAnalyzer
 async def test_analyze_node_repo(tmp_path):
     # Setup Node repo with large files
     (tmp_path / "package.json").write_text('{"name": "test"}')
-    # Create a file with 500 lines (each line "x")
-    (tmp_path / "index.js").write_text("\n".join(["x"] * 500))
+    # Create a file with 600 lines + nested logic for Lizard
+    content = "function ghost() {\n"
+    for i in range(10):
+        content += "  " * (i + 1) + f"if (x == {i}) {{\n"
+    content += "  " * 12 + "console.log('deep');\n"
+    for i in range(10):
+        content += "  " * (10 - i) + "}\n"
+    content += "\n".join(["// padding"] * 600) + "\n}"
+    (tmp_path / "index.js").write_text(content)
 
     analyzer = CodebaseAnalyzer()
     report_model = await analyzer.analyze(str(tmp_path))

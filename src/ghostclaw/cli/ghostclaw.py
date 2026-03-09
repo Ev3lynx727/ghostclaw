@@ -7,6 +7,7 @@ import sys
 import json
 import argparse
 import subprocess
+import logging
 import datetime
 from pathlib import Path
 from typing import Dict, Optional
@@ -30,6 +31,21 @@ except ImportError:
     HAS_RICH = False
 
 load_dotenv()
+
+def setup_logging(verbose: bool = False):
+    """Configure global logging for the CLI."""
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level = logging.DEBUG if verbose else logging.INFO
+    
+    handlers = [logging.StreamHandler(sys.stderr)]
+    if verbose:
+        handlers.append(logging.FileHandler("ghostclaw.log"))
+        
+    logging.basicConfig(
+        level=level,
+        format=log_format,
+        handlers=handlers
+    )
 
 
 def generate_markdown_report(report: Dict) -> str:
@@ -58,8 +74,17 @@ def generate_markdown_report(report: Dict) -> str:
         f"- **Stack**: {stack}",
         f"- **Files Analyzed**: {files}",
         f"- **Total Lines**: {total}",
-        ""
     ]
+
+    metrics = report.get('coupling_metrics', {})
+    if metrics:
+        avg_ccn = metrics.get('avg_ccn')
+        avg_nd = metrics.get('avg_nd')
+        if avg_ccn is not None or avg_nd is not None:
+            lines.append(f"- **Avg CCN**: {avg_ccn or 'N/A'}")
+            lines.append(f"- **Avg Nesting Depth**: {avg_nd or 'N/A'}")
+    
+    lines.append("")
 
     issues = report.get('issues', [])
     if issues:
@@ -165,6 +190,13 @@ def print_report(report: Dict):
     print(f"{emoji} Vibe Score: {vibe_score}/100")
     print(f"   Stack: {stack}")
     print(f"   Files: {files}, Lines: {total}")
+    
+    metrics = report.get('coupling_metrics', {})
+    if metrics:
+        avg_ccn = metrics.get('avg_ccn')
+        avg_nd = metrics.get('avg_nd')
+        if avg_ccn is not None or avg_nd is not None:
+            print(f"   Metrics: Avg CCN: {avg_ccn or 'N/A'}, Avg Nesting: {avg_nd or 'N/A'}")
     print()
 
     issues = report.get('issues', [])
@@ -268,6 +300,7 @@ def main():
 
     # AI options
     analyze_parser.add_argument("--use-ai", action="store_true", help="Enable Ghost Engine AI synthesis")
+    analyze_parser.add_argument("--no-ai", action="store_true", help="Explicitly disable Ghost Engine AI synthesis")
     analyze_parser.add_argument("--ai-provider", help="AI Provider (openrouter, openai, anthropic)")
     analyze_parser.add_argument("--ai-model", help="Specific LLM model to use")
     analyze_parser.add_argument("--dry-run", action="store_true", help="Dry run mode: prints prompt and token count without API call")
@@ -301,7 +334,8 @@ def main():
     test_parser.add_argument("--ai-model", help="Model to test (overrides config)")
 
     # --- BRIDGE COMMAND ---
-    subparsers.add_parser("bridge", help="Start the JSON-RPC 2.0 bridge server")
+    bridge_parser = subparsers.add_parser("bridge", help="Start the JSON-RPC 2.0 bridge server")
+    bridge_parser.add_argument("--verbose", action="store_true", help="Enable verbose file logging (ghostclaw.log)")
 
     # --- UPDATE COMMAND ---
     subparsers.add_parser("update", help="Self-update Ghostclaw via pip or git")
@@ -334,10 +368,13 @@ def main():
     disable_parser.add_argument("name", help="Name of the plugin to disable")
 
     # Backward compatibility: if first arg is a directory, default to 'analyze'
-    if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "-h", "--help", "--version"]:
+    if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "bridge", "doctor", "-h", "--help", "--version"]:
         sys.argv.insert(1, "analyze")
 
     args = parser.parse_args()
+    
+    # Setup global logging
+    setup_logging(verbose=getattr(args, "verbose", False))
 
     if not args.command:
         parser.print_help()
@@ -584,34 +621,10 @@ class CustomAdapter(MetricAdapter):
         sys.exit(0)
 
     if args.command == "bridge":
-        from ghostclaw.core.bridge import BridgeHandler
+        from ghostclaw.core.bridge import GhostBridge
         async def _run_bridge():
-            handler = BridgeHandler()
-
-            async def handle_analyze(repo_path: str = "."):
-                config = GhostclawConfig.load(repo_path)
-                from ghostclaw.core.analyzer import CodebaseAnalyzer
-                from ghostclaw.core.agent import GhostAgent
-
-                analyzer = CodebaseAnalyzer()
-                agent = GhostAgent(config, repo_path, analyzer=analyzer, bridge=handler)
-
-                report = await agent.run()
-                return report
-
-            async def handle_status():
-                return {"status": "ok", "version": __version__}
-
-            async def handle_plugins():
-                from ghostclaw.core.adapters.registry import registry
-                registry.register_internal_plugins()
-                return registry.get_plugin_metadata()
-
-            handler.register("analyze", handle_analyze)
-            handler.register("status", handle_status)
-            handler.register("plugins", handle_plugins)
-
-            await handler.run()
+            bridge = GhostBridge()
+            await bridge.run()
 
         try:
             asyncio.run(_run_bridge())
@@ -731,7 +744,11 @@ class CustomAdapter(MetricAdapter):
 
         # Initialize Config
         cli_overrides = {}
-        if args.use_ai: cli_overrides['use_ai'] = True
+        if args.use_ai:
+            cli_overrides['use_ai'] = True
+        elif args.no_ai:
+            cli_overrides['use_ai'] = False
+
         if args.ai_provider: cli_overrides['ai_provider'] = args.ai_provider
         if args.ai_model: cli_overrides['ai_model'] = args.ai_model
         if args.dry_run: cli_overrides['dry_run'] = True

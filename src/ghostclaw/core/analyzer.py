@@ -197,7 +197,9 @@ class CodebaseAnalyzer:
             "issues": issues,
             "ghosts": ghosts,
             "flags": flags,
-            "stack": stack
+            "stack": stack,
+            "files": files,
+            "coupling_metrics": coupling_metrics
         }
 
         from ghostclaw.core.adapters.registry import registry
@@ -221,6 +223,7 @@ class CodebaseAnalyzer:
             "issues": issues,
             "architectural_ghosts": ghosts,
             "red_flags": flags,
+            "coupling_metrics": coupling_metrics,
             "errors": errors,
             "metadata": {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",

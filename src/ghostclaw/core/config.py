@@ -190,5 +190,6 @@ class GhostclawConfig(BaseSettings):
         for k, v in cli_overrides.items():
             if v is not None:
                 resolved_config[k] = v
-
+        
+        # print(f"DEBUG: GhostclawConfig.load - resolved_config['use_ai']={resolved_config.get('use_ai')}")
         return cls(**resolved_config)

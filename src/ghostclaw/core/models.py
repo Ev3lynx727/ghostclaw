@@ -33,6 +33,7 @@ class ArchitectureReport(BaseModel):
     issues: List[str] = Field(default_factory=list)
     architectural_ghosts: List[str] = Field(default_factory=list)
     red_flags: List[str] = Field(default_factory=list)
+    coupling_metrics: Dict = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)  # Adapter/engine errors
     ai_prompt: Optional[str] = None
     ai_synthesis: Optional[str] = None
