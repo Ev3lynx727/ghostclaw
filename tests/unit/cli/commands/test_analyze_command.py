@@ -9,7 +9,7 @@ async def test_analyze_command_execute(mocker, tmp_path):
 
     mock_service = mocker.patch("ghostclaw.cli.commands.analyze.AnalyzerService")
     mock_instance = mock_service.return_value
-    mock_instance.run.return_value = {
+    mock_instance.run = mocker.AsyncMock(return_value={
         "vibe_score": 85,
         "stack": "Python",
         "files_analyzed": 10,
@@ -18,7 +18,7 @@ async def test_analyze_command_execute(mocker, tmp_path):
         "issues": [],
         "architectural_ghosts": [],
         "red_flags": []
-    }
+    })
 
     cmd = AnalyzeCommand()
     args = Namespace(

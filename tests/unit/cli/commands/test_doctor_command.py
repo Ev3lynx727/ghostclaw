@@ -14,7 +14,7 @@ async def test_doctor_command_execute(mocker, tmp_path):
 
     mock_client_cls = mocker.patch("ghostclaw.cli.commands.doctor.LLMClient")
     mock_client = mock_client_cls.return_value
-    mock_client.test_connection.return_value = True
+    mock_client.test_connection = mocker.AsyncMock(return_value=True)
     mock_client.model = "dummy_model"
 
     import os

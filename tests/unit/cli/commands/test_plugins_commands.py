@@ -1,5 +1,6 @@
 import pytest
 from argparse import Namespace
+from pathlib import Path
 from ghostclaw.cli.commands.plugins.list import PluginsListCommand
 from ghostclaw.cli.commands.plugins.add import PluginsAddCommand
 from ghostclaw.cli.commands.plugins.remove import PluginsRemoveCommand
@@ -11,7 +12,7 @@ from ghostclaw.cli.commands.plugins.scaffold import PluginsScaffoldCommand
 
 @pytest.mark.asyncio
 async def test_plugins_list_command(mocker, capsys):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.list.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
     mock_instance.list_plugins.return_value = [{"name": "test-plugin", "version": "1.0", "description": "A test plugin"}]
 
@@ -25,7 +26,7 @@ async def test_plugins_list_command(mocker, capsys):
 
 @pytest.mark.asyncio
 async def test_plugins_add_command(mocker):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.add.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
     mock_instance.add_plugin.return_value = "target_path"
 
@@ -36,7 +37,7 @@ async def test_plugins_add_command(mocker):
 
 @pytest.mark.asyncio
 async def test_plugins_remove_command(mocker):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.remove.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
     mock_instance.remove_plugin.return_value = "target_path"
 
@@ -47,7 +48,7 @@ async def test_plugins_remove_command(mocker):
 
 @pytest.mark.asyncio
 async def test_plugins_info_command(mocker, capsys):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.info.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
     mock_instance.get_plugin_info.return_value = {"name": "test-plugin", "version": "1.0", "description": "A test plugin"}
 
@@ -60,7 +61,7 @@ async def test_plugins_info_command(mocker, capsys):
 
 @pytest.mark.asyncio
 async def test_plugins_enable_command(mocker):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.enable.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
 
     cmd = PluginsEnableCommand()
@@ -70,7 +71,7 @@ async def test_plugins_enable_command(mocker):
 
 @pytest.mark.asyncio
 async def test_plugins_disable_command(mocker):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.disable.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
 
     cmd = PluginsDisableCommand()
@@ -80,7 +81,7 @@ async def test_plugins_disable_command(mocker):
 
 @pytest.mark.asyncio
 async def test_plugins_test_command(mocker, capsys):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.test.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
     mock_instance.test_plugin.return_value = True
 
@@ -93,9 +94,9 @@ async def test_plugins_test_command(mocker, capsys):
 
 @pytest.mark.asyncio
 async def test_plugins_scaffold_command(mocker):
-    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.scaffold.PluginService")
+    mock_service = mocker.patch("ghostclaw.cli.commands.plugins.base.PluginService")
     mock_instance = mock_service.return_value
-    mock_instance.scaffold_plugin.return_value = "target_path"
+    mock_instance.scaffold_plugin.return_value = Path("target_path")
 
     cmd = PluginsScaffoldCommand()
     args = Namespace(name="new-plugin")

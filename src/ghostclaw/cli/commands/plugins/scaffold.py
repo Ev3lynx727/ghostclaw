@@ -1,5 +1,5 @@
 from argparse import ArgumentParser, Namespace
-from ghostclaw.cli.commands.plugins.base import PluginsCommand
+from ghostclaw.cli.commands.plugins.base import PluginsCommand, PluginService
 import sys
 
 class PluginsScaffoldCommand(PluginsCommand):

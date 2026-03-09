@@ -13,8 +13,8 @@ async def test_test_command_execute_llm(mocker):
 
     mock_client_cls = mocker.patch("ghostclaw.cli.commands.test.LLMClient")
     mock_client = mock_client_cls.return_value
-    mock_client.test_connection.return_value = True
-    mock_client.list_models.return_value = ["dummy_model"]
+    mock_client.test_connection = mocker.AsyncMock(return_value=True)
+    mock_client.list_models = mocker.AsyncMock(return_value=["dummy_model"])
 
     result = await cmd.execute(args)
     assert result == 0

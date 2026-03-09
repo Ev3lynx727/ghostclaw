@@ -1,5 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from ghostclaw.cli.commander import Command
+from ghostclaw.core.bridge import GhostBridge
 import sys
 
 class BridgeCommand(Command):
@@ -15,7 +16,6 @@ class BridgeCommand(Command):
         parser.add_argument("--verbose", action="store_true", help="Enable verbose file logging (ghostclaw.log)")
 
     async def execute(self, args: Namespace) -> int:
-        from ghostclaw.core.bridge import GhostBridge
         try:
             bridge = GhostBridge()
             await bridge.run()

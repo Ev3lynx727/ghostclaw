@@ -43,7 +43,7 @@ class AnalyzerService:
             config = GhostclawConfig.load(self.repo_path, **self.config_overrides)
         except Exception as e:
             print(f"Configuration Error: {e}", file=sys.stderr)
-            raise ValueError(f"Configuration Error: {e}")
+            raise Exception(f"Analysis Error: Configuration Error: {e}")
 
         # Initialize cache if needed
         if self.use_cache:

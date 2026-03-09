@@ -1,5 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from ghostclaw.cli.commander import Command
+from ghostclaw.core.config import GhostclawConfig
+from ghostclaw.core.llm_client import LLMClient
 import sys
 from pathlib import Path
 
@@ -53,8 +55,6 @@ class DoctorCommand(Command):
         if args.ai_provider: cli_overrides['ai_provider'] = args.ai_provider
         if args.ai_model: cli_overrides['ai_model'] = args.ai_model
 
-        from ghostclaw.core.config import GhostclawConfig
-        from ghostclaw.core.llm_client import LLMClient
         config = GhostclawConfig.load(".", **cli_overrides)
         client = LLMClient(config, ".")
 

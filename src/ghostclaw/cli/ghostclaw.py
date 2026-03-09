@@ -4,6 +4,7 @@ Ghostclaw CLI — command-line interface for the architectural analyzer.
 """
 
 import sys
+import os
 import json
 import argparse
 import subprocess
@@ -224,11 +225,16 @@ def main():
 
     # Store command instances created during configuration
     cmd_instances = {}
+    top_level_commands = set()
 
     # Build parser from registry
     for cmd_cls in registry.all():
         cmd = cmd_cls()
         cmd_instances[cmd.name] = cmd
+
+        # Track top-level command name (e.g., "plugins" from "plugins list")
+        top_level = cmd.name.split(" ")[0]
+        top_level_commands.add(top_level)
 
         # Handle "plugins xxx" subcommands specially
         if cmd.name.startswith("plugins "):
@@ -243,9 +249,18 @@ def main():
             subparser = subparsers.add_parser(cmd.name, help=cmd.description)
             cmd.configure_parser(subparser)
 
-    # Backward compatibility: if first arg is a directory, default to 'analyze'
-    if len(sys.argv) > 1 and sys.argv[1] not in ["analyze", "init", "test", "update", "plugins", "bridge", "doctor", "-h", "--help", "--version"]:
-        sys.argv.insert(1, "analyze")
+    # Pre-parse handling: directory shortcut and unknown command fallback
+    if len(sys.argv) > 1:
+        raw = sys.argv[1]
+        if raw not in top_level_commands:
+            if os.path.isdir(raw):
+                sys.argv.insert(1, "analyze")
+            else:
+                print("Warning: Using legacy CLI mode...", file=sys.stderr)
+                legacy_ns = argparse.Namespace(command=raw)
+                exit_code = legacy_main(legacy_ns)
+                sys.exit(exit_code)
+                return exit_code
 
     args = parser.parse_args()
 
@@ -254,7 +269,7 @@ def main():
 
     if not args.command:
         parser.print_help()
-        sys.exit(1)
+        return 1
 
     # Determine command name
     cmd_name = args.command
@@ -270,12 +285,12 @@ def main():
 
     if cmd:
         exit_code = asyncio.run(cmd.execute(args))
-        sys.exit(exit_code)
+        return exit_code
 
     # LEGACY: Fall back to monolithic code
     print("Warning: Using legacy CLI mode...", file=sys.stderr)
     exit_code = legacy_main(args)
-    sys.exit(exit_code)
+    return exit_code
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
