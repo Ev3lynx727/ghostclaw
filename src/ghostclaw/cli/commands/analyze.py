@@ -1,6 +1,7 @@
 import sys
 import json
 import datetime
+import pdb
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -85,8 +86,13 @@ class AnalyzeCommand(Command):
         # Reliability
         parser.add_argument("--strict", action="store_true", help="Treat adapter errors as fatal (non-zero exit)")
 
-        # Observability
+        # Observability & Debugging
         parser.add_argument("--benchmark", action="store_true", help="Print performance timings after analysis")
+        parser.add_argument(
+            "--pdb",
+            action="store_true",
+            help="Drop into pdb post-mortem debugger on error (for development only)"
+        )
 
     def validate(self, args: Namespace) -> None:
         if not Path(args.repo_path).is_dir():
@@ -137,7 +143,16 @@ class AnalyzeCommand(Command):
             )
             report = await service.run()
         except Exception as e:
-            print(str(e), file=sys.stderr)
+            if args.pdb:
+                print("\n\x1b[31m⚠️  Debugger enabled. Entering pdb post-mortem session.\x1b[0m", file=sys.stderr)
+                print("   Exception:", e, file=sys.stderr)
+                print("   Type 'c' to continue to full traceback, 'bt' for backtrace, 'quit' to exit.\n", file=sys.stderr)
+                # Provide locals/globals for inspection
+                import traceback
+                tb = sys.exc_info()[2]
+                pdb.post_mortem(tb)
+            else:
+                print(str(e), file=sys.stderr)
             return 1
 
         # Formatters
