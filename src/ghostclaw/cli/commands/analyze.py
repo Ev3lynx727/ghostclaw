@@ -145,7 +145,7 @@ class AnalyzeCommand(Command):
 
         report_file_path = None
         if not args.no_write_report:
-            now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+            now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
             filename = f"ARCHITECTURE-REPORT-{now}.md"
 
             if args.create_pr:
