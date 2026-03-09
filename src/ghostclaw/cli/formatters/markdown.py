@@ -40,8 +40,8 @@ class MarkdownFormatter(BaseFormatter):
             avg_ccn = metrics.get('avg_ccn')
             avg_nd = metrics.get('avg_nd')
             if avg_ccn is not None or avg_nd is not None:
-                lines.append(f"- **Avg CCN**: {avg_ccn or 'N/A'}")
-                lines.append(f"- **Avg Nesting Depth**: {avg_nd or 'N/A'}")
+                lines.append(f"- **Avg CCN**: {avg_ccn if avg_ccn is not None else 'N/A'}")
+                lines.append(f"- **Avg Nesting Depth**: {avg_nd if avg_nd is not None else 'N/A'}")
 
         lines.append("")
 
