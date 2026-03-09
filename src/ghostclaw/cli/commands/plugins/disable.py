@@ -1,14 +1,11 @@
 from argparse import ArgumentParser, Namespace
 from ghostclaw.cli.commands.plugins.base import PluginsCommand
-from ghostclaw.cli.services.plugin_service import PluginService
 import sys
 
 class PluginsDisableCommand(PluginsCommand):
-    def __init__(self):
-        self.service = PluginService()
     @property
     def name(self) -> str:
-        return "disable"
+        return "plugins disable"
 
     @property
     def description(self) -> str:

@@ -7,7 +7,7 @@ async def test_bridge_command_execute(mocker):
     cmd = BridgeCommand()
     args = Namespace(verbose=False)
 
-    mock_bridge = mocker.patch("ghostclaw.core.bridge.GhostBridge")
+    mock_bridge = mocker.patch("ghostclaw.cli.commands.bridge.GhostBridge")
     mock_instance = mock_bridge.return_value
     mock_instance.run = mocker.AsyncMock()
 
@@ -20,7 +20,7 @@ async def test_bridge_command_keyboard_interrupt(mocker):
     cmd = BridgeCommand()
     args = Namespace(verbose=False)
 
-    mock_bridge = mocker.patch("ghostclaw.core.bridge.GhostBridge")
+    mock_bridge = mocker.patch("ghostclaw.cli.commands.bridge.GhostBridge")
     mock_instance = mock_bridge.return_value
     mock_instance.run.side_effect = KeyboardInterrupt
 

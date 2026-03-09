@@ -16,10 +16,6 @@ class CommandRegistry:
         if not inspect.isclass(command_class) or not issubclass(command_class, Command):
             raise TypeError(f"Cannot register {command_class}: must be a subclass of Command")
 
-        # Skip if class has _auto_register = False
-        if not getattr(command_class, '_auto_register', True):
-            return
-
         # Instantiate to get the name property
         try:
             cmd_instance = command_class()
@@ -41,10 +37,6 @@ class CommandRegistry:
     def all(self) -> List[Type[Command]]:
         """Get all registered command classes."""
         return list(self._commands.values())
-
-    def all_instances(self) -> List[Command]:
-        """Get all command instances (for sorting by name)."""
-        return [cls() for cls in self._commands.values()]
 
     def auto_discover(self, package_name: str = "ghostclaw.cli.commands") -> None:
         """
