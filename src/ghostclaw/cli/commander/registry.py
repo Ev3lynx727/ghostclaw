@@ -26,9 +26,11 @@ class CommandRegistry:
             # Don't register the base class itself or optional bases that lack a name
             if name != "base_command_name":
                 self._commands[name] = command_class
-        except Exception as e:
-             # Ignore abstract classes or bases missing implementations
+        except TypeError:
+             # Abstract classes cannot be instantiated — skip them
              pass
+        except Exception as e:
+             print(f"Warning: Failed to register command {command_class.__name__}: {e}", file=sys.stderr)
 
     def get(self, name: str) -> Optional[Type[Command]]:
         """Get a registered command class by name."""
