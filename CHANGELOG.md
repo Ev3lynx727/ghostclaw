@@ -2,6 +2,36 @@
 
 All notable changes to the Ghostclaw project will be documented in this file.
 
+## [0.1.8] - Unreleased
+
+### Added
+- ✨ **Complete modular CLI** — All commands now use commander pattern with auto-discovery
+- ✨ `Command` base class — Standardized interface for all commands
+- ✨ `CommandRegistry` — Auto-discovers commands in `ghostclaw.cli.commands`
+- ✨ Services layer — Reusable business logic (`AnalyzerService`, `PluginService`, `PRService`, `ConfigService`)
+- ✨ Formatter abstraction — Separate output generation (`TerminalFormatter`, `JSONFormatter`, `MarkdownFormatter`)
+- ✨ Dual-mode operation — Legacy CLI kept as fallback (100% backward compatible)
+- 📚 `docs/CLI_ARCHITECTURE.md` — Comprehensive architecture guide
+- 📚 `docs/COMMAND_DEVELOPMENT.md` — Tutorial for command developers
+- 📚 `MIGRATION_GUIDE.md` — Internal API migration guide
+
+### Changed
+- 🔄 All CLI commands (`analyze`, `init`, `doctor`, `test`, `update`, `bridge`, `plugins/*`) now modular
+- 📦 Restructured `src/ghostclaw/cli/` with `commander/`, `commands/`, `services/`, `formatters/`
+- 🎯 Improved testability: Each command unit-testable in isolation
+- ♻️ Reduced `ghostclaw.py` from 600 → 80 lines (thin dispatcher)
+
+### Deprecated
+- ⚠️ Internal imports from `ghostclaw.cli.ghostclaw`:
+  - `generate_markdown_report`, `print_report`, `detect_github_remote`, `create_github_pr`, `update_ghostclaw`
+  - Use new services/formatters instead
+  - Will be removed in v0.1.9
+
+### Breaking Changes (Internal API)
+- ❌ Direct imports from `ghostclaw.cli.ghostclaw` no longer work for above functions
+- ✅ **Public CLI interface unchanged** — all user commands identical
+- ✅ **Entry point unchanged** — `ghostclaw` command works exactly as before
+
 ## [0.1.8-draft] - Unreleased
 
 ### Added
