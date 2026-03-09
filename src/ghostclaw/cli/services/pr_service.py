@@ -21,7 +21,7 @@ class PRService:
             title (str): The PR title.
             body (str): The PR body.
         """
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
         branch_name = f"ghostclaw/arch-report-{timestamp}"
 
         try:

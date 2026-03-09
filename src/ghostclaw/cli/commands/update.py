@@ -18,7 +18,7 @@ class UpdateCommand(Command):
 
     async def execute(self, args: Namespace) -> int:
         print("🔄 Checking for Ghostclaw updates...")
-        package_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+        package_root = Path(__file__).parent.parent.parent.parent
         try:
             is_git = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],

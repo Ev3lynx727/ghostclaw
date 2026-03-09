@@ -122,7 +122,10 @@ def legacy_main(args: argparse.Namespace) -> int:
                         name = meta.get("name")
                         p_type = "Built-in" if name in plugin_registry.internal_plugins else "External"
                         print(f"{name} | {meta.get('version')} | {meta.get('description')} | {p_type}")
-        return 0
+            return 0
+        else:
+            print(f"Warning: Plugin subcommand {args.plugin_command} not available in legacy mode. Please check command installation.", file=sys.stderr)
+            return 1
 
     if args.command == "bridge":
         from ghostclaw.core.bridge import GhostBridge
