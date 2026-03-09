@@ -28,3 +28,7 @@ class GhostclawPluginSpecs:
     @hookspec
     def ghost_get_metadata(self) -> Dict[str, Any]:
         """Return plugin metadata."""
+
+    @hookspec
+    async def ghost_compute_vibe(self, context: Any) -> float:
+        """Compute the architectural vibe score."""
