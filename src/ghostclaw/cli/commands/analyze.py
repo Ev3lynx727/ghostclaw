@@ -60,7 +60,11 @@ class AnalyzeCommand(Command):
         parser.add_argument("--cache-stats", action="store_true", help="Show cache statistics after analysis")
 
         # Parallel processing options
-        parser.add_argument("--no-parallel", action="store_true", help="Disable parallel file scanning")
+        parser.add_argument(
+            "--no-parallel",
+            action="store_true",
+            help="Disable parallel file scanning (⚠️ WARNING: causes 300× slowdown. Only use for debugging.)"
+        )
         parser.add_argument("--concurrency-limit", type=int, help="Max concurrent file operations (default: 32)")
 
         # AI options
@@ -110,6 +114,16 @@ class AnalyzeCommand(Command):
         elif args.no_ai_codeindex: cli_overrides['use_ai_codeindex'] = False
         if args.no_parallel: cli_overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: cli_overrides['concurrency_limit'] = args.concurrency_limit
+
+        # Warn about --no-parallel performance impact (2026-03-10 profiling)
+        if args.no_parallel:
+            print(
+                "⚠️  WARNING: --no-parallel is ~300× slower and may cause timeouts.\n"
+                "   Parallel processing is the default and strongly recommended.\n"
+                "   Only use --no-parallel for debugging specific issues.\n"
+                "   Remove this flag or set 'parallel_enabled': true in ~/.ghostclaw/ghostclaw.json\n",
+                file=sys.stderr
+            )
 
         try:
             service = AnalyzerService(
