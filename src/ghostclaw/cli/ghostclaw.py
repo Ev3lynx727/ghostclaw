@@ -14,6 +14,8 @@ from ghostclaw.cli.commander.registry import registry
 
 def main():
     """Main entry point — auto-discovers and executes commands."""
+    from dotenv import load_dotenv
+    load_dotenv()
     
     # Auto-discover commands from the commands package
     try:
