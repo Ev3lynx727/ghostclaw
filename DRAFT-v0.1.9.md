@@ -1,5 +1,7 @@
 # Draft: v0.1.9 — next milestone
 
+**Integration note**: The agent‑facing memory search and knowledge‑graph MCP tools from PR #15 (merged into `develop`) have been merged into this branch. These new capabilities introduce a `MemoryStore` core module, a suite of MCP tools (`ghostclaw_memory_search`, `ghostclaw_memory_get_run`, etc.), and extensive tests. They will be a core part of the v0.1.9 polish and hardening efforts.
+
 This document outlines the plan for the v0.1.9 release cycle, building on the v0.1.8 modular CLI foundation and targeting polish, hardening, and MCP/ecosystem improvements.
 
 1) Goals
