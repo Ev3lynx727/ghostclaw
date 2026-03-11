@@ -2,58 +2,37 @@
 
 All notable changes to the Ghostclaw project will be documented in this file.
 
-## [0.1.8] - Unreleased
+## [0.1.8] - 2026-03-11
 
 ### Added
-- ✨ **Complete modular CLI** — All commands now use commander pattern with auto-discovery
-- ✨ `Command` base class — Standardized interface for all commands
-- ✨ `CommandRegistry` — Auto-discovers commands in `ghostclaw.cli.commands`
-- ✨ Services layer — Reusable business logic (`AnalyzerService`, `PluginService`, `PRService`, `ConfigService`)
-- ✨ Formatter abstraction — Separate output generation (`TerminalFormatter`, `JSONFormatter`, `MarkdownFormatter`)
-- ✨ Dual-mode operation — Legacy CLI kept as fallback (100% backward compatible)
-- 📚 `docs/CLI_ARCHITECTURE.md` — Comprehensive architecture guide
-- 📚 `docs/COMMAND_DEVELOPMENT.md` — Tutorial for command developers
-- 📚 `MIGRATION_GUIDE.md` — Internal API migration guide
+- ✨ **Complete modular CLI** — Commander pattern, auto-discovery, services, formatters
+- ✨ `Command` base class and `CommandRegistry` for plugin architecture
+- ✨ Services layer: `AnalyzerService`, `PluginService`, `PRService`, `ConfigService`
+- ✨ Formatter abstraction: `TerminalFormatter`, `JSONFormatter`, `MarkdownFormatter`
+- ✨ Dual-mode operation with legacy fallback (100% backward compatible)
+- 📚 Documentation: `docs/CLI_ARCHITECTURE.md`, `docs/COMMAND_DEVELOPMENT.md`, `MIGRATION_GUIDE.md`
+
+⚡ **Performance & UX**
+- Auto-enable parallel scanning for repos >5000 files
+- Warning for `--no-parallel` (300× slower)
+- "Performance & Best Practices" section in README
+
+🔬 **Profiling & Validation**
+- `scripts/ghostclaw_profiler.py` and `scripts/profile_mcp.py`
+- TypeScript (81k files): 33.5s (no cache) → ~11s (cached)
+- MCP tools: ~10-12s with negligible overhead
 
 ### Changed
-- 🔄 All CLI commands (`analyze`, `init`, `doctor`, `test`, `update`, `bridge`, `plugins/*`) now modular
-- 📦 Restructured `src/ghostclaw/cli/` with `commander/`, `commands/`, `services/`, `formatters/`
-- 🎯 Improved testability: Each command unit-testable in isolation
-- ♻️ Reduced `ghostclaw.py` from 600 → 80 lines (thin dispatcher)
+- All CLI commands migrated to modular structure
+- `ghostclaw.py` reduced from 600 → 80 lines (thin dispatcher)
+- Improved unit-testability per command
 
 ### Deprecated
-- ⚠️ Internal imports from `ghostclaw.cli.ghostclaw`:
-  - `generate_markdown_report`, `print_report`, `detect_github_remote`, `create_github_pr`, `update_ghostclaw`
-  - Use new services/formatters instead
-  - Will be removed in v0.1.9
+- Internal imports from `ghostclaw.cli.ghostclaw` (to be removed in v0.1.9)
 
 ### Breaking Changes (Internal API)
-- ❌ Direct imports from `ghostclaw.cli.ghostclaw` no longer work for above functions
-- ✅ **Public CLI interface unchanged** — all user commands identical
-- ✅ **Entry point unchanged** — `ghostclaw` command works exactly as before
-
-## [0.1.8-draft] - Unreleased
-
-### Added
-
-- **Scoring Engine Refinement**: Implemented `ghost_analyze` in the Lizard adapter to gather detailed architectural metrics (CCN, Nesting Depth).
-- **Structural Weighted Formula**: Implemented a 30/50/20 (CCN/Avg-ND/Avg-LoC) split, placing high priority on cognitive debt and readability.
-- **Advanced Metrics Output**: CLI now displays `Avg CCN` and `Avg Nesting Depth` in terminal and Markdown reports.
-- **`--no-ai` Flag**: New CLI flag to explicitly skip LLM synthesis while preserving high-fidelity metrics.
-- **JSON-RPC 2.0 Bridge Server**: Rebuilt the communication layer for full specification compliance, including support for batch requests and standard RPC error codes.
-- **`GhostBridge` Interface**: Standardized methods (`analyze`, `status`, `plugins`) to facilitate IDE extension and VS Code integration.
-
-### Fixed
-
-- **Config Precedence**: Fixed resolution order to ensure CLI flags correctly override environment variables and configuration files (`CLI > Env > Local > Global`).
-- **Analyzer Detection**: Fixed a critical issue where Lizard extensions skipped function detection due to missing core processors in `FileAnalyzer`.
-- **Bridge Import Errors**: Resolved `ImportError` for package version telemetry within the bridge execution context.
-- **Architecture Model**: Added missing `coupling_metrics` field to `ArchitectureReport` for robust validation.
-
-### Changed
-
-- **Agent Guidelines**: Modernized `AGENTS.md` with up-to-date architectural patterns, extensibility hooks, and project structure.
-- **CLI Command Redundancy**: Refactored the `bridge` command to use a unified server class, improving maintainability.
+- Direct imports from `ghostclaw.cli.ghostclaw` no longer work
+- Public CLI interface and entry point unchanged
 
 ## [0.1.7] - 2026-03-09
 

@@ -52,7 +52,7 @@ def test_detect_github_remote_fail(mock_run):
     assert url is None
 
 
-@patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+@patch("ghostclaw.cli.services.GhostAgent")
 def test_cli_no_cache_flag(mock_agent_class, tmp_path, capsys):
     """Test --no-cache prevents cache usage."""
     repo = tmp_path / "repo"
@@ -77,7 +77,7 @@ def test_cli_no_cache_flag(mock_agent_class, tmp_path, capsys):
         sys.argv = original_argv
 
 
-@patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+@patch("ghostclaw.cli.services.GhostAgent")
 def test_cli_cache_stats_flag(mock_agent_class, tmp_path, capsys):
     """Test --cache-stats prints cache info."""
     repo = tmp_path / "repo"
@@ -104,7 +104,7 @@ def test_cli_cache_stats_flag(mock_agent_class, tmp_path, capsys):
         sys.argv = original_argv
 
 
-@patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+@patch("ghostclaw.cli.services.GhostAgent")
 def test_cli_cache_dir_flag(mock_agent_class, tmp_path, capsys):
     """Test --cache-dir uses custom directory."""
     repo = tmp_path / "repo"
@@ -187,7 +187,7 @@ def test_cli_json_mode_streaming_to_stderr(tmp_path, capsys, monkeypatch):
         sys.argv = original_argv
 
 
-@patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+@patch("ghostclaw.cli.services.GhostAgent")
 def test_cli_cached_synthesis_displayed(mock_agent_class, tmp_path, capsys):
     """BUG 3: Verify that AI synthesis from cache is printed in terminal output with '(cached)' indicator."""
     repo = tmp_path / "repo"
@@ -223,8 +223,8 @@ def test_cli_cached_synthesis_displayed(mock_agent_class, tmp_path, capsys):
         sys.argv = original_argv
 
 
-@patch("ghostclaw.cli.services.pr_service.PRService.create_pr", new_callable=AsyncMock)
-@patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+@patch("ghostclaw.cli.services.PRService.create_pr", new_callable=AsyncMock)
+@patch("ghostclaw.cli.services.GhostAgent")
 def test_cli_create_pr_writes_to_repo_root_and_cleans_up(mock_agent_class, mock_create_pr, tmp_path, capsys):
     """BUG 1: Verify --create-pr writes report to repo root and cleans up after PR creation."""
     repo = tmp_path / "repo"
@@ -262,7 +262,7 @@ def test_cli_create_pr_writes_to_repo_root_and_cleans_up(mock_agent_class, mock_
         sys.argv = original_argv
 
 
-@patch("ghostclaw.cli.services.analyzer_service.GhostAgent")
+@patch("ghostclaw.cli.services.GhostAgent")
 def test_cli_spinner_cleanup_on_synthesis(mock_agent_class, tmp_path, capsys):
     """BUG 5: Verify Rich spinner is properly stopped after synthesis, even with empty chunks."""
     repo = tmp_path / "repo"

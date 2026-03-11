@@ -173,6 +173,40 @@ npm run install-service
 - Python (Django, FastAPI)
 - Go (Basic)
 
+## Performance & Best Practices
+
+Ghostclaw is designed to be fast out of the box, but for large repositories or specific use cases, consider these tips:
+
+### Parallel Processing (Default)
+- Parallel file scanning is **enabled by default** and highly recommended.
+- The `--no-parallel` flag exists only for debugging; it causes a ~300× slowdown.
+- If you accidentally use `--no-parallel` on a large repo (>5000 files), Ghostclaw will automatically re-enable parallel mode to prevent timeouts.
+
+### Caching
+- Ghostclaw caches analysis results to speed up repeated runs.
+- Default cache TTL is 7 days. Use `--cache-ttl` to adjust.
+- To disable caching (e.g., for CI), use `--no-cache`.
+- Cache statistics can be shown with `--cache-stats`.
+
+### Benchmarking
+- Use `--benchmark` to see timing breakdown per analysis phase.
+- This helps identify bottlenecks (e.g., file scanning, AI synthesis).
+
+### Large Repositories
+- For repos with >10k files, expect analysis to take several seconds even with parallelism (disk I/O bound).
+- Consider increasing `--concurrency-limit` if you have a fast SSD and abundant CPU cores (default is 32).
+- Use `--no-write-report` if you only need console output and want to reduce disk I/O.
+
+### AI Synthesis
+- AI synthesis (`--use-ai`) adds network latency (5-30s depending on provider and model).
+- Use `--dry-run` to estimate token count without making API calls.
+- Cache hits skip AI synthesis entirely if the code hasn't changed significantly.
+
+### Troubleshooting Timeouts
+- Ensure `parallel_enabled: true` in `~/.ghostclaw/ghostclaw.json`.
+- Avoid `--no-parallel` on any non-trivial repository.
+- For extremely large repos, consider analyzing a specific subdirectory instead of the entire codebase.
+
 ## License
 
 MIT

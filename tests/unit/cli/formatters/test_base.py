@@ -1,5 +1,5 @@
 import pytest
-from ghostclaw.cli.formatters.base import BaseFormatter
+from ghostclaw.cli.formatters import BaseFormatter
 
 class DummyFormatter(BaseFormatter):
     def format(self, report):

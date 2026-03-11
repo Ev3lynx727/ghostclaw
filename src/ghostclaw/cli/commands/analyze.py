@@ -2,17 +2,18 @@ import sys
 import json
 import datetime
 import pdb
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 from argparse import ArgumentParser, Namespace
 
 from ghostclaw.cli.commander import Command
-from ghostclaw.cli.services.analyzer_service import AnalyzerService
-from ghostclaw.cli.services.pr_service import PRService
-from ghostclaw.cli.formatters.markdown import MarkdownFormatter
-from ghostclaw.cli.formatters.terminal import TerminalFormatter
-from ghostclaw.cli.formatters.json import JSONFormatter
+from ghostclaw.cli.services import AnalyzerService
+from ghostclaw.cli.services import PRService
+from ghostclaw.cli.formatters import MarkdownFormatter
+from ghostclaw.cli.formatters import TerminalFormatter
+from ghostclaw.cli.formatters import JSONFormatter
 import subprocess
 
 def detect_github_remote(repo_path: str) -> Optional[str]:
@@ -32,6 +33,43 @@ def detect_github_remote(repo_path: str) -> Optional[str]:
     except Exception:
         pass
     return None
+
+def estimate_repo_file_count(repo_path: str) -> int:
+    """Estimate the number of files in the repository, excluding common non-source dirs."""
+    repo = Path(repo_path)
+    if not repo.exists():
+        return 0
+
+    exclude_dirs = {
+        '.git', 'node_modules', 'venv', '.venv', 'env', 'virtualenv',
+        '__pycache__', '.pytest_cache', 'build', 'dist', 'target', 'bin', 'obj',
+        '.idea', '.vscode', '.cache', 'tmp', 'temp', 'coverage', '.coverage', 'htmlcov',
+        '.next', '.nuxt', 'out', 'turbo', '.turbo'
+    }
+    exclude_extensions = {
+        '.pyc', '.pyo', '.pyd', '.so', '.dll', '.exe', '.bin', '.obj', '.o', '.a', '.lib',
+        '.class', '.jar', '.war', '.ear', '.log', '.cache', '.pid', '.lock',
+        '.sqlite', '.db', '.sqlite3', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico',
+        '.pdf', '.zip', '.tar', '.gz', '.tgz', '.rar', '.7z'
+    }
+
+    count = 0
+    try:
+        for root, dirs, files in os.walk(repo):
+            # Skip excluded directories (modify dirs in-place to prevent walking into them)
+            dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
+            for file in files:
+                if file.startswith('.'):
+                    continue
+                if any(file.lower().endswith(ext) for ext in exclude_extensions):
+                    continue
+                count += 1
+                # Early exit if count already exceeds threshold (performance)
+                if count > 10000:
+                    return count
+    except Exception:
+        return 0
+    return count
 
 class AnalyzeCommand(Command):
     """
@@ -126,15 +164,30 @@ class AnalyzeCommand(Command):
         if args.no_parallel: cli_overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: cli_overrides['concurrency_limit'] = args.concurrency_limit
 
-        # Warn about --no-parallel performance impact (2026-03-10 profiling)
+        # Handle --no-parallel with smart warnings and auto-correction for large repos
         if args.no_parallel:
-            print(
-                "⚠️  WARNING: --no-parallel is ~300× slower and may cause timeouts.\n"
-                "   Parallel processing is the default and strongly recommended.\n"
-                "   Only use --no-parallel for debugging specific issues.\n"
-                "   Remove this flag or set 'parallel_enabled': true in ~/.ghostclaw/ghostclaw.json\n",
-                file=sys.stderr
-            )
+            LARGE_REPO_THRESHOLD = 5000
+            file_count = estimate_repo_file_count(repo_path)
+            if file_count > LARGE_REPO_THRESHOLD:
+                # Auto-correct: force parallel for large repos
+                cli_overrides['parallel_enabled'] = True
+                print(
+                    f"⚡ Auto-enabling parallel processing: repository contains ~{file_count} files "
+                    f"(threshold: {LARGE_REPO_THRESHOLD}).\n"
+                    "   --no-parallel would be prohibitively slow on a repo of this size.\n"
+                    "   If you need sequential processing for debugging, analyze a smaller subdirectory "
+                    "or adjust the threshold in the source.\n",
+                    file=sys.stderr
+                )
+            else:
+                # Standard warning for smaller repos
+                print(
+                    "⚠️  WARNING: --no-parallel is ~300× slower and may cause timeouts.\n"
+                    "   Parallel processing is the default and strongly recommended.\n"
+                    "   Only use --no-parallel for debugging specific issues.\n"
+                    "   Remove this flag or set 'parallel_enabled': true in ~/.ghostclaw/ghostclaw.json\n",
+                    file=sys.stderr
+                )
 
         try:
             service = AnalyzerService(
