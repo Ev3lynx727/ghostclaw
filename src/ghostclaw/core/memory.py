@@ -9,7 +9,7 @@ import json
 import sqlite3
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -43,7 +43,7 @@ class MemoryStore:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS reports (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                    timestamp TEXT NOT NULL,
                     vibe_score INTEGER,
                     stack TEXT,
                     files_analyzed INTEGER,
@@ -209,8 +209,9 @@ class MemoryStore:
 
         # Always search in report_json for the query text
         if query:
-            conditions.append("report_json LIKE ?")
-            params.append(f"%{query}%")
+            conditions.append("report_json LIKE ? ESCAPE '\\'")
+            escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{escaped_query}%")
 
         if repo_path:
             conditions.append("repo_path = ?")
