@@ -2,7 +2,7 @@
 
 All notable changes to the Ghostclaw project will be documented in this file.
 
-## [0.1.8] - Unreleased
+## [0.1.8] - 2026-03-11
 
 ### Added
 - ✨ **Complete modular CLI** — All commands now use commander pattern with auto-discovery
@@ -14,6 +14,17 @@ All notable changes to the Ghostclaw project will be documented in this file.
 - 📚 `docs/CLI_ARCHITECTURE.md` — Comprehensive architecture guide
 - 📚 `docs/COMMAND_DEVELOPMENT.md` — Tutorial for command developers
 - 📚 `MIGRATION_GUIDE.md` — Internal API migration guide
+
+⚡ **Performance & UX**
+- Auto-enables parallel scanning for repositories >5000 files to prevent timeouts
+- Added prominent warning for `--no-parallel` flag (300× slower)
+- Added "Performance & Best Practices" section to README
+
+🔬 **Profiling & Validation**
+- Created `scripts/ghostclaw_profiler.py` for phase and function profiling
+- Created `scripts/profile_mcp.py` for MCP server benchmarking
+- Profiled TypeScript (81,327 files): 33.5s sequential, ~11s cached
+- Validated MCP tool calls (~10-12s) with negligible overhead
 
 ### Changed
 - 🔄 All CLI commands (`analyze`, `init`, `doctor`, `test`, `update`, `bridge`, `plugins/*`) now modular
