@@ -310,12 +310,37 @@ class MemoryStore:
         report_a = run_a.get("report", {})
         report_b = run_b.get("report", {})
 
-        issues_a = set(report_a.get("issues", []))
-        issues_b = set(report_b.get("issues", []))
-        ghosts_a = set(report_a.get("architectural_ghosts", []))
-        ghosts_b = set(report_b.get("architectural_ghosts", []))
-        flags_a = set(report_a.get("red_flags", []))
-        flags_b = set(report_b.get("red_flags", []))
+        # Normalize issues to hashable keys to handle dict and string forms
+        def _make_mapping(items):
+            mapping = {}
+            for item in items:
+                if isinstance(item, dict):
+                    key = json.dumps(item, sort_keys=True)
+                else:
+                    key = str(item)
+                mapping[key] = item
+            return mapping
+
+        issues_a_map = _make_mapping(report_a.get("issues", []))
+        issues_b_map = _make_mapping(report_b.get("issues", []))
+        ghosts_a_map = _make_mapping(report_a.get("architectural_ghosts", []))
+        ghosts_b_map = _make_mapping(report_b.get("architectural_ghosts", []))
+        flags_a_map = _make_mapping(report_a.get("red_flags", []))
+        flags_b_map = _make_mapping(report_b.get("red_flags", []))
+
+        new_issue_keys = set(issues_b_map.keys()) - set(issues_a_map.keys())
+        resolved_issue_keys = set(issues_a_map.keys()) - set(issues_b_map.keys())
+        new_ghost_keys = set(ghosts_b_map.keys()) - set(ghosts_a_map.keys())
+        resolved_ghost_keys = set(ghosts_a_map.keys()) - set(ghosts_b_map.keys())
+        new_flag_keys = set(flags_b_map.keys()) - set(flags_a_map.keys())
+        resolved_flag_keys = set(flags_a_map.keys()) - set(flags_b_map.keys())
+
+        new_issues = sorted([issues_b_map[k] for k in new_issue_keys], key=lambda x: str(x))
+        resolved_issues = sorted([issues_a_map[k] for k in resolved_issue_keys], key=lambda x: str(x))
+        new_ghosts = sorted([ghosts_b_map[k] for k in new_ghost_keys], key=lambda x: str(x))
+        resolved_ghosts = sorted([ghosts_a_map[k] for k in resolved_ghost_keys], key=lambda x: str(x))
+        new_flags = sorted([flags_b_map[k] for k in new_flag_keys], key=lambda x: str(x))
+        resolved_flags = sorted([flags_a_map[k] for k in resolved_flag_keys], key=lambda x: str(x))
 
         return {
             "run_a": {"id": run_id_a, "timestamp": run_a.get("timestamp")},
@@ -323,12 +348,12 @@ class MemoryStore:
             "vibe_score_delta": (
                 report_b.get("vibe_score", 0) - report_a.get("vibe_score", 0)
             ),
-            "new_issues": sorted(issues_b - issues_a),
-            "resolved_issues": sorted(issues_a - issues_b),
-            "new_ghosts": sorted(ghosts_b - ghosts_a),
-            "resolved_ghosts": sorted(ghosts_a - ghosts_b),
-            "new_flags": sorted(flags_b - flags_a),
-            "resolved_flags": sorted(flags_a - flags_b),
+            "new_issues": new_issues,
+            "resolved_issues": resolved_issues,
+            "new_ghosts": new_ghosts,
+            "resolved_ghosts": resolved_ghosts,
+            "new_flags": new_flags,
+            "resolved_flags": resolved_flags,
             "metrics_comparison": {
                 "files_analyzed": {
                     "before": report_a.get("files_analyzed", 0),
@@ -423,11 +448,23 @@ class MemoryStore:
                 continue
 
             for issue in report.get("issues", []):
-                issue_counts[issue] += 1
+                if isinstance(issue, dict):
+                    key = issue.get("message", json.dumps(issue, sort_keys=True))
+                else:
+                    key = str(issue)
+                issue_counts[key] += 1
             for ghost in report.get("architectural_ghosts", []):
-                ghost_counts[ghost] += 1
+                if isinstance(ghost, dict):
+                    key = ghost.get("message", json.dumps(ghost, sort_keys=True))
+                else:
+                    key = str(ghost)
+                ghost_counts[key] += 1
             for flag in report.get("red_flags", []):
-                flag_counts[flag] += 1
+                if isinstance(flag, dict):
+                    key = flag.get("message", json.dumps(flag, sort_keys=True))
+                else:
+                    key = str(flag)
+                flag_counts[key] += 1
 
             # Aggregate coupling metrics
             coupling = report.get("coupling_metrics", {})
