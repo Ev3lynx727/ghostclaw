@@ -525,7 +525,7 @@ def migrate_legacy_storage(repo_path: Path) -> bool:
     old_cache = gc_dir / "cache"
     new_cache = gc_dir / "storage" / "cache"
     if old_cache.exists() and old_cache.is_dir():
-        new_cache.parent.mkdir(parents=True, exist_ok=True)
+        new_cache.mkdir(parents=True, exist_ok=True)
         for item in old_cache.iterdir():
             if item.is_file():
                 target = new_cache / item.name
