@@ -123,6 +123,27 @@ ghostclaw-mcp
 - `ghostclaw_get_ghosts`: Architectural smells only.
 - `ghostclaw_refactor_plan`: Automated blueprint generation.
 
+##### Agent-Facing Memory Tools
+
+Agents can query past analysis runs to track architectural health over time:
+
+- `ghostclaw_memory_search(query, repo_path?, stack?, min_score?, max_score?, limit=10)` — Search historical issues and ghosts.
+- `ghostclaw_memory_list_runs(repo_path?, limit=20)` — List recent runs.
+- `ghostclaw_memory_get_run(run_id, repo_path?)` — Retrieve full report.
+- `ghostclaw_memory_diff_runs(run_id_a, run_id_b, repo_path?)` — Compare two runs.
+- `ghostclaw_knowledge_graph(repo_path?, limit=50)` — Aggregate trends and recurring issues.
+
+Example (MCP JSON-RPC):
+
+```json
+{
+  "tool": "ghostclaw_memory_search",
+  "params": { "query": "Large file", "limit": 5 }
+}
+```
+
+Results include `matched_snippets` showing where the term appeared.
+
 #### Advanced Context & AST Indexing
 
 By utilizing the `ai-codeindex` engine, Ghostclaw can extract full structural syntax trees and build extensive call graphs.
