@@ -506,7 +506,7 @@ def migrate_legacy_storage(repo_path: Path) -> bool:
     old_reports = gc_dir / "reports"
     new_reports = gc_dir / "storage" / "reports"
     if old_reports.exists() and old_reports.is_dir():
-        new_reports.parent.mkdir(parents=True, exist_ok=True)
+        new_reports.mkdir(parents=True, exist_ok=True)
         for item in old_reports.iterdir():
             if item.is_file():
                 target = new_reports / item.name
