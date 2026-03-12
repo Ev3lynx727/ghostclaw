@@ -106,13 +106,19 @@ class QMDMemoryStore:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT report_json FROM reports WHERE id = ?",
+                "SELECT * FROM reports WHERE id = ?",
                 (run_id,)
             ) as cursor:
                 row = await cursor.fetchone()
-                if row:
-                    return json.loads(row["report_json"])
-                return None
+                if not row:
+                    return None
+                row_dict = dict(row)
+                # Parse the full report JSON
+                try:
+                    row_dict["report"] = json.loads(row_dict.pop("report_json", "{}"))
+                except (json.JSONDecodeError, TypeError):
+                    row_dict["report"] = {}
+                return row_dict
 
     # ------------------------------------------------------------------
     # Get previous run (most recent for a repo)
@@ -208,21 +214,75 @@ class QMDMemoryStore:
 
     async def diff_runs(self, run_id_a: int, run_id_b: int) -> Optional[Dict[str, Any]]:
         """
-        Compare two analysis runs and return differences.
+        Compare two analysis runs and highlight differences.
         """
         run_a = await self.get_run(run_id_a)
         run_b = await self.get_run(run_id_b)
+
         if not run_a or not run_b:
             return None
 
+        report_a = run_a.get("report", {})
+        report_b = run_b.get("report", {})
+
+        # Normalize issues to hashable keys to handle dict and string forms
+        def _make_mapping(items):
+            mapping = {}
+            for item in items:
+                if isinstance(item, dict):
+                    key = json.dumps(item, sort_keys=True)
+                else:
+                    key = str(item)
+                mapping[key] = item
+            return mapping
+
+        issues_a_map = _make_mapping(report_a.get("issues", []))
+        issues_b_map = _make_mapping(report_b.get("issues", []))
+        ghosts_a_map = _make_mapping(report_a.get("architectural_ghosts", []))
+        ghosts_b_map = _make_mapping(report_b.get("architectural_ghosts", []))
+        flags_a_map = _make_mapping(report_a.get("red_flags", []))
+        flags_b_map = _make_mapping(report_b.get("red_flags", []))
+
+        new_issue_keys = set(issues_b_map.keys()) - set(issues_a_map.keys())
+        resolved_issue_keys = set(issues_a_map.keys()) - set(issues_b_map.keys())
+        new_ghost_keys = set(ghosts_b_map.keys()) - set(ghosts_a_map.keys())
+        resolved_ghost_keys = set(ghosts_a_map.keys()) - set(ghosts_b_map.keys())
+        new_flag_keys = set(flags_b_map.keys()) - set(flags_a_map.keys())
+        resolved_flag_keys = set(flags_a_map.keys()) - set(flags_b_map.keys())
+
+        new_issues = sorted([issues_b_map[k] for k in new_issue_keys], key=lambda x: str(x))
+        resolved_issues = sorted([issues_a_map[k] for k in resolved_issue_keys], key=lambda x: str(x))
+        new_ghosts = sorted([ghosts_b_map[k] for k in new_ghost_keys], key=lambda x: str(x))
+        resolved_ghosts = sorted([ghosts_a_map[k] for k in resolved_ghost_keys], key=lambda x: str(x))
+        new_flags = sorted([flags_b_map[k] for k in new_flag_keys], key=lambda x: str(x))
+        resolved_flags = sorted([flags_a_map[k] for k in resolved_flag_keys], key=lambda x: str(x))
+
         return {
-            "run_a": run_a,
-            "run_b": run_b,
-            "vibe_score_delta": run_b.get("vibe_score", 0) - run_a.get("vibe_score", 0),
-            "issues_added": [i for i in run_b.get("issues", []) if i not in run_a.get("issues", [])],
-            "issues_removed": [i for i in run_a.get("issues", []) if i not in run_b.get("issues", [])],
-            "ghosts_added": [g for g in run_b.get("architectural_ghosts", []) if g not in run_a.get("architectural_ghosts", [])],
-            "ghosts_removed": [g for g in run_a.get("architectural_ghosts", []) if g not in run_b.get("architectural_ghosts", [])],
+            "run_a": {"id": run_id_a, "timestamp": run_a.get("timestamp")},
+            "run_b": {"id": run_id_b, "timestamp": run_b.get("timestamp")},
+            "vibe_score_delta": (
+                report_b.get("vibe_score", 0) - report_a.get("vibe_score", 0)
+            ),
+            "new_issues": new_issues,
+            "resolved_issues": resolved_issues,
+            "new_ghosts": new_ghosts,
+            "resolved_ghosts": resolved_ghosts,
+            "new_flags": new_flags,
+            "resolved_flags": resolved_flags,
+            "metrics_comparison": {
+                "files_analyzed": {
+                    "before": report_a.get("files_analyzed", 0),
+                    "after": report_b.get("files_analyzed", 0),
+                },
+                "total_lines": {
+                    "before": report_a.get("total_lines", 0),
+                    "after": report_b.get("total_lines", 0),
+                },
+                "vibe_score": {
+                    "before": report_a.get("vibe_score", 0),
+                    "after": report_b.get("vibe_score", 0),
+                },
+            },
         }
 
     # ------------------------------------------------------------------
