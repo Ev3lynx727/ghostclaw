@@ -61,7 +61,8 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
             use_qmd = False
 
     if use_qmd:
-        return QMDMemoryStore(db_path=db_path)
+        qmd_db_path = db_path.parent / "qmd" / "ghostclaw.db"
+        return QMDMemoryStore(db_path=qmd_db_path)
     else:
         return MemoryStore(db_path=db_path)
 
