@@ -220,7 +220,7 @@ class CodebaseAnalyzer:
         # If QMD backend is requested via config.use_qmd, ensure both 'sqlite' and 'qmd' are enabled (dual-write)
         if config.use_qmd:
             if registry.enabled_plugins is None:
-                registry.enabled_plugins = {"sqlite", "qmd"}
+                pass  # All plugins already enabled including qmd (registered above)
             else:
                 registry.enabled_plugins.add("sqlite")
                 registry.enabled_plugins.add("qmd")
