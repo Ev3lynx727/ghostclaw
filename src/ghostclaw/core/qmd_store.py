@@ -265,7 +265,7 @@ class QMDMemoryStore:
             "run_a": {"id": run_id_a, "timestamp": run_a.get("timestamp")},
             "run_b": {"id": run_id_b, "timestamp": run_b.get("timestamp")},
             "vibe_score_delta": (
-                report_b.get("vibe_score", 0) - report_a.get("vibe_score", 0)
+                (report_b.get("vibe_score") or 0) - (report_a.get("vibe_score") or 0)
             ),
             "new_issues": new_issues,
             "resolved_issues": resolved_issues,
