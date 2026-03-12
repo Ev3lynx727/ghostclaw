@@ -215,15 +215,17 @@ class CodebaseAnalyzer:
         if config.plugins_enabled is not None:
             registry.enabled_plugins = set(config.plugins_enabled)
         else:
-            registry.enabled_plugins = None
+            # Default to all internal plugins, but exclude qmd unless use_qmd is enabled
+            from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
+            plugins = set(INTERNAL_PLUGINS)
+            if not config.use_qmd:
+                plugins.discard("qmd")
+            registry.enabled_plugins = plugins
 
         # If QMD backend is requested via config.use_qmd, ensure both 'sqlite' and 'qmd' are enabled (dual-write)
         if config.use_qmd:
-            if registry.enabled_plugins is None:
-                pass  # All plugins already enabled including qmd (registered above)
-            else:
-                registry.enabled_plugins.add("sqlite")
-                registry.enabled_plugins.add("qmd")
+            registry.enabled_plugins.add("sqlite")
+            registry.enabled_plugins.add("qmd")
 
         if self.progress_cb: self.progress_cb("Running adapters")
         adapter_results = await registry.run_analysis(root, files)
