@@ -196,7 +196,7 @@ class QMDMemoryStore:
                             "vibe_score": row["vibe_score"],
                             "stack": row["stack"],
                             "repo_path": row["repo_path"],
-                            "snippets": [query]  # TODO: extract actual snippets
+                        "matched_snippets": [query]  # TODO: extract actual snippets
                         })
                         if len(results) >= limit:
                             break
