@@ -115,6 +115,45 @@ class QMDMemoryStore:
                 return None
 
     # ------------------------------------------------------------------
+    # Get previous run (most recent for a repo)
+    # ------------------------------------------------------------------
+
+    async def get_previous_run(
+        self, repo_path: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get the most recent analysis run, optionally filtered by repo path.
+
+        Args:
+            repo_path: Optional repo path filter. Defaults to all repos.
+
+        Returns:
+            Full report dict of the most recent run, or None.
+        """
+        if not self._db_exists():
+            return None
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if repo_path:
+                query = "SELECT * FROM reports WHERE repo_path = ? ORDER BY timestamp DESC LIMIT 1"
+                params = (repo_path,)
+            else:
+                query = "SELECT * FROM reports ORDER BY timestamp DESC LIMIT 1"
+                params = ()
+
+            async with db.execute(query, params) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    return None
+                row_dict = dict(row)
+                try:
+                    row_dict["report"] = json.loads(row_dict.pop("report_json", "{}"))
+                except (json.JSONDecodeError, TypeError):
+                    row_dict["report"] = {}
+                return row_dict
+
+    # ------------------------------------------------------------------
     # Search (placeholder: simple LIKE, will be BM25+vector)
     # ------------------------------------------------------------------
 
