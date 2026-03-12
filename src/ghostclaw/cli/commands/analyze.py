@@ -324,6 +324,8 @@ class AnalyzeCommand(Command):
                 finally:
                     try:
                         report_file_path.unlink(missing_ok=True)
+                        json_path = report_file_path.with_suffix('.json')
+                        json_path.unlink(missing_ok=True)
                     except Exception as e:
                         print(f"Warning: could not delete temporary PR report: {e}", file=sys.stderr)
 
