@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.config import GhostclawConfig
-from ghostclaw.core.adapters.registry import registry
+from ghostclaw.core.adapters.registry import registry, INTERNAL_PLUGINS
 
 @pytest.fixture(autouse=True)
 def reset_registry():
@@ -11,48 +11,53 @@ def reset_registry():
     registry.enabled_plugins = None
     registry._registered_plugins = []
     registry.internal_plugins = set()
+    registry.external_plugins = set()
     yield
     registry.enabled_plugins = None
     registry._registered_plugins = []
     registry.internal_plugins = set()
+    registry.external_plugins = set()
 
-def test_qmd_excluded_when_use_qmd_false(tmp_path):
-    """When use_qmd=False, qmd should not be in enabled_plugins by default."""
-    # Create a minimal repo structure
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    (repo / ".ghostclaw").mkdir()
-    (repo / "main.py").write_text("print('hello')")
-
-    # Create a config with use_qmd=False and no plugins_enabled
-    config = GhostclawConfig.load(str(repo), use_qmd=False)
-
-    # The analyzer will set up the registry during analyze()
-    analyzer = CodebaseAnalyzer()
-
-    # We'll call the internal method that sets up plugins, but we need to trigger it.
-    # Instead, we can directly simulate the plugin setup logic from analyzer.analyze()
-    # Replicate that logic here:
+def _setup_analyzer_plugin_logic(config):
+    """Replicate the plugin initialization logic from Analyzer.analyze()."""
+    # Register internal plugins
     registry.register_internal_plugins()
 
     # Apply plugin filter as in analyzer.analyze()
     if config.plugins_enabled is not None:
         registry.enabled_plugins = set(config.plugins_enabled)
     else:
-        from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
-        plugins = set(INTERNAL_PLUGINS)
-        if not config.use_qmd:
+        if config.use_qmd:
+            registry.enabled_plugins = None
+        else:
+            plugins = set(INTERNAL_PLUGINS)
             plugins.discard("qmd")
-        registry.enabled_plugins = plugins
+            plugins.update(registry.external_plugins)
+            registry.enabled_plugins = plugins
 
-    # Now check: qmd should not be in enabled_plugins
+    # Override: if use_qmd, force-enable sqlite and qmd
+    if config.use_qmd and registry.enabled_plugins is not None:
+        registry.enabled_plugins.add("sqlite")
+        registry.enabled_plugins.add("qmd")
+
+def test_qmd_excluded_when_use_qmd_false(tmp_path):
+    """When use_qmd=False, qmd should not be in enabled_plugins by default."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".ghostclaw").mkdir()
+    (repo / "main.py").write_text("print('hello')")
+
+    config = GhostclawConfig.load(str(repo), use_qmd=False)
+
+    # Simulate analyzer plugin setup
+    _setup_analyzer_plugin_logic(config)
+
     assert registry.enabled_plugins is not None
     assert "qmd" not in registry.enabled_plugins
-    # sqlite should be present
     assert "sqlite" in registry.enabled_plugins
 
 def test_qmd_included_when_use_qmd_true(tmp_path):
-    """When use_qmd=True, qmd should be in enabled_plugins."""
+    """When use_qmd=True, qmd should be enabled (enabled_plugins = None for all)."""
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / ".ghostclaw").mkdir()
@@ -60,21 +65,44 @@ def test_qmd_included_when_use_qmd_true(tmp_path):
 
     config = GhostclawConfig.load(str(repo), use_qmd=True)
 
-    registry.register_internal_plugins()
+    _setup_analyzer_plugin_logic(config)
 
-    if config.plugins_enabled is not None:
-        registry.enabled_plugins = set(config.plugins_enabled)
-    else:
-        from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
-        plugins = set(INTERNAL_PLUGINS)
-        if not config.use_qmd:
-            plugins.discard("qmd")
-        registry.enabled_plugins = plugins
+    # With use_qmd=True and no plugins_enabled, all plugins are enabled (None means no filter)
+    assert registry.enabled_plugins is None
 
-    # Ensure dual-write adds both (in case they were missing)
-    if config.use_qmd:
-        registry.enabled_plugins.add("sqlite")
-        registry.enabled_plugins.add("qmd")
+def test_external_plugins_preserved_when_use_qmd_false(tmp_path):
+    """External plugins should remain enabled when use_qmd=False."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".ghostclaw").mkdir()
+    (repo / "plugins").mkdir()
+    (repo / "main.py").write_text("print('hello')")
 
-    assert "qmd" in registry.enabled_plugins
-    assert "sqlite" in registry.enabled_plugins
+    # Simulate an external plugin named 'myplugin'
+    # We'll manually add it to registry.external_plugins to simulate loading
+    registry.external_plugins.add("myplugin")
+
+    config = GhostclawConfig.load(str(repo), use_qmd=False)
+
+    _setup_analyzer_plugin_logic(config)
+
+    assert registry.enabled_plugins is not None
+    assert "qmd" not in registry.enabled_plugins
+    assert "myplugin" in registry.enabled_plugins
+
+def test_external_plugins_allowed_when_use_qmd_true(tmp_path):
+    """When use_qmd=True, external plugins should also be allowed (enabled_plugins=None)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".ghostclaw").mkdir()
+    (repo / "plugins").mkdir()
+    (repo / "main.py").write_text("print('hello')")
+
+    registry.external_plugins.add("myplugin")
+
+    config = GhostclawConfig.load(str(repo), use_qmd=True)
+
+    _setup_analyzer_plugin_logic(config)
+
+    # No filter → None
+    assert registry.enabled_plugins is None
