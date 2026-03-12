@@ -2,6 +2,36 @@
 
 All notable changes to the Ghostclaw project will be documented in this file.
 
+## [0.1.9] - 2026-03-12 (In Development)
+
+### Added
+- ✨ **Agent-Facing Memory Search** — Core `MemoryStore` module for persistent analysis history
+- ✨ **Knowledge Graph Tools** — Aggregate recurring issues, coupling hotspots, and score trends
+- ✨ **Enhanced MCP Server** — 7 new memory search MCP tools for AI agent integration
+- ✨ **Memory Search MCP Tools**:
+  - `ghostclaw_memory_search` — Keyword search with filters and context snippets
+  - `ghostclaw_memory_get_run` — Retrieve full reports by ID
+  - `ghostclaw_memory_list_runs` — List recent analysis runs
+  - `ghostclaw_memory_diff_runs` — Compare runs showing delta analysis
+  - `ghostclaw_knowledge_graph` — Cross-run issue aggregation and trend analysis
+  - `ghostclaw_memory_get_previous_run` — Get most recent historical report
+- ✨ **Comprehensive Testing** — 25 new unit tests for MemoryStore and MCP wrapper methods
+- ✨ **SQLite Storage Backend** — Persistent `.ghostclaw/storage/ghostclaw.db` for analysis history
+
+### Changed
+- **Memory Architecture** — Analysis history now stored in SQLite for cross-run persistence
+- **MCP Integration** — Enhanced server with agent-facing memory search capabilities
+- **Test Coverage** — Expanded to cover agent-facing memory tools and MCP interactions
+
+### Next Steps (Polish Phase)
+- Integration tests for agent-facing memory search flows
+- Performance profiling with memory queries on large repositories
+- Documentation updates and migration guides for new memory features
+- CLI polish and error handling consistency
+- Release preparation and final validation
+
+---
+
 ## [0.1.8] - 2026-03-11
 
 ### Added
