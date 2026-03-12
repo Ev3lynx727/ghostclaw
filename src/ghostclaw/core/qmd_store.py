@@ -188,7 +188,7 @@ class QMDMemoryStore:
                     text_parts = report.get("issues", []) + report.get("architectural_ghosts", [])
                     text = " ".join(text_parts).lower()
                     if query.lower() in text:
-                        if repo_path and report.get("repo_path") != repo_path:
+                        if repo_path and row["repo_path"] != repo_path:
                             continue
                         results.append({
                             "id": row["id"],
