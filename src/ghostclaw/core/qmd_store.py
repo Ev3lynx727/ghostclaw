@@ -114,6 +114,7 @@ class QMDMemoryStore:
                 if not row:
                     return None
                 row_dict = dict(row)
+                # Parse the full report JSON
                 try:
                     row_dict["report"] = json.loads(row_dict.pop("report_json", "{}"))
                 except (json.JSONDecodeError, TypeError):
@@ -208,7 +209,7 @@ class QMDMemoryStore:
                             "vibe_score": row["vibe_score"],
                             "stack": row["stack"],
                             "repo_path": row["repo_path"],
-                            "snippets": [query]  # TODO: extract actual snippets
+                        "matched_snippets": [query]  # TODO: extract actual snippets
                         })
                         if len(results) >= limit:
                             break
@@ -224,12 +225,14 @@ class QMDMemoryStore:
         """
         run_a = await self.get_run(run_id_a)
         run_b = await self.get_run(run_id_b)
+
         if not run_a or not run_b:
             return None
 
         report_a = run_a.get("report", {})
         report_b = run_b.get("report", {})
 
+        # Normalize issues to hashable keys to handle dict and string forms
         def _make_mapping(items):
             mapping = {}
             for item in items:
@@ -265,7 +268,7 @@ class QMDMemoryStore:
             "run_a": {"id": run_id_a, "timestamp": run_a.get("timestamp")},
             "run_b": {"id": run_id_b, "timestamp": run_b.get("timestamp")},
             "vibe_score_delta": (
-                (report_b.get("vibe_score", 0) or 0) - (report_a.get("vibe_score", 0) or 0)
+                report_b.get("vibe_score", 0) - report_a.get("vibe_score", 0)
             ),
             "new_issues": new_issues,
             "resolved_issues": resolved_issues,
