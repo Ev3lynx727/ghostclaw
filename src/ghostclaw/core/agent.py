@@ -29,7 +29,8 @@ class GhostAgent:
         self.config = config
         self.repo_path = repo_path
         self.analyzer = analyzer or CodebaseAnalyzer()
-        self.llm_client = LLMClient(config, repo_path)
+        # Only initialize LLM client if AI synthesis is enabled
+        self.llm_client = LLMClient(config, repo_path) if config.use_ai else None
         self.bridge = bridge
         self.hooks: Dict[AgentEvent, List[Callable[[Dict], Any]]] = {
             event: [] for event in AgentEvent

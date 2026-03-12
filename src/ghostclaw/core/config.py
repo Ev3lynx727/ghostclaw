@@ -33,6 +33,16 @@ class GhostclawConfig(BaseSettings):
         default=None, description="Explicitly enable/disable AI-CodeIndex integration"
     )
 
+    # Delta-Context Mode (v0.1.10)
+    delta_mode: bool = Field(
+        default=False,
+        description="Enable delta-context analysis (PR-style review on diffs)"
+    )
+    delta_base_ref: Optional[str] = Field(
+        default="HEAD~1",
+        description="Git reference to diff against (branch, tag, commit) when delta_mode is enabled"
+    )
+
     # Analysis Behavior
     dry_run: bool = Field(
         default=False,

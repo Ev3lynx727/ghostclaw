@@ -76,4 +76,10 @@ def test_get_current_branch_detached(mock_run):
         MagicMock(stdout="HEAD\n"),
         MagicMock(stdout="abc123def456\n"),
     ]
-    assert get_current_branch() == "abc123d"
+    assert get_current_branch() == "abc123de"  # truncated to 8 chars
+
+
+@patch("subprocess.run")
+def test_get_current_sha(mock_run):
+    mock_run.return_value = MagicMock(stdout="deadbeef1234567890\n")
+    assert get_current_sha() == "deadbeef1234567890"

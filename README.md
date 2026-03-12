@@ -62,6 +62,53 @@ ghostclaw /path/to/your/repo
 python3 src/ghostclaw/cli/ghostclaw.py /path/to/your/repo
 ```
 
+### Delta-Context Analysis (PR Reviews)
+
+Ghostclaw supports **delta-context mode** for analyzing only the code changes (git diff) instead of the entire codebase. This is perfect for:
+
+- **CI/CD integration**: Fast PR checks without scanning the whole repo
+- **Focused feedback**: Architectural review specifically on the changed files
+- **Token efficiency**: Smaller prompts, lower AI costs
+- **Drift detection**: Compare current changes against a previous baseline
+
+#### Usage
+
+```bash
+# Analyze changes against HEAD~1 (default)
+ghostclaw /path/to/repo --delta
+
+# Compare against a specific branch, tag, or commit
+ghostclaw /path/to/repo --delta --base origin/main
+ghostclaw /path/to/repo --delta --base v1.2.3
+
+# In CI (e.g., GitHub Actions)
+ghostclaw . --delta --base ${{ github.event.pull_request.base.sha }} --json
+
+# Combine with AI synthesis
+ghostclaw . --delta --base HEAD~5 --use-ai --dry-run  # preview prompt
+```
+
+The delta report will be saved as `ARCHITECTURE-DELTA-<timestamp>.md` in `.ghostclaw/`.
+
+For more examples and CI integration, see `docs/examples/delta-analysis.md`.
+
+#### How It Works
+
+1. **Diff extraction**: Ghostclaw runs `git diff` between the current working tree and the specified `--base` reference.
+2. **Changed files only**: Only files modified in the diff are analyzed (filtered by stack extensions).
+3. **Base context**: If a previous Ghostclaw report exists in `.ghostclaw/reports/`, it is loaded and used as baseline for comparing architectural drift.
+4. **Delta prompt**: The AI prompt includes `<base_context>`, `<diff>`, and `<current_state>` sections to enable targeted synthesis.
+
+#### Benefits over Full Scan
+
+- **Faster** (fewer files to analyze)
+- **Cheaper** (fewer tokens in AI prompt)
+- **More relevant** (focuses on what actually changed)
+
+#### Base Report Auto-Discovery
+
+When using `--delta`, Ghostclaw automatically loads the most recent report from `.ghostclaw/reports/` to serve as the base context. No manual `--base-report` flag needed. If no base report exists, the delta prompt proceeds with just the diff and current metrics.
+
 ### Background Monitoring (Cron)
 
 Set up your repositories in a `repos.txt` file and add the native watcher binary to your cron jobs:

@@ -92,6 +92,10 @@ class AnalyzeCommand(Command):
         parser.add_argument("--pr-title", help="Custom PR title")
         parser.add_argument("--pr-body", help="Custom PR body")
 
+        # Delta-Context Mode (v0.1.10)
+        parser.add_argument("--delta", action="store_true", help="Enable delta-context analysis (PR-style review on diffs)")
+        parser.add_argument("--base", dest="delta_base_ref", default="HEAD~1", help="Git reference to diff against (branch, tag, commit). Default: HEAD~1")
+
         # Caching options
         parser.add_argument("--no-cache", action="store_true", help="Disable result caching")
         parser.add_argument("--cache-dir", type=Path, help="Custom cache directory (default: ~/.cache/ghostclaw)")
@@ -157,6 +161,9 @@ class AnalyzeCommand(Command):
         if args.dry_run: cli_overrides['dry_run'] = True
         if args.verbose: cli_overrides['verbose'] = True
         if args.patch: cli_overrides['patch'] = True
+        # Delta mode (v0.1.10)
+        if args.delta: cli_overrides['delta_mode'] = True
+        if args.delta_base_ref: cli_overrides['delta_base_ref'] = args.delta_base_ref
         if args.pyscn: cli_overrides['use_pyscn'] = True
         elif args.no_pyscn: cli_overrides['use_pyscn'] = False
         if args.ai_codeindex: cli_overrides['use_ai_codeindex'] = True
@@ -244,7 +251,12 @@ class AnalyzeCommand(Command):
         report_file_path = None
         if not args.no_write_report:
             now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-            filename = f"ARCHITECTURE-REPORT-{now}.md"
+            # Determine if delta mode from report metadata (set by analyzer)
+            is_delta = report.get("metadata", {}).get("delta", {}).get("mode", False)
+            if is_delta:
+                filename = f"ARCHITECTURE-DELTA-{now}.md"
+            else:
+                filename = f"ARCHITECTURE-REPORT-{now}.md"
 
             if args.create_pr:
                 report_dir = Path(repo_path)
@@ -263,6 +275,9 @@ class AnalyzeCommand(Command):
             try:
                 report_file_path.write_text(MarkdownFormatter().format(report), encoding='utf-8')
                 print(f"📝 Report written to: {report_file_path.absolute()}", file=info_file)
+                # Write JSON for machine-readable access (used by delta mode)
+                json_path = report_file_path.with_suffix('.json')
+                json_path.write_text(json.dumps(report, indent=2), encoding='utf-8')
             except Exception as e:
                 print(f"Error writing report: {e}", file=sys.stderr)
 

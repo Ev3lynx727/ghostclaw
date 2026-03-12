@@ -1,10 +1,41 @@
 # Draft: v0.1.10 — Ghost-Delta
 
-## Overview
+**Status:** ✅ Implementation Complete (2026-03-12)  
+**Branch:** `feature/v0.1.10-delta-context`  
+**Milestone:** PR ready for `develop`
 
-This intermediate release, positioned between `v0.1.8` and `v0.1.9`, introduces **"Delta-Context with Diff-Centric Analysis"**.
+---
 
-The goal is to enable Ghostclaw to perform architectural "Vibe checks" on specific code changes instead of the entire codebase, making it faster and more token-efficient for PR reviews and local iteration.
+## Implementation Summary
+
+All core features have been implemented and tested (193 passing tests). The delta-context feature is fully functional with CLI flags, diff extraction, base report discovery, and delta-specific AI prompt generation.
+
+### Completed Features
+
+- ✅ `git_utils` module with diff extraction (`get_git_diff`, `get_staged_diff`, etc.) and unit tests
+- ✅ CLI flags `--delta` and `--base <ref>` wired through `GhostclawConfig` and `AnalyzeCommand`
+- ✅ `CodebaseAnalyzer.analyze()` delta mode:
+  - Calls `git_utils.get_git_diff()`
+  - Filters file scanning to changed files only
+  - Stores delta metadata in report
+  - Loads base report from `.ghostclaw/reports/` (latest JSON)
+- ✅ `ContextBuilder.build_delta_prompt()` generates structured delta prompt with `<base_context>`, `<diff>`, `<current_state>`
+- ✅ `GhostAgent` fixed to only initialize `LLMClient` when `use_ai` (prevents errors in delta dry-runs)
+- ✅ Report differentiation: `ARCHITECTURE-DELTA-<timestamp>.md` filename
+- ✅ JSON report written alongside Markdown for future base loading
+- ✅ Unit tests for `build_delta_prompt()` (with/without base report)
+- ✅ Integration tests for delta mode (file filtering, base discovery)
+- ✅ Manual E2E test verified on ghostclaw-clone repository
+
+### Deferred to v0.1.11
+
+- **JSON5 migration**: Not needed; staying with JSON for now
+- **QMD backend integration**: Research phase; out of scope for v0.1.10
+- **Commit hash matching**: Auto-discovery uses latest report; matching to `delta_base_ref` is future work
+
+---
+
+## Original Draft Content (For Reference)
 
 ## Features: Delta-Context with Diff-Centric
 

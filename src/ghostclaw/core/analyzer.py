@@ -2,6 +2,7 @@
 
 import datetime
 import asyncio
+import json
 from pathlib import Path
 from typing import Dict, Optional, List
 from ghostclaw.core.detector import detect_stack, find_files, find_files_parallel
@@ -13,6 +14,7 @@ from ghostclaw.core.llm_client import LLMClient
 from ghostclaw.core.context_builder import ContextBuilder
 from ghostclaw.core.models import ArchitectureReport
 from ghostclaw.core.score import ScoringEngine
+from ghostclaw.core import git_utils
 
 
 
@@ -32,6 +34,24 @@ class CodebaseAnalyzer:
         self.cache = cache
         self.progress_cb = None
 
+    @staticmethod
+    def _find_base_report(repo_path: Path) -> Optional[dict]:
+        """Find the latest base report in .ghostclaw/reports/ for delta context."""
+        reports_dir = repo_path / ".ghostclaw" / "reports"
+        if not reports_dir.exists():
+            return None
+        # Look for JSON reports (we write both .md and .json)
+        json_files = list(reports_dir.glob("ARCHITECTURE-REPORT-*.json"))
+        if not json_files:
+            return None
+        # Get most recent by modification time
+        latest = max(json_files, key=lambda p: p.stat().st_mtime)
+        try:
+            data = json.loads(latest.read_text(encoding='utf-8'))
+            return data
+        except Exception:
+            return None
+
     async def analyze(self, root: str, use_cache: bool = True, config: Optional[GhostclawConfig] = None) -> ArchitectureReport:
         """
         Perform a complete architectural analysis of a codebase.
@@ -50,11 +70,20 @@ class CodebaseAnalyzer:
         use_pyscn = config.use_pyscn
         use_ai_codeindex = config.use_ai_codeindex
 
+        # Delta mode detection (Phase 2)
+        delta_mode = getattr(config, 'delta_mode', False)
+        delta_base_ref = getattr(config, 'delta_base_ref', 'HEAD~1')
+
+        # Prepare for delta metadata
+        diff_result = None
+        changed_rel_paths = []
+
         fingerprint = None
         # 0. Cache shortcut if enabled
         if use_cache and self.cache is not None:
             base_fingerprint = await asyncio.to_thread(compute_fingerprint, root_path)
-            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}"
+            delta_suffix = f":delta={delta_mode}:base={delta_base_ref}" if delta_mode else ""
+            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}{delta_suffix}"
             fingerprint = base_fingerprint + config_suffix
 
             cached_data = await asyncio.to_thread(self.cache.get, fingerprint)
@@ -66,19 +95,37 @@ class CodebaseAnalyzer:
         # 1. Detect stack
         stack = await asyncio.to_thread(detect_stack, root)
 
-        # 2. Find relevant files based on stack
+        # 2. Find relevant files based on stack (Delta-Ctx aware)
         analyzer = get_analyzer(stack)
         extensions = analyzer.get_extensions() if analyzer else []
         if self.progress_cb: self.progress_cb("Scanning files")
 
-        # Use parallel file scanning if enabled and available
-        if extensions:
-            if config.parallel_enabled:
-                files = await find_files_parallel(root, extensions, config.concurrency_limit)
-            else:
-                files = await asyncio.to_thread(find_files, root, extensions)
-        else:
+        if delta_mode:
+            # Delta mode: analyze only changed files from git diff
+            diff_result = await asyncio.to_thread(git_utils.get_git_diff, delta_base_ref, root_path)
+            changed_rel_paths = diff_result.files_changed
+
+            # Filter to existing source files that match stack extensions
             files = []
+            for rel_path in changed_rel_paths:
+                abs_path = root_path / rel_path
+                if not abs_path.exists():
+                    continue
+                if extensions and abs_path.suffix not in extensions:
+                    continue
+                files.append(str(abs_path))
+
+            if self.progress_cb:
+                self.progress_cb(f"Delta: analyzing {len(files)} changed files (from {len(changed_rel_paths)} diff hunks)")
+        else:
+            # Full scan: all files matching stack extensions
+            if extensions:
+                if config.parallel_enabled:
+                    files = await find_files_parallel(root, extensions, config.concurrency_limit)
+                else:
+                    files = await asyncio.to_thread(find_files, root, extensions)
+            else:
+                files = []
 
         # 3. Compute base metrics
         def _get_metrics(file_list, threshold):
@@ -235,19 +282,41 @@ class CodebaseAnalyzer:
             }
         }
 
-        # 8. Prompt Building
+        # Attach delta-context metadata if in delta mode
+        if delta_mode:
+            report_data["metadata"]["delta"] = {
+                "mode": True,
+                "base_ref": delta_base_ref,
+                "diff": diff_result.raw_diff if diff_result else "",
+                "files_changed": changed_rel_paths
+            }
+
+        # 8. Prompt Building (Delta or Full)
         if config.use_ai:
             context_builder = ContextBuilder()
-            prompt = context_builder.build_prompt(
-                metrics=base_metrics,
-                issues=issues,
-                ghosts=ghosts,
-                flags=flags,
-                coupling_metrics=coupling_metrics,
-                import_edges=import_edges,
-                patch=config.patch,
-                symbol_index=symbol_index
-            )
+            if delta_mode:
+                # Delta mode: load base report and build delta prompt
+                base_report = self._find_base_report(root_path)
+                prompt = context_builder.build_delta_prompt(
+                    current_metrics=base_metrics,
+                    current_issues=issues,
+                    current_ghosts=ghosts,
+                    current_flags=flags,
+                    diff_text=diff_result.raw_diff if diff_result else "",
+                    base_report=base_report
+                )
+            else:
+                # Full analysis prompt
+                prompt = context_builder.build_prompt(
+                    metrics=base_metrics,
+                    issues=issues,
+                    ghosts=ghosts,
+                    flags=flags,
+                    coupling_metrics=coupling_metrics,
+                    import_edges=import_edges,
+                    patch=config.patch,
+                    symbol_index=symbol_index
+                )
             report_data["ai_prompt"] = prompt
 
         # 9. Cache pre-synthesis
