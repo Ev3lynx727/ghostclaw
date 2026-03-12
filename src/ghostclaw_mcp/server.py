@@ -23,6 +23,7 @@ except ImportError:
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.memory import MemoryStore
 from ghostclaw.core.qmd_store import QMDMemoryStore
+from ghostclaw.core.config import GhostclawConfig
 import os
 
 # Configure logging
@@ -43,9 +44,22 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
     else:
         db_path = Path.cwd() / ".ghostclaw" / "storage" / "ghostclaw.db"
 
-    # Check if QMD backend is requested via environment variable
-    # (In the future, this could also come from ghostclaw config file)
-    use_qmd = os.getenv("GHOSTCLAW_USE_QMD", "").lower() in ("1", "true", "yes")
+    # Determine whether to use QMD backend.
+    # Precedence: env var > project config > default (False)
+    use_qmd = False
+
+    # 1. Environment variable (explicit override)
+    if os.getenv("GHOSTCLAW_USE_QMD", "").lower() in ("1", "true", "yes"):
+        use_qmd = True
+    else:
+        # 2. Project config (if repo_path known)
+        try:
+            cfg = GhostclawConfig.load(repo_path or ".")
+            use_qmd = cfg.use_qmd
+        except Exception as e:
+            logger.debug(f"Could not load Ghostclaw config: {e}")
+            use_qmd = False
+
     if use_qmd:
         return QMDMemoryStore(db_path=db_path)
     else:

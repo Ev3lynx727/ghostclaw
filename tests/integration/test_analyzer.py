@@ -106,7 +106,7 @@ async def test_delta_mode_filters_to_changed_files(tmp_path):
 
 @pytest.mark.asyncio
 async def test_delta_mode_base_report_discovery(tmp_path):
-    """Delta mode should attempt to load base report from .ghostclaw/reports/."""
+    """Delta mode should attempt to load base report from .ghostclaw/storage/reports/."""
     import subprocess
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True)
@@ -124,7 +124,7 @@ async def test_delta_mode_base_report_discovery(tmp_path):
     base_report = base_report_model.model_dump()
 
     # The full analysis should have written a JSON report and we can verify it exists
-    reports_dir = tmp_path / ".ghostclaw" / "reports"
+    reports_dir = tmp_path / ".ghostclaw" / "storage" / "reports"
     if reports_dir.exists():
         json_files = list(reports_dir.glob("ARCHITECTURE-REPORT-*.json"))
         assert len(json_files) > 0, "Base full analysis should have written a JSON report"

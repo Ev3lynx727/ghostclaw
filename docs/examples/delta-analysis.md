@@ -67,8 +67,8 @@ First, run a full analysis on your main branch and commit the reports:
 
 ```bash
 git checkout main
-ghostclaw . --use-ai  # generates .ghostclaw/reports/ARCHITECTURE-REPORT-*.json
-git add .ghostclaw/reports/
+ghostclaw . --use-ai  # generates .ghostclaw/storage/reports/ARCHITECTURE-REPORT-*.json
+git add .ghostclaw/storage/reports/
 git commit -m "Add baseline architecture reports"
 ```
 
@@ -104,7 +104,7 @@ The output will include:
 
 ### Report File
 
-Delta reports are saved as `.ghostclaw/ARCHITECTURE-DELTA-<timestamp>.md` with sections:
+Delta reports are saved as `.ghostclaw/storage/reports/ARCHITECTURE-DELTA-<timestamp>.md` with sections:
 
 - **Summary**: High-level assessment of changes
 - **Changes Analysis**: File-by-file architectural impact
@@ -150,8 +150,8 @@ Delta mode shines when:
 
 Delta mode falls back to diff-only analysis (no baseline comparison). To fix:
 
-1. Run a full analysis first: `ghostclaw . --no-write-report` (or ensure report is in `.ghostclaw/reports/`)
-2. Ensure the JSON report exists: `.ghostclaw/reports/ARCHITECTURE-REPORT-<timestamp>.json`
+1. Run a full analysis first: `ghostclaw . --no-write-report` (or ensure report is in `.ghostclaw/storage/reports/`)
+2. Ensure the JSON report exists: `.ghostclaw/storage/reports/ARCHITECTURE-REPORT-<timestamp>.json`
 3. The base report should be fairly recent (auto-discovery picks the latest)
 
 ### Diff shows no changes?

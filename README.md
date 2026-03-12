@@ -99,6 +99,10 @@ For more examples and CI integration, see `docs/examples/delta-analysis.md`.
 3. **Base context**: If a previous Ghostclaw report exists in `.ghostclaw/reports/`, it is loaded and used as baseline for comparing architectural drift.
 4. **Delta prompt**: The AI prompt includes `<base_context>`, `<diff>`, and `<current_state>` sections to enable targeted synthesis.
 
+#### Delta Summary
+
+Use `--delta-summary` to print diff statistics (files changed, insertions, deletions) to stderr after the analysis completes. Useful for CI logs and quick metrics.
+
 #### Benefits over Full Scan
 
 - **Faster** (fewer files to analyze)
@@ -107,7 +111,9 @@ For more examples and CI integration, see `docs/examples/delta-analysis.md`.
 
 #### Base Report Auto-Discovery
 
-When using `--delta`, Ghostclaw automatically loads the most recent report from `.ghostclaw/reports/` to serve as the base context. No manual `--base-report` flag needed. If no base report exists, the delta prompt proceeds with just the diff and current metrics.
+When using `--delta`, Ghostclaw automatically loads the most recent report from `.ghostclaw/storage/reports/` to serve as the base context. No manual `--base-report` flag needed. If no base report exists, the delta prompt proceeds with just the diff and current metrics.
+
+**Precise matching**: When `--base` is a specific commit SHA, Ghostclaw tries to find a report with matching `metadata.vcs.commit`. If not found, it falls back to the latest report (with a warning).
 
 ### Background Monitoring (Cron)
 
@@ -274,6 +280,18 @@ Ghostclaw is designed to be fast out of the box, but for large repositories or s
 - Ensure `parallel_enabled: true` in `~/.ghostclaw/ghostclaw.json`.
 - Avoid `--no-parallel` on any non-trivial repository.
 - For extremely large repos, consider analyzing a specific subdirectory instead of the entire codebase.
+
+### Storage & Memory Backend
+- Ghostclaw stores analysis results and history in `.ghostclaw/storage/` (reports, cache, SQLite DB).
+- **Automatic migration**: If you have legacy `.ghostclaw/reports/` or `.ghostclaw/cache/` from older versions, they will be automatically moved to the new storage layout on first run.
+- **QMD backend** (experimental): Use `--use-qmd` or set `use_qmd: true` in config for a high-performance alternative storage (requires `ghostclaw[qmd]`).
+- MCP tools (`ghostclaw_mcp`) automatically detect and use the configured backend.
+
+### Configuration File
+- Config files support **JSON5** format (comments, trailing commas) if the `json5` package is installed.
+- Global config: `~/.ghostclaw/ghostclaw.json`
+- Project config: `<repo>/.ghostclaw/ghostclaw.json`
+- Run `ghostclaw init` (or `python -m ghostclaw.cli.services.ConfigService.init_project`) to scaffold a local config with all options.
 
 ## License
 

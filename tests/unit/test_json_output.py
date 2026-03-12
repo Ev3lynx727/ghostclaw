@@ -101,7 +101,7 @@ def test_json_output_delta_base_report_loaded(tmp_path):
         cwd=tmp_path, capture_output=True, text=True, env=env, check=True
     )
 
-    reports_dir = tmp_path / ".ghostclaw" / "reports"
+    reports_dir = tmp_path / ".ghostclaw" / "storage" / "reports"
     if not reports_dir.exists():
         pytest.skip("No reports dir created")
     json_files = list(reports_dir.glob("ARCHITECTURE-REPORT-*.json"))

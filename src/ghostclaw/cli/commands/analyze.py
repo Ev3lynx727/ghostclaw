@@ -95,6 +95,7 @@ class AnalyzeCommand(Command):
         # Delta-Context Mode (v0.1.10)
         parser.add_argument("--delta", action="store_true", help="Enable delta-context analysis (PR-style review on diffs)")
         parser.add_argument("--base", dest="delta_base_ref", default="HEAD~1", help="Git reference to diff against (branch, tag, commit). Default: HEAD~1")
+        parser.add_argument("--delta-summary", action="store_true", help="Print diff statistics (files changed, insertions, deletions)")
 
         # QMD backend (v0.2.0)
         parser.add_argument("--use-qmd", action="store_true", help="Use QMD (Quantum Memory Database) backend for memory operations (experimental)")
@@ -225,6 +226,23 @@ class AnalyzeCommand(Command):
                 print(str(e), file=sys.stderr)
             return 1
 
+        # Delta summary (if requested and in delta mode)
+        if getattr(args, 'delta_summary', False) and report.get("metadata", {}).get("delta", {}).get("mode"):
+            diff_text = report["metadata"]["delta"].get("diff", "")
+            if diff_text:
+                files_changed = len(report["metadata"]["delta"].get("files_changed", []))
+                insertions = 0
+                deletions = 0
+                for line in diff_text.splitlines():
+                    if line.startswith("+") and not line.startswith("+++"):
+                        insertions += 1
+                    elif line.startswith("-") and not line.startswith("---"):
+                        deletions += 1
+                print("\n=== Delta Summary ===", file=sys.stderr)
+                print(f"Files changed: {files_changed}", file=sys.stderr)
+                print(f"Insertions: +{insertions}", file=sys.stderr)
+                print(f"Deletions: -{deletions}", file=sys.stderr)
+
         # Formatters
         if args.json:
             print(JSONFormatter().format(report))
@@ -266,7 +284,7 @@ class AnalyzeCommand(Command):
             if args.create_pr:
                 report_dir = Path(repo_path)
             else:
-                report_dir = Path(repo_path) / ".ghostclaw"
+                report_dir = Path(repo_path) / ".ghostclaw" / "storage" / "reports"
                 report_dir.mkdir(parents=True, exist_ok=True)
                 gitignore_path = Path(repo_path) / ".gitignore"
                 if gitignore_path.exists():

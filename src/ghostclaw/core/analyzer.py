@@ -35,16 +35,52 @@ class CodebaseAnalyzer:
         self.progress_cb = None
 
     @staticmethod
-    def _find_base_report(repo_path: Path) -> Optional[dict]:
-        """Find the latest base report in .ghostclaw/reports/ for delta context."""
-        reports_dir = repo_path / ".ghostclaw" / "reports"
+    def _find_base_report(repo_path: Path, base_ref: str = "HEAD~1") -> Optional[dict]:
+        """Find the base report for delta context by matching commit SHA."""
+        reports_dir = repo_path / ".ghostclaw" / "storage" / "reports"
         if not reports_dir.exists():
             return None
-        # Look for JSON reports (we write both .md and .json)
-        json_files = list(reports_dir.glob("ARCHITECTURE-REPORT-*.json"))
+
+        # Resolve base_ref to a commit SHA
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "-C", str(repo_path), "rev-parse", base_ref],
+                capture_output=True, text=True, check=False, timeout=5
+            )
+            if result.returncode != 0:
+                # Invalid ref; fall back to latest
+                base_sha = None
+            else:
+                base_sha = result.stdout.strip()
+        except Exception:
+            base_sha = None
+
+        # Collect candidate JSON reports
+        json_files = list(reports_dir.glob("*.json"))
         if not json_files:
             return None
-        # Get most recent by modification time
+
+        # If we have a SHA, try to find exact match
+        if base_sha:
+            for path in json_files:
+                try:
+                    data = json.loads(path.read_text(encoding='utf-8'))
+                    vcs = data.get("metadata", {}).get("vcs", {})
+                    if vcs.get("commit") == base_sha:
+                        return data
+                except Exception:
+                    continue
+
+        # Fallback: return latest report by modification time
+        if base_sha:
+            # Only warn if we tried to match a specific SHA but failed
+            try:
+                import sys
+                print(f"⚠️  Could not find base report for commit {base_sha[:8]}. Using latest report as base.", file=sys.stderr)
+            except Exception:
+                pass
+
         latest = max(json_files, key=lambda p: p.stat().st_mtime)
         try:
             data = json.loads(latest.read_text(encoding='utf-8'))
@@ -181,11 +217,12 @@ class CodebaseAnalyzer:
         else:
             registry.enabled_plugins = None
 
-        # If QMD backend is requested via config.use_qmd, ensure 'qmd' is enabled
+        # If QMD backend is requested via config.use_qmd, ensure both 'sqlite' and 'qmd' are enabled (dual-write)
         if config.use_qmd:
             if registry.enabled_plugins is None:
-                registry.enabled_plugins = {"qmd"}
+                registry.enabled_plugins = {"sqlite", "qmd"}
             else:
+                registry.enabled_plugins.add("sqlite")
                 registry.enabled_plugins.add("qmd")
 
         if self.progress_cb: self.progress_cb("Running adapters")
@@ -289,6 +326,17 @@ class CodebaseAnalyzer:
             }
         }
 
+        # Add VCS metadata (commit SHA, branch, dirty status)
+        try:
+            report_data["metadata"]["vcs"] = {
+                "commit": git_utils.get_current_sha(Path(root)),
+                "branch": git_utils.get_current_branch(Path(root)),
+                "dirty": git_utils.has_uncommitted_changes(Path(root))
+            }
+        except Exception:
+            # If git fails, ignore VCS metadata
+            pass
+
         # Attach delta-context metadata if in delta mode
         if delta_mode:
             report_data["metadata"]["delta"] = {
@@ -303,7 +351,7 @@ class CodebaseAnalyzer:
             context_builder = ContextBuilder()
             if delta_mode:
                 # Delta mode: load base report and build delta prompt
-                base_report = self._find_base_report(root_path)
+                base_report = self._find_base_report(root_path, base_ref=delta_base_ref)
                 prompt = context_builder.build_delta_prompt(
                     current_metrics=base_metrics,
                     current_issues=issues,

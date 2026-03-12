@@ -113,7 +113,15 @@ class MarkdownFormatter(BaseFormatter):
 # === TerminalFormatter (from formatters/terminal.py) ===
 
 class TerminalFormatter(BaseFormatter):
-    """Format the architecture report for terminal output."""
+    """Format the architecture report for terminal output with ANSI colors."""
+
+    # ANSI color codes
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    ORANGE = "\033[38;5;208m"  # 256-color orange
+    RED = "\033[91m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
 
     def format(self, report: Dict[str, Any]) -> str:
         vibe_score = report.get('vibe_score', 0)
@@ -121,17 +129,24 @@ class TerminalFormatter(BaseFormatter):
         files = report.get('files_analyzed', 0)
         total = report.get('total_lines', 0)
 
+        # Choose color and emoji
         if vibe_score >= 80:
+            color = self.GREEN
             emoji = "🟢"
         elif vibe_score >= 60:
+            color = self.YELLOW
             emoji = "🟡"
         elif vibe_score >= 40:
+            color = self.ORANGE
             emoji = "🟠"
         else:
+            color = self.RED
             emoji = "🔴"
 
+        # Header line with colored vibe score and emoji prefix
+        header = f"{emoji} {color}{self.BOLD}Vibe Score: {vibe_score}/100{self.RESET}"
         lines = [
-            f"{emoji} Vibe Score: {vibe_score}/100",
+            header,
             f"   Stack: {stack}",
             f"   Files: {files}, Lines: {total}"
         ]
@@ -147,28 +162,28 @@ class TerminalFormatter(BaseFormatter):
 
         issues = report.get('issues', [])
         if issues:
-            lines.append("Issues detected:")
+            lines.append(f"{self.RED}Issues detected:{self.RESET}")
             for issue in issues:
                 lines.append(f"  • {issue}")
             lines.append("")
 
         ghosts = report.get('architectural_ghosts', [])
         if ghosts:
-            lines.append("👻 Architectural Ghosts:")
+            lines.append(f"{self.ORANGE}👻 Architectural Ghosts:{self.RESET}")
             for ghost in ghosts:
                 lines.append(f"   {ghost}")
             lines.append("")
 
         flags = report.get('red_flags', [])
         if flags:
-            lines.append("🚨 Red Flags:")
+            lines.append(f"{self.YELLOW}🚨 Red Flags:{self.RESET}")
             for flag in flags:
                 lines.append(f"   {flag}")
             lines.append("")
 
         errors = report.get('errors', [])
         if errors:
-            lines.append("⚠️ Adapter Errors:")
+            lines.append(f"{self.RED}⚠️ Adapter Errors:{self.RESET}")
             for err in errors:
                 lines.append(f"   {err}")
             lines.append("")
