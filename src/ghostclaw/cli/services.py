@@ -57,7 +57,7 @@ class AnalyzerService:
         # Perform storage migration if needed (old .ghostclaw/{reports,cache} -> storage/)
         repo_path = Path(self.repo_path)
         if migrate_legacy_storage(repo_path):
-            print("🔧 Migrated storage to new layout under .ghostclaw/storage/")
+            print("🔧 Migrated storage to new layout under .ghostclaw/storage/", file=sys.stderr)
 
         # Initialize cache if needed
         if self.use_cache:
