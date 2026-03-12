@@ -53,6 +53,12 @@ ai-codeindex = [
 semantic = [
     "codebert-score>=0.1.0"
 ]
+qmd = [
+    "qmd>=0.1.0"  # placeholder; real package TBD
+]
+config = [
+    "json5>=0.9.0"
+]
 
 [project.scripts]
 ghostclaw = "ghostclaw.cli.ghostclaw:main"

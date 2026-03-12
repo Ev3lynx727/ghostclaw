@@ -96,6 +96,9 @@ class AnalyzeCommand(Command):
         parser.add_argument("--delta", action="store_true", help="Enable delta-context analysis (PR-style review on diffs)")
         parser.add_argument("--base", dest="delta_base_ref", default="HEAD~1", help="Git reference to diff against (branch, tag, commit). Default: HEAD~1")
 
+        # QMD backend (v0.2.0)
+        parser.add_argument("--use-qmd", action="store_true", help="Use QMD (Quantum Memory Database) backend for memory operations (experimental)")
+
         # Caching options
         parser.add_argument("--no-cache", action="store_true", help="Disable result caching")
         parser.add_argument("--cache-dir", type=Path, help="Custom cache directory (default: ~/.cache/ghostclaw)")
@@ -164,6 +167,8 @@ class AnalyzeCommand(Command):
         # Delta mode (v0.1.10)
         if args.delta: cli_overrides['delta_mode'] = True
         if args.delta_base_ref: cli_overrides['delta_base_ref'] = args.delta_base_ref
+        # QMD backend (v0.2.0)
+        if args.use_qmd: cli_overrides['use_qmd'] = True
         if args.pyscn: cli_overrides['use_pyscn'] = True
         elif args.no_pyscn: cli_overrides['use_pyscn'] = False
         if args.ai_codeindex: cli_overrides['use_ai_codeindex'] = True

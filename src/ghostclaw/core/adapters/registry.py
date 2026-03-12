@@ -43,13 +43,15 @@ class PluginRegistry:
         from ghostclaw.core.adapters.metric.pyscn import PySCNAdapter
         from ghostclaw.core.adapters.metric.ai_codeindex import AICodeIndexAdapter
         from ghostclaw.core.adapters.storage.sqlite import SQLiteStorageAdapter
+        from ghostclaw.core.adapters.storage.qmd import QMDStorageAdapter
         from ghostclaw.core.adapters.target.json import JsonTargetAdapter
         from ghostclaw.core.adapters.scoring.lizard import LizardScoringAdapter
-        
+
         adapters = {
             "pyscn": PySCNAdapter,
             "ai-codeindex": AICodeIndexAdapter,
             "sqlite": SQLiteStorageAdapter,
+            "qmd": QMDStorageAdapter,
             "json_target": JsonTargetAdapter,
             "lizard": LizardScoringAdapter
         }

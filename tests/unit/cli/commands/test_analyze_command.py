@@ -50,7 +50,9 @@ async def test_analyze_command_execute(mocker, tmp_path):
         cache_stats=False,
         # Delta mode flags (v0.1.10)
         delta=False,
-        delta_base_ref="HEAD~1"
+        delta_base_ref="HEAD~1",
+        # QMD backend (v0.2.0)
+        use_qmd=False
     )
 
     result = await cmd.execute(args)

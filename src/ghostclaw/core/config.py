@@ -43,6 +43,12 @@ class GhostclawConfig(BaseSettings):
         description="Git reference to diff against (branch, tag, commit) when delta_mode is enabled"
     )
 
+    # QMD Backend (v0.2.0)
+    use_qmd: bool = Field(
+        default=False,
+        description="Use QMD (Quantum Memory Database) backend for memory operations (experimental)"
+    )
+
     # Analysis Behavior
     dry_run: bool = Field(
         default=False,

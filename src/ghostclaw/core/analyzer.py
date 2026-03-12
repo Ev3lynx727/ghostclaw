@@ -181,6 +181,13 @@ class CodebaseAnalyzer:
         else:
             registry.enabled_plugins = None
 
+        # If QMD backend is requested via config.use_qmd, ensure 'qmd' is enabled
+        if config.use_qmd:
+            if registry.enabled_plugins is None:
+                registry.enabled_plugins = {"qmd"}
+            else:
+                registry.enabled_plugins.add("qmd")
+
         if self.progress_cb: self.progress_cb("Running adapters")
         adapter_results = await registry.run_analysis(root, files)
         if self.progress_cb: self.progress_cb("Adapters completed")
