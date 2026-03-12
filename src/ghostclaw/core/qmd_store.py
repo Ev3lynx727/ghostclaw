@@ -123,6 +123,9 @@ class QMDMemoryStore:
         query: str,
         limit: int = 10,
         repo_path: Optional[str] = None,
+        stack: Optional[str] = None,
+        min_score: Optional[int] = None,
+        max_score: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Search across saved reports for matching content.
