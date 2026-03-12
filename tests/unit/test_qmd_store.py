@@ -35,6 +35,9 @@ async def test_qmd_memory_store_init_and_save(tmp_path):
     assert retrieved is not None
     assert retrieved["vibe_score"] == 75
     assert retrieved["stack"] == "python"
+    # get_run returns wrapper dict with parsed "report" key
+    assert "report" in retrieved
+    assert retrieved["report"]["issues"] == ["Test issue"]
 
 
 @pytest.mark.asyncio
@@ -139,6 +142,12 @@ async def test_qmd_memory_store_diff_runs(tmp_path):
     assert diff["vibe_score_delta"] == 10
     assert "Issue B" in diff["new_issues"]
     assert "Ghost A" in diff["resolved_ghosts"]
+    # Verify MemoryStore-compatible keys
+    assert "new_flags" in diff
+    assert "resolved_flags" in diff
+    assert "metrics_comparison" in diff
+    assert diff["run_a"]["id"] == id_a
+    assert diff["run_b"]["id"] == id_b
 
 
 @pytest.mark.asyncio
@@ -161,9 +170,19 @@ async def test_qmd_memory_store_knowledge_graph(tmp_path):
         await store.save_run(report, repo_path=str(tmp_path))
 
     graph = await store.get_knowledge_graph(repo_path=str(tmp_path), limit=10)
-    assert "nodes" in graph
-    assert "edges" in graph
-    # Should have nodes for the recurring issue and ghost
-    node_labels = [n["label"] for n in graph["nodes"]]
-    assert "Recurring issue" in node_labels
-    assert "Recurring ghost" in node_labels
+    # Verify MemoryStore-compatible structure
+    assert "total_runs" in graph
+    assert graph["total_runs"] == 3
+    assert "stacks_seen" in graph
+    assert "python" in graph["stacks_seen"]
+    assert "score_trend" in graph
+    assert len(graph["score_trend"]) == 3
+    assert "recurring_issues" in graph
+    assert "recurring_ghosts" in graph
+    assert "recurring_flags" in graph
+    assert "coupling_hotspots" in graph
+    # Should have entries for the recurring issue and ghost
+    issue_items = [entry["item"] for entry in graph["recurring_issues"]]
+    ghost_items = [entry["item"] for entry in graph["recurring_ghosts"]]
+    assert "Recurring issue" in issue_items
+    assert "Recurring ghost" in ghost_items
