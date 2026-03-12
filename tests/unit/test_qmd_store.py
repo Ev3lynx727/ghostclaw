@@ -137,8 +137,8 @@ async def test_qmd_memory_store_diff_runs(tmp_path):
     diff = await store.diff_runs(id_a, id_b)
     assert diff is not None
     assert diff["vibe_score_delta"] == 10
-    assert "Issue B" in diff["issues_added"]
-    assert "Ghost A" in diff["ghosts_removed"]
+    assert "Issue B" in diff["new_issues"]
+    assert "Ghost A" in diff["resolved_ghosts"]
 
 
 @pytest.mark.asyncio
