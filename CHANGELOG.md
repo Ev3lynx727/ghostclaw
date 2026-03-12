@@ -23,9 +23,13 @@ All notable changes to the Ghostclaw project will be documented in this file.
 - **MCP Integration** — Enhanced server with agent-facing memory search capabilities
 - **Test Coverage** — Expanded to cover agent-facing memory tools and MCP interactions
 
+### Performance
+- Memory search: ~1.4ms avg (200 runs DB)
+- Knowledge graph: ~1.4ms avg
+- Get run: ~0.4ms avg
+
 ### Next Steps (Polish Phase)
 - Integration tests for agent-facing memory search flows
-- Performance profiling with memory queries on large repositories
 - Documentation updates and migration guides for new memory features
 - CLI polish and error handling consistency
 - Release preparation and final validation
