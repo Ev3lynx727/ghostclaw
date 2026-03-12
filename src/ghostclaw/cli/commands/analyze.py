@@ -94,7 +94,7 @@ class AnalyzeCommand(Command):
 
         # Delta-Context Mode (v0.1.10)
         parser.add_argument("--delta", action="store_true", help="Enable delta-context analysis (PR-style review on diffs)")
-        parser.add_argument("--base", dest="delta_base_ref", default="HEAD~1", help="Git reference to diff against (branch, tag, commit). Default: HEAD~1")
+        parser.add_argument("--base", dest="delta_base_ref", default=None, help="Git reference to diff against (branch, tag, commit). Default: from config (HEAD~1)")
         parser.add_argument("--delta-summary", action="store_true", help="Print diff statistics (files changed, insertions, deletions)")
 
         # QMD backend (v0.2.0)
@@ -167,7 +167,7 @@ class AnalyzeCommand(Command):
         if args.patch: cli_overrides['patch'] = True
         # Delta mode (v0.1.10)
         if args.delta: cli_overrides['delta_mode'] = True
-        if args.delta_base_ref: cli_overrides['delta_base_ref'] = args.delta_base_ref
+        if args.delta_base_ref is not None: cli_overrides['delta_base_ref'] = args.delta_base_ref
         # QMD backend (v0.2.0)
         if args.use_qmd: cli_overrides['use_qmd'] = True
         if args.pyscn: cli_overrides['use_pyscn'] = True
