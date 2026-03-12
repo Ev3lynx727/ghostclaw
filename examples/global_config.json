@@ -31,5 +31,7 @@
   "show_progress": true,
   "output_format": "json",
   "report_timestamp": true,
-  "store_reports": true
+  "store_reports": true,
+  "delta_mode": false,
+  "delta_base_ref": "HEAD~1"
 }

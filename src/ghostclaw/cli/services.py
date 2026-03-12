@@ -265,7 +265,10 @@ class ConfigService:
             "ai_provider": "openrouter",
             "ai_model": None,
             "use_pyscn": False,
-            "use_ai_codeindex": False
+            "use_ai_codeindex": False,
+            # Delta-Context (v0.1.10)
+            "delta_mode": False,
+            "delta_base_ref": "HEAD~1"
         }
 
         with open(config_file, "w", encoding="utf-8") as f:
