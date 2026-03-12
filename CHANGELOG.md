@@ -2,7 +2,7 @@
 
 All notable changes to Ghostclaw will be documented here.
 
-## [1.0.9] - 2026-03-12
+## [0.1.9] - 2026-03-12
 
 ### Added
 - **MemoryStore** — Persistent SQLite-backed analysis history
