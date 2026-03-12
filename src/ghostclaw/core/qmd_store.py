@@ -198,9 +198,9 @@ class QMDMemoryStore:
                             continue
                         if stack and row["stack"] != stack:
                             continue
-                        if min_score is not None and row["vibe_score"] < min_score:
+                        if min_score is not None and (row["vibe_score"] is None or row["vibe_score"] < min_score):
                             continue
-                        if max_score is not None and row["vibe_score"] > max_score:
+                        if max_score is not None and (row["vibe_score"] is None or row["vibe_score"] > max_score):
                             continue
                         results.append({
                             "id": row["id"],
