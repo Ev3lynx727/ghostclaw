@@ -191,9 +191,14 @@ class QMDMemoryStore:
                 rows = await cursor.fetchall()
                 for row in rows:
                     report = json.loads(row["report_json"])
-                    # Combine searchable text
-                    text_parts = report.get("issues", []) + report.get("architectural_ghosts", [])
-                    text = " ".join(text_parts).lower()
+                    # Combine searchable text from all report fields
+                    text_parts = report.get("issues", []) + report.get("architectural_ghosts", []) + report.get("red_flags", [])
+                    searchable = " ".join(str(t) for t in text_parts)
+                    # Also search AI synthesis and other string fields
+                    for field in ("ai_synthesis", "ai_reasoning"):
+                        if report.get(field):
+                            searchable += " " + str(report[field])
+                    text = searchable.lower()
                     if query.lower() in text:
                         if repo_path and row["repo_path"] != repo_path:
                             continue
