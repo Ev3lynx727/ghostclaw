@@ -108,7 +108,7 @@ class CodebaseAnalyzer:
 
         # Delta mode detection (Phase 2)
         delta_mode = getattr(config, 'delta_mode', False)
-        delta_base_ref = getattr(config, 'delta_base_ref', 'HEAD~1')
+        delta_base_ref = getattr(config, 'delta_base_ref', None) or 'HEAD~1'
 
         # Prepare for delta metadata
         diff_result = None
