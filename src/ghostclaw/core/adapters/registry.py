@@ -11,6 +11,9 @@ from typing import List, Dict, Any, Optional, Set, Tuple
 from ghostclaw.core.adapters.hooks import GhostclawPluginSpecs
 from ghostclaw.core.adapters.base import AdapterMetadata
 
+# Internal plugin names (for default enable/disable logic)
+INTERNAL_PLUGINS = ["pyscn", "ai-codeindex", "sqlite", "qmd", "json_target", "lizard"]
+
 class PluginRegistry:
     """Manages the lifecycle and invocation of Ghostclaw plugins."""
 
@@ -43,13 +46,15 @@ class PluginRegistry:
         from ghostclaw.core.adapters.metric.pyscn import PySCNAdapter
         from ghostclaw.core.adapters.metric.ai_codeindex import AICodeIndexAdapter
         from ghostclaw.core.adapters.storage.sqlite import SQLiteStorageAdapter
+        from ghostclaw.core.adapters.storage.qmd import QMDStorageAdapter
         from ghostclaw.core.adapters.target.json import JsonTargetAdapter
         from ghostclaw.core.adapters.scoring.lizard import LizardScoringAdapter
-        
+
         adapters = {
             "pyscn": PySCNAdapter,
             "ai-codeindex": AICodeIndexAdapter,
             "sqlite": SQLiteStorageAdapter,
+            "qmd": QMDStorageAdapter,
             "json_target": JsonTargetAdapter,
             "lizard": LizardScoringAdapter
         }
@@ -195,12 +200,19 @@ class PluginRegistry:
             await asyncio.gather(*coroutines)
 
     async def save_report(self, report: Any) -> List[str]:
-        """Save report via all storage adapters."""
+        """Save report via all enabled storage adapters."""
         import asyncio
-        coroutines = self.pm.hook.ghost_save_report(report=report)
-        if not coroutines:
+        tasks = []
+        for name, plugin in self.pm.list_name_plugin():
+            # Filter by enabled_plugins if set
+            if self.enabled_plugins is not None and name not in self.enabled_plugins:
+                continue
+            # Only call if plugin has ghost_save_report
+            if hasattr(plugin, 'ghost_save_report'):
+                tasks.append(plugin.ghost_save_report(report=report))
+        if not tasks:
             return []
-        ids = await asyncio.gather(*coroutines)
+        ids = await asyncio.gather(*tasks)
         return [i for i in ids if i] if ids else []
 
     def get_plugin_metadata(self) -> List[Dict[str, Any]]:

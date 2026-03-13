@@ -54,6 +54,11 @@ class AnalyzerService:
             print(f"Configuration Error: {e}", file=sys.stderr)
             raise Exception(f"Analysis Error: Configuration Error: {e}")
 
+        # Perform storage migration if needed (old .ghostclaw/{reports,cache} -> storage/)
+        repo_path = Path(self.repo_path)
+        if migrate_legacy_storage(repo_path):
+            print("🔧 Migrated storage to new layout under .ghostclaw/storage/", file=sys.stderr)
+
         # Initialize cache if needed
         if self.use_cache:
             self.cache = LocalCache(
@@ -265,11 +270,22 @@ class ConfigService:
             "ai_provider": "openrouter",
             "ai_model": None,
             "use_pyscn": False,
-            "use_ai_codeindex": False
+            "use_ai_codeindex": False,
+            # Delta-Context (v0.1.10)
+            "delta_mode": False,
+            "delta_base_ref": "HEAD~1",
+            # QMD Backend (v0.2.0)
+            "use_qmd": False
         }
 
-        with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(template, f, indent=2)
+        # Write JSON5 if available for nicer formatting with comments/trailing commas
+        try:
+            import json5
+            with open(config_file, "w", encoding="utf-8") as f:
+                json5.dump(template, f, indent=2)
+        except ImportError:
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(template, f, indent=2)
 
         print(f"✅ Created template config at {config_file}")
         print("💡 Remember: Do NOT save your GHOSTCLAW_API_KEY in this file. Use an environment variable or ~/.ghostclaw/ghostclaw.json.")
@@ -475,4 +491,64 @@ class CustomAdapter(MetricAdapter):
         init_file.write_text(template)
         return plugin_dir
 
-__all__ = ['AnalyzerService', 'PRService', 'ConfigService', 'PluginService']
+__all__ = ['AnalyzerService', 'PRService', 'ConfigService', 'PluginService', 'migrate_legacy_storage']
+
+
+def migrate_legacy_storage(repo_path: Path) -> bool:
+    """
+    Migrate old .ghostclaw/{reports,cache,ghostclaw.db} to .ghostclaw/storage/{reports,cache,ghostclaw.db}.
+    Returns True if any files were moved.
+    """
+    moved = False
+    gc_dir = repo_path / ".ghostclaw"
+
+    # Migrate reports/
+    old_reports = gc_dir / "reports"
+    new_reports = gc_dir / "storage" / "reports"
+    if old_reports.exists() and old_reports.is_dir():
+        new_reports.mkdir(parents=True, exist_ok=True)
+        for item in old_reports.iterdir():
+            if item.is_file():
+                target = new_reports / item.name
+                if not target.exists():
+                    try:
+                        item.rename(target)
+                        moved = True
+                    except Exception:
+                        pass
+        try:
+            old_reports.rmdir()  # remove empty dir
+        except OSError:
+            pass
+
+    # Migrate cache/
+    old_cache = gc_dir / "cache"
+    new_cache = gc_dir / "storage" / "cache"
+    if old_cache.exists() and old_cache.is_dir():
+        new_cache.mkdir(parents=True, exist_ok=True)
+        for item in old_cache.iterdir():
+            if item.is_file():
+                target = new_cache / item.name
+                if not target.exists():
+                    try:
+                        item.rename(target)
+                        moved = True
+                    except Exception:
+                        pass
+        try:
+            old_cache.rmdir()
+        except OSError:
+            pass
+
+    # Migrate legacy SQLite DB if present at top-level
+    old_db = gc_dir / "ghostclaw.db"
+    new_db = gc_dir / "storage" / "ghostclaw.db"
+    if old_db.exists() and old_db.is_file() and not new_db.exists():
+        new_db.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            old_db.rename(new_db)
+            moved = True
+        except Exception:
+            pass
+
+    return moved

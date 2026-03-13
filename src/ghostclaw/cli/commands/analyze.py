@@ -92,6 +92,14 @@ class AnalyzeCommand(Command):
         parser.add_argument("--pr-title", help="Custom PR title")
         parser.add_argument("--pr-body", help="Custom PR body")
 
+        # Delta-Context Mode (v0.1.10)
+        parser.add_argument("--delta", action="store_true", help="Enable delta-context analysis (PR-style review on diffs)")
+        parser.add_argument("--base", dest="delta_base_ref", default=None, help="Git reference to diff against (branch, tag, commit). Default: from config (HEAD~1)")
+        parser.add_argument("--delta-summary", action="store_true", help="Print diff statistics (files changed, insertions, deletions)")
+
+        # QMD backend (v0.2.0)
+        parser.add_argument("--use-qmd", action="store_true", help="Use QMD (Quantum Memory Database) backend for memory operations (experimental)")
+
         # Caching options
         parser.add_argument("--no-cache", action="store_true", help="Disable result caching")
         parser.add_argument("--cache-dir", type=Path, help="Custom cache directory (default: ~/.cache/ghostclaw)")
@@ -157,6 +165,11 @@ class AnalyzeCommand(Command):
         if args.dry_run: cli_overrides['dry_run'] = True
         if args.verbose: cli_overrides['verbose'] = True
         if args.patch: cli_overrides['patch'] = True
+        # Delta mode (v0.1.10)
+        if args.delta: cli_overrides['delta_mode'] = True
+        if args.delta_base_ref is not None: cli_overrides['delta_base_ref'] = args.delta_base_ref
+        # QMD backend (v0.2.0)
+        if args.use_qmd: cli_overrides['use_qmd'] = True
         if args.pyscn: cli_overrides['use_pyscn'] = True
         elif args.no_pyscn: cli_overrides['use_pyscn'] = False
         if args.ai_codeindex: cli_overrides['use_ai_codeindex'] = True
@@ -213,6 +226,23 @@ class AnalyzeCommand(Command):
                 print(str(e), file=sys.stderr)
             return 1
 
+        # Delta summary (if requested and in delta mode)
+        if getattr(args, 'delta_summary', False) and report.get("metadata", {}).get("delta", {}).get("mode"):
+            diff_text = report["metadata"]["delta"].get("diff", "")
+            if diff_text:
+                files_changed = len(report["metadata"]["delta"].get("files_changed", []))
+                insertions = 0
+                deletions = 0
+                for line in diff_text.splitlines():
+                    if line.startswith("+") and not line.startswith("+++"):
+                        insertions += 1
+                    elif line.startswith("-") and not line.startswith("---"):
+                        deletions += 1
+                print("\n=== Delta Summary ===", file=sys.stderr)
+                print(f"Files changed: {files_changed}", file=sys.stderr)
+                print(f"Insertions: +{insertions}", file=sys.stderr)
+                print(f"Deletions: -{deletions}", file=sys.stderr)
+
         # Formatters
         if args.json:
             print(JSONFormatter().format(report))
@@ -244,12 +274,17 @@ class AnalyzeCommand(Command):
         report_file_path = None
         if not args.no_write_report:
             now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-            filename = f"ARCHITECTURE-REPORT-{now}.md"
+            # Determine if delta mode from report metadata (set by analyzer)
+            is_delta = report.get("metadata", {}).get("delta", {}).get("mode", False)
+            if is_delta:
+                filename = f"ARCHITECTURE-DELTA-{now}.md"
+            else:
+                filename = f"ARCHITECTURE-REPORT-{now}.md"
 
             if args.create_pr:
                 report_dir = Path(repo_path)
             else:
-                report_dir = Path(repo_path) / ".ghostclaw"
+                report_dir = Path(repo_path) / ".ghostclaw" / "storage" / "reports"
                 report_dir.mkdir(parents=True, exist_ok=True)
                 gitignore_path = Path(repo_path) / ".gitignore"
                 if gitignore_path.exists():
@@ -263,6 +298,9 @@ class AnalyzeCommand(Command):
             try:
                 report_file_path.write_text(MarkdownFormatter().format(report), encoding='utf-8')
                 print(f"📝 Report written to: {report_file_path.absolute()}", file=info_file)
+                # Write JSON for machine-readable access (used by delta mode)
+                json_path = report_file_path.with_suffix('.json')
+                json_path.write_text(json.dumps(report, indent=2), encoding='utf-8')
             except Exception as e:
                 print(f"Error writing report: {e}", file=sys.stderr)
 
@@ -286,6 +324,8 @@ class AnalyzeCommand(Command):
                 finally:
                     try:
                         report_file_path.unlink(missing_ok=True)
+                        json_path = report_file_path.with_suffix('.json')
+                        json_path.unlink(missing_ok=True)
                     except Exception as e:
                         print(f"Warning: could not delete temporary PR report: {e}", file=sys.stderr)
 

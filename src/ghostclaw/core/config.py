@@ -4,6 +4,28 @@ from typing import Optional, List, get_origin, get_args, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Optional json5 support for comments and nicer formatting
+try:
+    import json5
+    HAS_JSON5 = True
+except ImportError:
+    HAS_JSON5 = False
+
+
+def _load_json_or_json5(path: Path) -> dict:
+    """Load a JSON or JSON5 file (JSON5 if available, fallback to stdlib json)."""
+    try:
+        if HAS_JSON5:
+            with open(path, "r", encoding="utf-8") as f:
+                return json5.load(f)
+        else:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        # Re-raise with a clearer message?
+        raise
+
+
 
 class GhostclawConfig(BaseSettings):
     """
@@ -31,6 +53,22 @@ class GhostclawConfig(BaseSettings):
     )
     use_ai_codeindex: Optional[bool] = Field(
         default=None, description="Explicitly enable/disable AI-CodeIndex integration"
+    )
+
+    # Delta-Context Mode (v0.1.10)
+    delta_mode: bool = Field(
+        default=False,
+        description="Enable delta-context analysis (PR-style review on diffs)"
+    )
+    delta_base_ref: Optional[str] = Field(
+        default="HEAD~1",
+        description="Git reference to diff against (branch, tag, commit) when delta_mode is enabled"
+    )
+
+    # QMD Backend (v0.2.0)
+    use_qmd: bool = Field(
+        default=False,
+        description="Use QMD (Quantum Memory Database) backend for memory operations (experimental)"
     )
 
     # Analysis Behavior
@@ -113,7 +151,7 @@ class GhostclawConfig(BaseSettings):
         default=True, description="Include timestamp in report filenames"
     )
     store_reports: bool = Field(
-        default=True, description="Store reports to .ghostclaw/reports/"
+        default=True, description="Store reports to .ghostclaw/storage/reports/"
     )
 
     model_config = SettingsConfigDict(
@@ -140,26 +178,26 @@ class GhostclawConfig(BaseSettings):
         global_config_path = Path.home() / ".ghostclaw" / "ghostclaw.json"
         if global_config_path.exists():
             try:
-                with open(global_config_path, "r", encoding="utf-8") as f:
-                    file_config.update(json.load(f))
-            except json.JSONDecodeError:
+                file_config.update(_load_json_or_json5(global_config_path))
+            except Exception:
                 pass
 
         # 2. Local Config
         local_config_path = Path(repo_path) / ".ghostclaw" / "ghostclaw.json"
         if local_config_path.exists():
             try:
-                with open(local_config_path, "r", encoding="utf-8") as f:
-                    local_data = json.load(f)
-                    if "api_key" in local_data and local_data["api_key"]:
-                        raise ValueError(
-                            "SECURITY RISK: API key found in local project configuration "
-                            f"({local_config_path}). Please move it to ~/.ghostclaw/ghostclaw.json "
-                            "or use the GHOSTCLAW_API_KEY environment variable to prevent committing secrets."
-                        )
-                    file_config.update(local_data)
-            except json.JSONDecodeError:
-                pass
+                local_data = _load_json_or_json5(local_config_path)
+            except (json.JSONDecodeError, ValueError) as e:
+                # Invalid JSON/JSON5; skip local config
+                local_data = None
+            if local_data:
+                if "api_key" in local_data and local_data["api_key"]:
+                    raise ValueError(
+                        "SECURITY RISK: API key found in local project configuration "
+                        f"({local_config_path}). Please move it to ~/.ghostclaw/ghostclaw.json "
+                        "or use the GHOSTCLAW_API_KEY environment variable to prevent committing secrets."
+                    )
+                file_config.update(local_data)
 
         # Manually apply precedence: CLI > Env > Local > Global
 

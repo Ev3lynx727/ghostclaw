@@ -14,7 +14,10 @@ async def test_analyze_command_execute(mocker, tmp_path):
         "stack": "Python",
         "files_analyzed": 10,
         "total_lines": 500,
-        "metadata": {"timestamp": "2023-10-27T10:00:00Z"},
+        "metadata": {
+            "timestamp": "2023-10-27T10:00:00Z",
+            "delta": {"mode": False}  # Simulate non-delta report
+        },
         "issues": [],
         "architectural_ghosts": [],
         "red_flags": []
@@ -44,7 +47,12 @@ async def test_analyze_command_execute(mocker, tmp_path):
         benchmark=False,
         cache_dir=None,
         cache_ttl=7,
-        cache_stats=False
+        cache_stats=False,
+        # Delta mode flags (v0.1.10)
+        delta=False,
+        delta_base_ref="HEAD~1",
+        # QMD backend (v0.2.0)
+        use_qmd=False
     )
 
     result = await cmd.execute(args)
@@ -53,6 +61,10 @@ async def test_analyze_command_execute(mocker, tmp_path):
 @pytest.mark.asyncio
 async def test_analyze_command_invalid_path():
     cmd = AnalyzeCommand()
-    args = Namespace(repo_path="invalid_path")
+    args = Namespace(
+        repo_path="invalid_path",
+        delta=False,
+        delta_base_ref="HEAD~1"
+    )
     with pytest.raises(SystemExit):
         await cmd.execute(args)

@@ -26,9 +26,9 @@ class LocalCache:
     """
 
     def __init__(self, cache_dir: Optional[Path] = None, ttl_days: int = 7, compression: bool = True):
-        # Default to project-local cache: <repo>/.ghostclaw/cache/
+        # Default to project-local cache: <repo>/.ghostclaw/storage/cache/
         if cache_dir is None:
-            cache_dir = Path.cwd() / ".ghostclaw" / "cache"
+            cache_dir = Path.cwd() / ".ghostclaw" / "storage" / "cache"
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.ttl = timedelta(days=ttl_days)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostclaw"
-version = "0.1.9"
+version = "0.2.0"
 description = "Architectural code review assistant that perceives code vibes"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -52,6 +52,12 @@ ai-codeindex = [
 ]
 semantic = [
     "codebert-score>=0.1.0"
+]
+qmd = [
+    "qmd>=0.1.0"  # placeholder; real package TBD
+]
+config = [
+    "json5>=0.9.0"
 ]
 
 [project.scripts]
