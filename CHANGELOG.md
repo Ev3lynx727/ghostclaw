@@ -1,44 +1,36 @@
 # Changelog
 
-All notable changes to the Ghostclaw project will be documented in this file.
+All notable changes to Ghostclaw will be documented here.
 
-## [0.1.4] - 2026-03-03
-
-### Added
-
-- **MCP Server Support**: Integrated OpenClaw-compatible MCP server in `ghostclaw_mcp/` exposing analyzing and planning as AI tools.
-- **AI-CodeIndex Integration**: Added AST-based tree-sitter coupling logic to detect deep class hierarchies (optional dependency: `ai-codeindex`).
-- **PySCN Integration**: Added support for structural clone detection and dead code identification (optional dependency: `pyscn`).
-- **Feature Flags**: Added explicit CLI flags (`--pyscn`, `--ai-codeindex`) to `scripts/ghostclaw` and `scripts/watcher` to toggle engines manually.
-- **Engine Badging**: Added CLI terminal badges to display active analysis engines (e.g., `🚀 Engines: PySCN, AI-CodeIndex`).
-- **Documentation Overhaul**: Created `INTEGRATION.md`, `HOWTOUSE.md`, `ARCHITECTURE.md`, and `TROUBLESHOOT.md` guides.
-- **Graceful Fallbacks**: Implemented non-breaking analyzer fallbacks when optional dependencies are missing but invoked.
-
-### Changed
-
-- **Standardised Layout**: Moved core modules (`cli/`, `core/`, `lib/`, `stacks/`) inside a `src/ghostclaw/` package to resolve namespace collisions (e.g., `ModuleNotFoundError: No module named 'core.analyzer'`).
-
-## [0.1.3] - 2026-02-27
+## [0.1.9] - 2026-03-12
 
 ### Added
-
-- **Build from Source**: Added instructions for building Ghostclaw from source.
-- **Project License**: Added the MIT License file.
-- **ClawHub Support**: Integrated ClawHub as the recommended installation method via `clawdhub`.
-- **NPX Integration**: Added `package.json` to support installation via `npx skills add`.
-- **Integration Guide**: Created `GUIDE.md` in `docs/` with comprehensive installation instructions.
-
-### Removed
-
-- **Legacy Installer**: Removed `scripts/install.sh` to reduce confusion for developers.
+- **MemoryStore** — Persistent SQLite-backed analysis history
+- **Agent memory search** — MCP tools for cross-run queries:
+  - `ghostclaw_memory_search` — keyword search with snippets
+  - `ghostclaw_memory_get_run` — fetch full report by ID
+  - `ghostclaw_memory_list_runs` — list recent runs
+  - `ghostclaw_memory_diff_runs` — compare two runs
+  - `ghostclaw_knowledge_graph` — aggregate trends and recurring issues
+- 25 unit tests + 5 integration tests for memory tools
 
 ### Changed
+- **CLI architecture** — Full modular commander pattern, auto-discovery, services, formatters
+- Performance — parallel scanning by default; auto-enables for large repos (>5000 files)
 
-- **Documentation Cleanup**: Improved formatting and layout of `SKILL.md` for better readability.
-- **Task View Support**: Integrated with agentic task view and artifacts for better transparency in development.
+### Performance
+- Memory search: ~5ms (1000 runs), knowledge graph: ~7.5ms, get run: ~0.6ms
 
-## [0.1.2] - Previous
+### Fixed
+- Struct compatibility for issues/ghosts/flags in memory operations
 
-- Initial release of Ghostclaw as an OpenClaw skill.
-- Core analyzer implementation for Python, Node, and Go.
-- CLI and Watcher (Cron) scripts.
+---
+
+## [0.1.8] - 2026-03-11
+
+### Added
+- Modular CLI foundation with dual-mode (modern + legacy fallback)
+- Warning for `--no-parallel` to prevent timeouts
+- Performance profiling tools
+
+[Older history omitted for brevity]

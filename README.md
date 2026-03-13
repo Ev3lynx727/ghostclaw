@@ -123,6 +123,27 @@ ghostclaw-mcp
 - `ghostclaw_get_ghosts`: Architectural smells only.
 - `ghostclaw_refactor_plan`: Automated blueprint generation.
 
+##### Agent-Facing Memory Tools
+
+Agents can query past analysis runs to track architectural health over time:
+
+- `ghostclaw_memory_search(query, repo_path?, stack?, min_score?, max_score?, limit=10)` — Search historical issues and ghosts.
+- `ghostclaw_memory_list_runs(repo_path?, limit=20)` — List recent runs.
+- `ghostclaw_memory_get_run(run_id, repo_path?)` — Retrieve full report.
+- `ghostclaw_memory_diff_runs(run_id_a, run_id_b, repo_path?)` — Compare two runs.
+- `ghostclaw_knowledge_graph(repo_path?, limit=50)` — Aggregate trends and recurring issues.
+
+Example (MCP JSON-RPC):
+
+```json
+{
+  "tool": "ghostclaw_memory_search",
+  "params": { "query": "Large file", "limit": 5 }
+}
+```
+
+Results include `matched_snippets` showing where the term appeared.
+
 #### Advanced Context & AST Indexing
 
 By utilizing the `ai-codeindex` engine, Ghostclaw can extract full structural syntax trees and build extensive call graphs.
@@ -143,6 +164,21 @@ To install:
 pip install ghostclaw[pyscn]
 ```
 
+#### Plugin Management CLI (v0.1.6)
+
+Ghostclaw features a native plugin ecosystem. You can manage built-in and external adapters via the CLI:
+
+```bash
+# List all active adapters
+ghostclaw plugins list
+
+# Install an external adapter from a local folder
+ghostclaw plugins add ./path/to/custom_adapter
+
+# Scaffold a new developer template
+ghostclaw plugins scaffold my-new-adapter
+```
+
 ### Systemd Service (Phase 3)
 
 For a persistent local MCP service, you can use the provided setup script which installs a `systemd` unit on Linux:
@@ -157,6 +193,40 @@ npm run install-service
 - Node.js / React / TypeScript
 - Python (Django, FastAPI)
 - Go (Basic)
+
+## Performance & Best Practices
+
+Ghostclaw is designed to be fast out of the box, but for large repositories or specific use cases, consider these tips:
+
+### Parallel Processing (Default)
+- Parallel file scanning is **enabled by default** and highly recommended.
+- The `--no-parallel` flag exists only for debugging; it causes a ~300× slowdown.
+- If you accidentally use `--no-parallel` on a large repo (>5000 files), Ghostclaw will automatically re-enable parallel mode to prevent timeouts.
+
+### Caching
+- Ghostclaw caches analysis results to speed up repeated runs.
+- Default cache TTL is 7 days. Use `--cache-ttl` to adjust.
+- To disable caching (e.g., for CI), use `--no-cache`.
+- Cache statistics can be shown with `--cache-stats`.
+
+### Benchmarking
+- Use `--benchmark` to see timing breakdown per analysis phase.
+- This helps identify bottlenecks (e.g., file scanning, AI synthesis).
+
+### Large Repositories
+- For repos with >10k files, expect analysis to take several seconds even with parallelism (disk I/O bound).
+- Consider increasing `--concurrency-limit` if you have a fast SSD and abundant CPU cores (default is 32).
+- Use `--no-write-report` if you only need console output and want to reduce disk I/O.
+
+### AI Synthesis
+- AI synthesis (`--use-ai`) adds network latency (5-30s depending on provider and model).
+- Use `--dry-run` to estimate token count without making API calls.
+- Cache hits skip AI synthesis entirely if the code hasn't changed significantly.
+
+### Troubleshooting Timeouts
+- Ensure `parallel_enabled: true` in `~/.ghostclaw/ghostclaw.json`.
+- Avoid `--no-parallel` on any non-trivial repository.
+- For extremely large repos, consider analyzing a specific subdirectory instead of the entire codebase.
 
 ## License
 

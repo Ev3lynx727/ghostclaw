@@ -1,74 +1,56 @@
-# System Architecture
+# Architecture
 
-Ghostclaw analyzes complex codebases, evaluates architectural health ("vibes"), tracks metrics, and generates refactoring PRs. To achieve modularity and prevent naming collisions, the codebase is structured using the standard Python **src layout**.
+Ghostclaw is designed as a modular, async pipeline. Key components:
 
----
+## GhostAgent (`core/agent.py`)
 
-## Directory Layout overview
+The orchestrator. Manages the analysis lifecycle:
+- Detect stack
+- Create `CodebaseAnalyzer`
+- Run analysis and capture report
+- Optionally invoke LLM for synthesis
+- Caching and benchmark timing
 
-```text
-ghostclaw/
-├── src/
-│   ├── ghostclaw/           # Main Package Namespace
-│   │   ├── cli/             # CLI entry points
-│   │   ├── core/            # Core analysis, parsing, and ML logic
-│   │   ├── lib/             # Utility modules (GitHub API, cache, notifications)
-│   │   ├── stacks/          # Stack-specific (Python, Node, Go) analyzers
-│   │   └── references/      # YAML configuration for best practices
-│   │
-│   └── ghostclaw_mcp/       # Optional MCP Server Package
-│
-├── scripts/                 # Utility shell wrappers and crons
-├── docs/                    # Architectural guidelines and guides
-├── tests/                   # Pytest suite
-└── pyproject.toml           # Build system and dependency config
-```
+## CodebaseAnalyzer (`core/analyzer.py`)
 
----
+Handles scanning and metrics:
+- Finds files (via `detector.find_files` or `find_files_parallel`)
+- Computes base metrics with `compute_metrics`
+- Dispatches to metric adapters through `PluginRegistry`
+- Aggregates results into an `ArchitectureReport`
 
-## Deep Dive into Submodules
+## PluginRegistry (`core/adapters/registry.py`)
 
-### `src/ghostclaw/core/`
+Manages metric adapters:
+- Discovers internal plugins (e.g., PySCN, AI‑CodeIndex)
+- Loads external plugins from `.ghostclaw/plugins/`
+- Supports plugin enable/disable via config
+- Version compatibility checks (min/max Ghostclaw)
+- Runs adapters concurrently and collects errors
 
-This is the heart of the sentinel. It orchestrates the scanning sequence:
+## LLMClient (`core/llm_client.py`)
 
-* **`analyzer.py`**: The primary coordinator. Scans files, initializes the correct `stacks` analyzer, processes optional engine plugins, and calculates the final vibe score.
-* **`detector.py`**: Heuristic analysis. Detects the tech stack of the repository based on file extensions and critical files like `Cargo.toml` or `package.json`.
-* **`validator.py`**: The rules engine. Reads YAML pattern references and validates the codebase against architectural best practices.
-* **`cache.py`**: In-memory and disk caching subsystem to avoid re-parsing unchanged Git commits between runs based on git fingerprints.
-* **External Engine Wrappers**: Contains `pyscn_wrapper.py` and `ai_codeindex_wrapper.py` to seamlessly integrate external CLI AST tools into Ghostclaw's internal issue lists when explicitly requested by users.
+Unified interface for AI providers (OpenRouter/OpenAI, Anthropic):
+- Supports analysis generation (one‑shot) and streaming
+- Implements exponential backoff retry for transient failures
+- Respects token budgets and dry‑run mode
 
-### `src/ghostclaw/cli/`
+## Cache (`core/cache.py`)
 
-Contains the argument parsers and formatted outputs.
+Optional on‑disk cache with TTL and gzip compression to speed up repeated runs on unchanged repos.
 
-* **`ghostclaw.py`**: Provides the main ad-hoc terminal command. Prints formatted Markdown or JSON.
-* **`compare.py`**: Retrieves cache history to compare trends across multiple repositories.
+## Config (`core/config.py`)
 
-### `src/ghostclaw/stacks/`
+Central configuration via pydantic. Sources: CLI arguments, environment variables, local/global JSON files. Precedence: CLI > env > local > global.
 
-Strategy pattern implementations for parsing language-specific complexities.
-Every language parser must conform to a unified interface (`BaseAnalyzer`) to yield consistent metric scales (0-100 scores, issues, circular dependencies) back to the core analyzer. Support currently includes Python and NodeJS heuristics.
+## CLI (`cli/ghostclaw.py`)
 
-### `src/ghostclaw/lib/`
+Argparse command line interface. Primary command: `analyze`. Supports flags for caching, parallelism, LLM, plugins, reliability (`--strict`), observability (`--benchmark`, `--verbose`), and PR creation.
 
-Houses agnostic utilities used by the system but not specifically related to AST code analysis.
+## Event System
 
-* **`github.py`**: Standardized class for interacting with GitHub's REST API, handling token auth and PR generation.
-* **`cache.py`**: Manages the persistent disk store (`~/.cache/ghostclaw/`) for longitudinal watcher trends.
-* **`notify.py`**: External webhook dispatches (e.g., Telegram bots) when thresholds decay.
-
-### `src/ghostclaw_mcp/`
-
-Provides the `server.py` implementation of the Model Context Protocol (MCP). It wraps `core.analyzer` into distinct JSON endpoints that LLMs like Claude can interface with autonomously.
+Pluggy is used as the plugin manager; hooks like `ghost_analyze` allow adapters to contribute metrics. Plan for richer agent event callbacks (progress, streaming) exists.
 
 ---
 
-## Execution Flow
-
-1. **Invocation**: Initiated via CLI (`ghostclaw`), MCP server tool call, or cron script (`watcher`).
-2. **Detection**: `core.detector` scans path files to understand stack and scope.
-3. **Graphing**: `core.analyzer` builds base metrics and optionally delegates to PySCN or AI-CodeIndex if higher AST fidelity is requested.
-4. **Validation**: Evaluated AST representations are piped into `core.validator` which diffs against parsed `references/*.yaml` patterns.
-5. **Reporting**: A final `vibe_score`, `issues` array, and structural `ghosts` array are returned up the stack.
-6. **Action**: If triggered by a `watcher`, `lib.github` opens a remediation PR, updates local `lib.cache`, and optionally pings `lib.notify`.
+This architecture emphasizes separation of concerns, testability, and extensibility.

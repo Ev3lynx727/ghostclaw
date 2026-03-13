@@ -23,7 +23,7 @@ If you encounter issues while installing, configuring, or running Ghostclaw, con
 
 1. Verify your skill layout:
 
-   ```
+   ```text
    ~/.openclaw/skills/ghostclaw/
    ├── SKILL.md
    └── ghostclaw/          ← this package directory is required
@@ -72,33 +72,34 @@ python3 -m ghostclaw.cli.ghostclaw
 
 ---
 
-## 2. Advanced Engine Integration Issues
+## 2. Ghost Adapter Integration Issues
 
-### Cannot Install `ai-codeindex` via `pipx`
+Since v0.1.6, Ghostclaw uses a plugin-based adapter system.
 
-**Symptom:** You try to run `pipx install ai-codeindex[all]` and get `Command 'pipx' not found`.
-**Cause:** `pipx` is an isolated Python environment manager that is not installed by default on all systems.
+### `ValueError: Plugin name already registered`
+
+**Symptom:** Ghostclaw exits with an error about a duplicate plugin name.
+**Cause:** This occurs if you try to register a plugin with a name that already exists (e.g., trying to add a second "pyscn" adapter).
+**Solution:** Check your `.ghostclaw/plugins/` directory for duplicate implementations or ensure your custom adapter names are unique.
+
+### External Adapter Failed to Load
+
+**Symptom:** You added a custom adapter to `.ghostclaw/plugins/`, but it doesn't appear in `ghostclaw plugins list`.
+**Cause:** The adapter might have syntax errors, or it doesn't correctly implement the `BaseAdapter` interface (Protocol).
 **Solution:**
-You have two choices:
 
-1. Attempt a standard user-level pip install instead, which is usually sufficient for internal tools:
+1. Check the console output for "Plugin Error" messages.
+2. Ensure your adapter class has the required `analyze()` (for `MetricAdapter`) or `emit_event()` methods.
+3. Run `ghostclaw plugins scaffold <name>` to compare your implementation with a valid template.
 
-    ```bash
-    pip install ai-codeindex[all]
-    ```
+### Missing PySCN or AI-CodeIndex Insights
 
-2. Install `pipx` globally first via your OS package manager, then retry:
+**Symptom:** You ran `ghostclaw analyze --pyscn` but see no clone/dead code data.
+**Cause:** The corresponding adapter is registered, but the underlying CLI tool (`pyscn` or `ai-codeindex`) is not installed or not in your PATH.
+**Solution:**
 
-    ```bash
-    sudo apt install pipx  # Debian/Ubuntu
-    pipx install ai-codeindex[all]
-    ```
-
-### Missing PySCN or AI-CodeIndex Analytics
-
-**Symptom:** You ran Ghostclaw with `--pyscn` or `--ai-codeindex` but see errors or missing insights in the JSON report.
-**Cause:** The external binaries are not available in your `$PATH`. Ghostclaw's wrappers will gracefully fallback if the tools exit with a non-zero code or aren't found.
-**Solution:** Ensure the tools are installed globally or in your current active virtual environment.
+1. Run `pyscn --version` in your terminal to verify installation.
+2. Check `ghostclaw plugins list` to ensure the adapter is "Active".
 
 ---
 

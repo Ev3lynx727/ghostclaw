@@ -6,6 +6,7 @@ If the repository state hasn't changed, cached results are returned instantly.
 """
 
 import json
+import gzip
 import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -14,9 +15,9 @@ from typing import Any, Dict, Optional
 
 class LocalCache:
     """
-    Simple file-based cache with TTL.
+    Simple file-based cache with TTL and optional compression.
 
-    Cache entries are stored as JSON files: <cache_dir>/<key>.json
+    Cache entries are stored as JSON (or gzipped JSON) files: <cache_dir>/<key>.json[.gz]
     Each entry contains:
     {
         "cached_at": "<ISO timestamp>",
@@ -24,10 +25,14 @@ class LocalCache:
     }
     """
 
-    def __init__(self, cache_dir: Optional[Path] = None, ttl_days: int = 7):
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".cache" / "ghostclaw"
+    def __init__(self, cache_dir: Optional[Path] = None, ttl_days: int = 7, compression: bool = True):
+        # Default to project-local cache: <repo>/.ghostclaw/cache/
+        if cache_dir is None:
+            cache_dir = Path.cwd() / ".ghostclaw" / "cache"
+        self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.ttl = timedelta(days=ttl_days)
+        self.compression = compression
 
     def _compute_key(self, fingerprint: str) -> str:
         """Compute SHA-256 cache key from fingerprint string."""
@@ -37,60 +42,71 @@ class LocalCache:
         """
         Retrieve a cached report by fingerprint.
 
-        Returns None if not found, expired, or corrupted.
+        Tries .json.gz first (compressed), then .json (legacy). Returns None if not found, expired, or corrupted.
         """
         key = self._compute_key(fingerprint)
-        path = self.cache_dir / f"{key}.json"
+        candidates = [
+            (self.cache_dir / f"{key}.json.gz", True),
+            (self.cache_dir / f"{key}.json", False)
+        ]
 
-        if not path.exists():
-            return None
+        for path, is_compressed in candidates:
+            if not path.exists():
+                continue
 
-        try:
-            data = json.loads(path.read_text(encoding='utf-8'))
-            cached_at = datetime.fromisoformat(data["cached_at"])
+            try:
+                if is_compressed:
+                    raw_bytes = gzip.decompress(path.read_bytes())
+                    data = json.loads(raw_bytes.decode("utf-8"))
+                else:
+                    data = json.loads(path.read_text(encoding="utf-8"))
 
-            # Check TTL
-            if datetime.now() - cached_at > self.ttl:
-                path.unlink(missing_ok=True)
-                return None
+                cached_at = datetime.fromisoformat(data["cached_at"])
 
-            return data["report"]
-        except Exception:
-            # Corrupted or unreadable; treat as miss
-            return None
+                # Check TTL
+                if datetime.now() - cached_at > self.ttl:
+                    path.unlink(missing_ok=True)
+                    return None
+
+                return data["report"]
+            except Exception:
+                # Corrupted or unreadable; try next candidate
+                continue
+
+        return None
 
     def set(self, fingerprint: str, report: Dict[str, Any]) -> None:
         """Store a report in the cache, overwriting any existing entry."""
         key = self._compute_key(fingerprint)
-        path = self.cache_dir / f"{key}.json"
+        # Always store compressed as .json.gz for space savings
+        path = self.cache_dir / f"{key}.json.gz"
 
-        data = {
-            "cached_at": datetime.now().isoformat(),
-            "report": report
-        }
-
-        path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        data = {"cached_at": datetime.now().isoformat(), "report": report}
+        json_bytes = json.dumps(data, indent=2).encode("utf-8")
+        if self.compression:
+            json_bytes = gzip.compress(json_bytes)
+        path.write_bytes(json_bytes)
 
     def clear(self) -> None:
         """Remove all cache entries."""
-        for p in self.cache_dir.glob("*.json"):
-            p.unlink()
+        for pattern in ("*.json", "*.json.gz"):
+            for p in self.cache_dir.glob(pattern):
+                p.unlink(missing_ok=True)
 
     def info(self) -> Dict[str, Any]:
         """Return cache statistics (entry count, total size)."""
-        entries = list(self.cache_dir.glob("*.json"))
+        # Consider both .json and .json.gz files
+        entries = list(self.cache_dir.glob("*.json")) + list(self.cache_dir.glob("*.json.gz"))
         total_size = sum(p.stat().st_size for p in entries if p.is_file())
         return {
             "entries": len(entries),
             "total_size_bytes": total_size,
-            "cache_dir": str(self.cache_dir)
+            "cache_dir": str(self.cache_dir),
         }
 
 
 def compute_fingerprint(
-    repo_path: Path,
-    git_sha: Optional[str] = None,
-    include_files: bool = False
+    repo_path: Path, git_sha: Optional[str] = None, include_files: bool = False
 ) -> str:
     """
     Compute a fast fingerprint for a repository.
@@ -117,9 +133,13 @@ def compute_fingerprint(
     # Try to get git SHA
     try:
         import subprocess
+
         result = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=False, timeout=5
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
         )
         if result.returncode == 0:
             sha = result.stdout.strip()
@@ -135,11 +155,11 @@ def compute_fingerprint(
         stack = detect_stack(str(repo_path))
         # Determine likely code extensions based on stack
         ext_map = {
-            'node': ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'],
-            'python': ['.py'],
-            'go': ['.go'],
+            "node": [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"],
+            "python": [".py"],
+            "go": [".go"],
         }
-        extensions = ext_map.get(stack, ['.py', '.js', '.ts', '.go', '.rs', '.java'])
+        extensions = ext_map.get(stack, [".py", ".js", ".ts", ".go", ".rs", ".java"])
 
         # Collect metadata: path, size, mtime
         file_entries = []
@@ -152,11 +172,9 @@ def compute_fingerprint(
                     try:
                         stat = f.stat()
                         rel = str(f.relative_to(repo_path))
-                        file_entries.append({
-                            "p": rel,
-                            "s": stat.st_size,
-                            "m": stat.st_mtime
-                        })
+                        file_entries.append(
+                            {"p": rel, "s": stat.st_size, "m": stat.st_mtime}
+                        )
                         total_size += stat.st_size
                         mtime_sum += stat.st_mtime
                     except Exception:
@@ -170,10 +188,10 @@ def compute_fingerprint(
             "count": len(file_entries),
             "total_size": total_size,
             "mtime_sum": mtime_sum,
-            "files": sorted(file_entries, key=lambda x: x["p"])
+            "files": sorted(file_entries, key=lambda x: x["p"]),
         }
 
-        summary_str = json.dumps(summary, sort_keys=True, separators=(',', ':'))
+        summary_str = json.dumps(summary, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256(summary_str.encode()).hexdigest()
         return version_prefix + f"mtime:{digest}"
 

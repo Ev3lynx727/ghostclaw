@@ -52,3 +52,12 @@ bin/ghostclaw.exe
 # Generated reports
 ARCHITECTURE-REPORT*.md
 report.md
+.ghostclaw/
+
+# Ruff cache
+.ruff_cache/
+
+# Agents
+.agents/
+.drafts/
+
