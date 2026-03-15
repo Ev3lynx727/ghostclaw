@@ -256,8 +256,8 @@ class QueryEngine:
             "new_flags": new_flags,
             "resolved_flags": resolved_flags,
             "metrics_comparison": {}, # Stub for now
-            "run_a": r1,
-            "run_b": r2,
+            "run_a": {"id": run_id_a, "timestamp": r1.get("timestamp")},
+            "run_b": {"id": run_id_b, "timestamp": r2.get("timestamp")},
         }
         return diff
 
