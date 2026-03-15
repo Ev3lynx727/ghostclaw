@@ -45,6 +45,7 @@ class QMDMemoryStore:
         from .vector_store import VectorStore
         from .qmd.embeddings import EmbeddingManager
 
+
         self.fts = BM25Search(self.db_path)
 
         if self.use_enhanced:
