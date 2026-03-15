@@ -188,6 +188,8 @@ class CodebaseAnalyzer:
             "errors": errors,
             "metadata": {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
+            "metadata": {
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "analyzer": "ghostclaw-async", "version": __version__,
                 "adapters_active": [m["name"] for m in registry.get_plugin_metadata()],
                 "pyscn_integrated": registry.pm.get_plugin("pyscn") is not None,
