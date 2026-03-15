@@ -134,6 +134,11 @@ class CodebaseAnalyzer:
             from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
             registry.enabled_plugins = (set(INTERNAL_PLUGINS) | set(registry.external_plugins)) - {"qmd"}
 
+        if config.use_qmd and registry.enabled_plugins is not None:
+            registry.enabled_plugins.add('sqlite')
+            registry.enabled_plugins.add('qmd')
+
+
         if self.progress_cb: self.progress_cb("Running adapters")
         adapter_results = await registry.run_analysis(root, files)
         errors = list(getattr(registry, 'errors', []))
