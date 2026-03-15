@@ -59,9 +59,7 @@ def migrate_legacy_storage(repo_path: Path) -> bool:
             print(f"  Migrated database: {old_db} → {new_db}")
             moved_any = True
         else:
-            # If both exist, keep new and remove old after backing up?
-            old_db.unlink()
-            print(f"  Replaced database with migrated version")
-            moved_any = True
+            # Both exist: keep new, leave old as backup (don't delete)
+            pass
 
     return moved_any
