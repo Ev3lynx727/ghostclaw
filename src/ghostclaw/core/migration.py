@@ -51,7 +51,10 @@ def migrate_legacy_storage(repo_path: Path) -> bool:
                 dest = new_cache / item.name
                 if not dest.exists():
                     shutil.move(str(item), str(dest))
-            old_cache.rmdir()
+            try:
+                old_cache.rmdir()
+            except OSError:
+                pass
             print(f"  Merged cache into {new_cache}")
             moved_any = True
 
