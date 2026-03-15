@@ -219,6 +219,7 @@ class CodebaseAnalyzer:
                 report_data["ai_prompt"] = context_builder.build_prompt(base_metrics, issues, ghosts, flags, coupling_metrics, import_edges, config.patch, symbol_index)
 
         if fingerprint and use_cache and self.cache:
+            report_data["metadata"]["fingerprint"] = fingerprint
             await asyncio.to_thread(self.cache.set, fingerprint, report_data)
 
         return ArchitectureReport(**report_data)
