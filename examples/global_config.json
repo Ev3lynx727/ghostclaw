@@ -22,6 +22,13 @@
 
   // QMD Backend (experimental high-performance memory)
   use_qmd: false,                   // Use QMD instead of SQLite for memory storage
+  embedding_backend: "fastembed",   // Embedding library: fastembed, sentence-transformers, openai
+  embedding_cache_size: 1000,       // Max cached query embeddings (LRU)
+  embedding_cache_ttl: 3600,        // Embedding cache TTL in seconds (default 1 hour)
+  // AI-Buff settings (Phase 3, not yet released)
+  search_cache_size: 500,           // Max cached search results
+  search_cache_ttl: 300,            // Search cache TTL in seconds (5 minutes)
+  ai_buff_enabled: false,           // Enable pre-fetching, query planning (beta)
 
   // Analysis Behavior
   dry_run: false,                   // Print prompt without calling AI

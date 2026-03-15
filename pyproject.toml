@@ -54,8 +54,11 @@ semantic = [
     "codebert-score>=0.1.0"
 ]
 qmd = [
-    "qmd>=0.1.0"  # placeholder; real package TBD
+    "lancedb>=0.12.0",
+    "fastembed>=0.4.0",  # default embedding backend (lightweight, no torch)
+    "numpy>=1.24.0"
 ]
+# For sentence-transformers backend (requires torch), install: pip install torch first, then pip install sentence-transformers
 config = [
     "json5>=0.9.0"
 ]

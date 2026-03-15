@@ -23,14 +23,18 @@ class PythonImportAnalyzer:
         Returns:
             Dict with coupling metrics and detected issues
         """
-        # Map file paths to module names (relative to root)
+        # Map file paths to module names (relative to root, with optional 'src' prefix stripped)
         for py_file in self.root.rglob("*.py"):
             rel_path = py_file.relative_to(self.root)
             # Convert path to dotted module name
             if rel_path.name == "__init__.py":
-                module_name = ".".join(rel_path.parent.parts)
+                parts = list(rel_path.parent.parts)
             else:
-                module_name = ".".join(rel_path.with_suffix("").parts)
+                parts = list(rel_path.with_suffix("").parts)
+            # Strip leading 'src' directory to align with import paths (src layout)
+            if parts and parts[0] == 'src':
+                parts = parts[1:]
+            module_name = ".".join(parts)
             self.graph.module_to_file[module_name] = str(py_file)
             self.graph.nodes.add(module_name)
 
@@ -62,30 +66,32 @@ class PythonImportAnalyzer:
         if node.level == 0:
             return node.module
 
-        # Handling relative imports
+        # PEP 328: relative import dots indicate parent packages.
+        # Determine the package name of the current module.
         parts = current_module.split('.')
-        # level=1 is current directory, level=2 is parent, etc.
-        # For 'from . import x', level=1, we keep parts[:-0] if it's a file, but wait...
-        # If current_module is 'a.b', and we do 'from . import c', it depends if 'a.b' is a package.
-        # But our module_name for 'a/b.py' is 'a.b', and for 'a/b/__init__.py' it is also 'a.b'.
+        # Check if current_module is a package (i.e., __init__.py)
+        filepath = self.graph.module_to_file.get(current_module)
+        is_package = filepath and filepath.endswith('__init__.py')
+        if is_package:
+            base_parts = parts  # the package is the full module name
+        else:
+            base_parts = parts[:-1] if parts else []
 
-        # Simple heuristic:
-        base_parts = parts[:-node.level] if len(parts) >= node.level else []
+        # Move up (node.level - 1) levels from base
+        up_levels = node.level - 1
+        if up_levels > 0:
+            if up_levels > len(base_parts):
+                return None  # invalid relative import
+            base_parts = base_parts[:-up_levels]
+
         base = ".".join(base_parts)
-
         if node.module:
             return f"{base}.{node.module}" if base else node.module
         return base
 
     def _is_local_import(self, module_name: str) -> bool:
         """Check if an import is likely from the local project (not stdlib/third-party)."""
-        if not module_name:
-            return False
-        # Heuristic: if the module prefix exists in our graph, it's local
-        for known in self.graph.nodes:
-            if module_name == known or module_name.startswith(known + "."):
-                return True
-        return False
+        return module_name in self.graph.nodes if module_name else False
 
     def _compute_report(self) -> Dict:
         """Generate coupling report with issues."""

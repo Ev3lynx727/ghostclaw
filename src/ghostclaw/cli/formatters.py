@@ -194,12 +194,21 @@ class TerminalFormatter(BaseFormatter):
             lines.append("\n✨ AI Synthesis:")
             if report.get("metadata", {}).get("cache_hit"):
                 lines.append("(cached)")
-            lines.append(report["ai_synthesis"])
+            syn = report["ai_synthesis"]
+            if syn is not None:
+                lines.append(syn)
 
         return "\n".join(lines)
 
     def print_to_terminal(self, report: Dict[str, Any]) -> None:
         """Print the formatted report to stdout."""
-        print(self.format(report))
+        try:
+            output = self.format(report)
+            print(output)
+        except Exception as e:
+            import sys, traceback
+            print(f"\x1b[31mTerminalFormatter error: {e}\x1b[0m", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            raise
 
 __all__ = ['BaseFormatter', 'JSONFormatter', 'MarkdownFormatter', 'TerminalFormatter']

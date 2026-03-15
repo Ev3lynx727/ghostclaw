@@ -30,8 +30,15 @@ class NodeImportAnalyzer:
             parent = rel.parent
             if parent == Path('.'):
                 return '.'
-            return str(parent).replace('/', '.')
-        return str(rel.with_suffix('')).replace('/', '.')
+            parts = list(parent.parts)
+        else:
+            parts = list(rel.with_suffix('').parts)
+        # Strip leading 'src' if present
+        if parts and parts[0] == 'src':
+            parts = parts[1:]
+        if not parts:
+            return '.'
+        return ".".join(parts).replace('/', '.')
 
     def _resolve_import_path(self, import_path: str, source_file: Path) -> Path:
         """
