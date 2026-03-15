@@ -88,7 +88,7 @@ async def test_qmd_memory_store_search_basic(tmp_path):
         "files_analyzed": 8,
         "total_lines": 300,
         "issues": ["Memory leak in event loop"],
-        "architectural_ghosts": ["CallbackHell"],
+        "architectural_ghosts": ["Callback hell anti-pattern"],
         "metadata": {"timestamp": "2026-03-12T12:01:00Z"}
     }
     await store.save_run(report1, repo_path=str(tmp_path))

@@ -305,9 +305,9 @@ class LLMClient:
                     messages=[{"role": "user", "content": prompt}]
                 ) as stream:
                     async for event in stream:
-                        if event.type == "text_delta":
+                        if event.type == "text_delta" and event.text is not None:
                             yield {"type": "content", "content": event.text}
-                        elif event.type == "thinking_delta":
+                        elif event.type == "thinking_delta" and event.thinking is not None:
                             yield {"type": "reasoning", "content": event.thinking}
                     # After stream completes, capture usage
                     usage = stream.get_final_usage()
@@ -328,9 +328,9 @@ class LLMClient:
                     if not chunk.choices:
                         continue
                     delta = chunk.choices[0].delta
-                    if hasattr(delta, 'content') and delta.content:
+                    if hasattr(delta, 'content') and delta.content is not None:
                         yield {"type": "content", "content": delta.content}
-                    if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                    if hasattr(delta, 'reasoning_content') and delta.reasoning_content is not None:
                         yield {"type": "reasoning", "content": delta.reasoning_content}
                     # Some providers include usage in the last chunk
                     if hasattr(chunk, 'usage') and chunk.usage:

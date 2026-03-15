@@ -29,7 +29,7 @@ async def test_qmd_adapter_save_and_metadata(temp_qmd_db):
     # Check metadata
     meta = adapter.get_metadata()
     assert meta.name == "qmd"
-    assert meta.version == "0.1.0"
+    assert meta.version == "0.2.0-alpha"
     assert "aiosqlite" in meta.dependencies
 
     # Check is_available (should be True if aiosqlite installed)

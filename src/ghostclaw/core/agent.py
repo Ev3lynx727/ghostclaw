@@ -140,8 +140,10 @@ class GhostAgent:
             content = []
             reasoning = []
             async for chunk_info in self.llm_client.stream_analysis(report["ai_prompt"]):
-                chunk = chunk_info["content"]
-                if chunk_info["type"] == "reasoning":
+                chunk = chunk_info.get("content")
+                if chunk is None:
+                    continue  # Skip empty/None chunks
+                if chunk_info.get("type") == "reasoning":
                     reasoning.append(chunk)
                     await self._emit(AgentEvent.REASONING_CHUNK, {"chunk": chunk})
                 else:
