@@ -130,7 +130,9 @@ class CodebaseAnalyzer:
         # Apply plugin filter
         if config.plugins_enabled is not None:
             registry.enabled_plugins = set(config.plugins_enabled)
-        elif not config.use_qmd:
+        elif config.use_qmd:
+            registry.enabled_plugins = None  # All plugins enabled including qmd
+        else:
             from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
             registry.enabled_plugins = (set(INTERNAL_PLUGINS) | set(registry.external_plugins)) - {"qmd"}
 
