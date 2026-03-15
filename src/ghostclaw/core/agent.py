@@ -85,11 +85,11 @@ class GhostAgent:
             # Phase 2: Synthesis (Enhanced Intelligence)
             if self.config.use_ai:
                 report = await self._perform_synthesis(report)
+                await self._emit(AgentEvent.POST_SYNTHESIS, report)
             
             # Persistence & Final Broadcast
             from ghostclaw.core.adapters.registry import registry
             await registry.save_report(report)
-            await self._emit(AgentEvent.POST_SYNTHESIS, report)
 
             self.timings['total'] = time.perf_counter() - self._start_time
             return report
@@ -157,6 +157,7 @@ class GhostAgent:
             
             report["ai_synthesis"] = "".join(content)
             report["ai_reasoning"] = "".join(reasoning)
+            report["synthesis_performed"] = True
 
         logger.info("Synthesis complete.")
         return report

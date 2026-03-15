@@ -153,7 +153,8 @@ class AnalyzerService:
                 status = None
 
             output_stream = sys.stderr if self.json_output else sys.stdout
-            output_stream.write("\n\n" + "="*50)
+            if data.get("synthesis_performed"):
+                output_stream.write("\n\n" + "="*50)
             output_stream.flush()
             if console and synthesis_content:
                 full_text = "".join(synthesis_content)
