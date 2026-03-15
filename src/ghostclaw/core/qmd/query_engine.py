@@ -121,7 +121,8 @@ class QueryEngine:
                 results_by_id[r['id']] = r
 
         for r in vector_results:
-            rid = r.get('id') or r.get('report_id')
+            rid = r.get('id') if r.get('id') is not None else r.get('report_id')
+
             r['_vector_sim'] = r['score']
             r['_bm25_norm'] = 0.0
             if rid in results_by_id:
