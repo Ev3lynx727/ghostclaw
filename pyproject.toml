@@ -69,9 +69,8 @@ ghostclaw-watcher = "ghostclaw.cli.watcher:main"
 ghostclaw-compare = "ghostclaw.cli.compare:main"
 ghostclaw-mcp = "ghostclaw_mcp.server:main"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-packages = ["ghostclaw", "ghostclaw_mcp"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 "*" = ["references/*.yaml"]
