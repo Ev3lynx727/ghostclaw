@@ -300,11 +300,14 @@ class QueryEngine:
             score_trend.append({"timestamp": run["timestamp"], "vibe_score": run["vibe_score"]})
             
             for item in report.get("issues", []):
-                recurring_issues[item] = recurring_issues.get(item, 0) + 1
+                key = json.dumps(item, sort_keys=True) if isinstance(item, dict) else str(item)
+                recurring_issues[key] = recurring_issues.get(key, 0) + 1
             for item in report.get("architectural_ghosts", []):
-                recurring_ghosts[item] = recurring_ghosts.get(item, 0) + 1
+                key = json.dumps(item, sort_keys=True) if isinstance(item, dict) else str(item)
+                recurring_ghosts[key] = recurring_ghosts.get(key, 0) + 1
             for item in report.get("red_flags", []):
-                recurring_flags[item] = recurring_flags.get(item, 0) + 1
+                key = json.dumps(item, sort_keys=True) if isinstance(item, dict) else str(item)
+                recurring_flags[key] = recurring_flags.get(key, 0) + 1
 
         def to_recurring_list(d):
             return [{"item": k, "count": v} for k, v in d.items() if v > 1]
