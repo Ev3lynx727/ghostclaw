@@ -129,7 +129,7 @@ class QueryEngine:
 
         combined = list(results_by_id.values())
         for r in combined:
-            r['score'] = (1 - r['_bm25_norm']) * alpha + r['_vector_sim'] * (1 - alpha)
+            r['score'] = r['_bm25_norm'] * alpha + r['_vector_sim'] * (1 - alpha)
 
         combined.sort(key=lambda x: x['score'], reverse=True)
         return combined[:limit]
