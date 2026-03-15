@@ -121,10 +121,10 @@ class VectorStore:
         query_embedding = await self.embed_text(query)
 
         where_clauses = []
-        if repo_path: where_clauses.append(f"repo_path = '{repo_path}'")
-        if stack: where_clauses.append(f"stack = '{stack}'")
-        if min_score is not None: where_clauses.append(f"vibe_score >= {min_score}")
-        if max_score is not None: where_clauses.append(f"vibe_score <= {max_score}")
+        if repo_path: where_clauses.append(f"repo_path = '{repo_path.replace(chr(39), chr(39)+chr(39))}'")
+        if stack: where_clauses.append(f"stack = '{stack.replace(chr(39), chr(39)+chr(39))}'")
+        if min_score is not None: where_clauses.append(f"vibe_score >= {int(min_score)}")
+        if max_score is not None: where_clauses.append(f"vibe_score <= {int(max_score)}")
         where_clause = " AND ".join(where_clauses) if where_clauses else None
 
         records = self._index.search(query_embedding.tolist(), limit, where_clause)
