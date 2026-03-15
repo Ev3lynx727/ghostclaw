@@ -56,7 +56,7 @@ class LLMClient:
         elif provider_name == "anthropic":
             self.model = self.config.ai_model or "claude-3-5-sonnet-20241022"
             self.provider = AnthropicProvider(api_key=api_key, client_cls=AsyncAnthropic)
-        elif provider_name == "openrouter" or True: # Default fallback
+        else: # Default fallback (openrouter or unknown)
             self.model = self.config.ai_model or "anthropic/claude-3.5-sonnet"
             base_url = "https://openrouter.ai/api/v1"
             headers = {
