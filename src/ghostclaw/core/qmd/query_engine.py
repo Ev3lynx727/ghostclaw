@@ -284,7 +284,7 @@ class QueryEngine:
             report = run["report"]
             stack = run.get("stack", "unknown")
             stacks_seen[stack] = stacks_seen.get(stack, 0) + 1
-            score_trend.append({"timestamp": run["timestamp"], "score": run["vibe_score"]})
+            score_trend.append({"timestamp": run["timestamp"], "vibe_score": run["vibe_score"]})
             
             for item in report.get("issues", []):
                 recurring_issues[item] = recurring_issues.get(item, 0) + 1
@@ -298,7 +298,7 @@ class QueryEngine:
 
         return {
             "total_runs": total_runs,
-            "stacks_seen": stacks_seen,
+            "stacks_seen": sorted(stacks_seen.keys()),
             "score_trend": score_trend,
             "recurring_issues": to_recurring_list(recurring_issues),
             "recurring_ghosts": to_recurring_list(recurring_ghosts),
