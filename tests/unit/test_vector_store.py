@@ -35,12 +35,12 @@ def mock_embedding_provider(mocker):
             vec = np.zeros(384, dtype=np.float32)
             for word in set(words):
                 if len(word) < 3: continue
-                h = hashlib.md5(word.encode()).digest()
+                h = hashlib.sha256(word.encode()).digest()
                 seed = int.from_bytes(h, "big") % 384
                 vec[seed] += 1.0
             
             # Add some unique flavor based on whole text to avoid exact same vector for different order
-            h_full = hashlib.md5(text.encode()).digest()
+            h_full = hashlib.sha256(text.encode()).digest()
             seed_full = int.from_bytes(h_full, "big") % 384
             vec[seed_full] += 0.1
             
