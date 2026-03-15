@@ -85,5 +85,5 @@ class EmbeddingManager:
         Returns a list of embedding vectors (one per chunk).
         """
         texts = [chunk["text"] for chunk in chunks]
-        embeddings = self.vector_store.embed_texts(texts, self.embedding_backend)
+        embeddings = self.vector_store.embed_batch(texts)
         return embeddings
