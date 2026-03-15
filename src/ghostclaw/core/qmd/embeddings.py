@@ -40,7 +40,7 @@ class EmbeddingManager:
             }
             if extra:
                 meta.update(extra)
-            return {"id": chunk_id, "text": text, "metadata": meta}
+            return {"chunk_id": chunk_id, "text": text, "metadata": meta}
 
         # Issues
         for issue in report.get("issues", []):
