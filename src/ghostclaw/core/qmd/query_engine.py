@@ -255,7 +255,20 @@ class QueryEngine:
             "resolved_ghosts": resolved_ghosts,
             "new_flags": new_flags,
             "resolved_flags": resolved_flags,
-            "metrics_comparison": {}, # Stub for now
+            "metrics_comparison": {
+                "files_analyzed": {
+                    "before": report_a.get("files_analyzed", 0),
+                    "after": report_b.get("files_analyzed", 0),
+                },
+                "total_lines": {
+                    "before": report_a.get("total_lines", 0),
+                    "after": report_b.get("total_lines", 0),
+                },
+                "vibe_score": {
+                    "before": report_a.get("vibe_score", 0),
+                    "after": report_b.get("vibe_score", 0),
+                },
+            },
             "run_a": {"id": run_id_a, "timestamp": r1.get("timestamp")},
             "run_b": {"id": run_id_b, "timestamp": r2.get("timestamp")},
         }
