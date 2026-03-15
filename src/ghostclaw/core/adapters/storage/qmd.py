@@ -68,7 +68,7 @@ class QMDStorageAdapter(StorageAdapter):
             try:
                 from ghostclaw.core.config import GhostclawConfig
                 # Assume adapter is used at repo root; acquire cwd or use db_path.parents[?]
-                repo_path = self.db_path.parent.parent.parent  # .ghostclaw/storage/qmd -> repo root
+                repo_path = self.db_path.parent.parent.parent.parent  # .ghostclaw/storage/qmd/ghostclaw.db -> repo root
                 cfg = GhostclawConfig.load(repo_path)
                 ai_buff = getattr(cfg, 'ai_buff_enabled', False)
             except Exception:
