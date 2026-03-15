@@ -33,7 +33,10 @@ def migrate_legacy_storage(repo_path: Path) -> bool:
                 dest = new_reports / item.name
                 if not dest.exists():
                     shutil.move(str(item), str(dest))
-            old_reports.rmdir()
+            try:
+                old_reports.rmdir()
+            except OSError:
+                pass
             print(f"  Merged reports into {new_reports}")
             moved_any = True
 
