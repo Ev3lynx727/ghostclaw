@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ghostclaw.core.qmd_store import QMDMemoryStore
 from ghostclaw.core.config import GhostclawConfig
-from ghostclaw.core.embedding_cache import EmbeddingCache
+from ghostclaw.core.vector_store.cache import EmbeddingCache
 from ghostclaw.core.search_cache import SearchCache
 
 def human_size(num: float, suffix: str = "B") -> str:
@@ -103,8 +103,8 @@ async def run_benchmark(repo_path: Path, iterations: int = 100):
     print("\nBaseline results:")
     print(f"  Search avg: {human_ms(sum(baseline_search_times)/len(baseline_search_times))}")
     print(f"  GetRun avg: {human_ms(sum(baseline_getrun_times)/len(baseline_getrun_times)) if baseline_getrun_times else 'N/A'}")
-    emb_cache = baseline_stats.get('embedding_cache', {})
-    search_cache = baseline_stats.get('search_cache', {})
+    emb_cache = baseline_stats.get('embedding_cache') or {}
+    search_cache = baseline_stats.get('search_cache') or {}
     print(f"  Embedding cache: {emb_cache.get('size',0)} entries")
     print(f"  Search cache: {search_cache.get('size',0)} entries")
 
@@ -146,8 +146,8 @@ async def run_benchmark(repo_path: Path, iterations: int = 100):
     print("\nAI-Buff results:")
     print(f"  Search avg: {human_ms(sum(buffed_search_times)/len(buffed_search_times))}")
     print(f"  GetRun avg: {human_ms(sum(buffed_getrun_times)/len(buffed_getrun_times)) if buffed_getrun_times else 'N/A'}")
-    emb_cache_b = buffed_stats.get('embedding_cache', {})
-    search_cache_b = buffed_stats.get('search_cache', {})
+    emb_cache_b = buffed_stats.get('embedding_cache') or {}
+    search_cache_b = buffed_stats.get('search_cache') or {}
     print(f"  Embedding cache: {emb_cache_b.get('size',0)} entries, hits={emb_cache_b.get('hits',0)}, misses={emb_cache_b.get('misses',0)}")
     print(f"  Search cache: {search_cache_b.get('size',0)} entries, hits={search_cache_b.get('hits',0)}, misses={search_cache_b.get('misses',0)}")
     print(f"  Query plan: {buffed_stats.get('last_plan', {})}")

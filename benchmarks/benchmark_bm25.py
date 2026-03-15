@@ -59,7 +59,7 @@ async def main():
     else:
         print(f"Creating new DB at {db_path} and generating {args.reports} reports...")
         store = QMDMemoryStore(db_path=db_path, use_enhanced=False)
-        await store._ensure_db()
+        await store.fts.ensure_initialized()
         # Generate reports
         for i in range(args.reports):
             report = generate_synthetic_report(i)
@@ -70,7 +70,7 @@ async def main():
 
     # Initialize store for searching
     store = QMDMemoryStore(db_path=db_path, use_enhanced=False)
-    await store._ensure_fts()
+    await store.fts.ensure_initialized()
 
     # Benchmark queries
     print(f"\nRunning {args.queries} search queries...")
