@@ -91,7 +91,15 @@ class PythonImportAnalyzer:
 
     def _is_local_import(self, module_name: str) -> bool:
         """Check if an import is likely from the local project (not stdlib/third-party)."""
-        return module_name in self.graph.nodes if module_name else False
+        if not module_name:
+            return False
+        if module_name in self.graph.nodes:
+            return True
+        # Also check prefix: import of a submodule within a known package
+        for known in self.graph.nodes:
+            if module_name.startswith(known + '.'):
+                return True
+        return False
 
     def _compute_report(self) -> Dict:
         """Generate coupling report with issues."""
