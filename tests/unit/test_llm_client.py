@@ -11,8 +11,8 @@ def config():
 @pytest.mark.asyncio
 async def test_generate_analysis_dry_run():
     # Patch AsyncOpenAI and AsyncAnthropic to avoid needing real API keys during construction
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI"), \
-         patch("ghostclaw.core.llm_client.AsyncAnthropic"):
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI"), \
+         patch("ghostclaw.core.llm_client.providers.AsyncAnthropic"):
         config = GhostclawConfig(dry_run=True, use_ai=True)
         client = LLMClient(config, ".")
         result = await client.generate_analysis("test prompt")
@@ -21,8 +21,8 @@ async def test_generate_analysis_dry_run():
 @pytest.mark.asyncio
 async def test_generate_analysis_missing_api_key():
     # Mock SDKs so LLMClient can be instantiated without a valid key
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI"), \
-         patch("ghostclaw.core.llm_client.AsyncAnthropic"):
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI"), \
+         patch("ghostclaw.core.llm_client.providers.AsyncAnthropic"):
         config = GhostclawConfig(api_key=None, use_ai=True, ai_provider="openrouter")
         client = LLMClient(config, ".")
         with pytest.raises(ValueError, match="API key not provided"):
@@ -37,7 +37,7 @@ def test_token_budget_exceeded(config):
 @pytest.mark.asyncio
 async def test_generate_analysis_success(config):
     # Mock AsyncOpenAI
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI") as mock_openai:
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI") as mock_openai:
         mock_client = mock_openai.return_value
         
         # Mock the completions.create call
@@ -58,7 +58,7 @@ async def test_generate_analysis_success(config):
 
 @pytest.mark.asyncio
 async def test_generate_analysis_with_reasoning(config):
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI") as mock_openai:
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI") as mock_openai:
         mock_client = mock_openai.return_value
         
         mock_message = MagicMock()
@@ -77,7 +77,7 @@ async def test_generate_analysis_with_reasoning(config):
 
 @pytest.mark.asyncio
 async def test_test_connection_success(config):
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI") as mock_openai:
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI") as mock_openai:
         mock_client = mock_openai.return_value
         mock_client.models.list = AsyncMock(return_value=MagicMock())
         
@@ -87,7 +87,7 @@ async def test_test_connection_success(config):
 
 @pytest.mark.asyncio
 async def test_list_models(config):
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI") as mock_openai:
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI") as mock_openai:
         mock_client = mock_openai.return_value
 
         mock_model_1 = MagicMock()
@@ -107,8 +107,8 @@ async def test_list_models(config):
 @pytest.mark.asyncio
 async def test_retry_on_transient_failure():
     """Test that _retry retries on transient exceptions and eventually succeeds."""
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI"), \
-         patch("ghostclaw.core.llm_client.AsyncAnthropic"):
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI"), \
+         patch("ghostclaw.core.llm_client.providers.AsyncAnthropic"):
         config = GhostclawConfig(retry_attempts=3, retry_backoff_factor=0.01, api_key="dummy")
         client = LLMClient(config, ".")
 
@@ -129,8 +129,8 @@ async def test_retry_on_transient_failure():
 @pytest.mark.asyncio
 async def test_retry_exhaustion_raises():
     """Test that _retry raises after exhausting attempts."""
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI"), \
-         patch("ghostclaw.core.llm_client.AsyncAnthropic"):
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI"), \
+         patch("ghostclaw.core.llm_client.providers.AsyncAnthropic"):
         config = GhostclawConfig(retry_attempts=2, retry_backoff_factor=0.01, api_key="dummy")
         client = LLMClient(config, ".")
 
@@ -150,8 +150,8 @@ async def test_retry_exhaustion_raises():
 @pytest.mark.asyncio
 async def test_retry_stream():
     """Test that _retry_stream retries on transient failure during streaming."""
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI"), \
-         patch("ghostclaw.core.llm_client.AsyncAnthropic"):
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI"), \
+         patch("ghostclaw.core.llm_client.providers.AsyncAnthropic"):
         config = GhostclawConfig(retry_attempts=2, retry_backoff_factor=0.01, api_key="dummy")
         client = LLMClient(config, ".")
 
@@ -178,8 +178,8 @@ async def test_retry_stream():
 @pytest.mark.asyncio
 async def test_retry_stream_exhaustion():
     """Test that _retry_stream raises after exhausting attempts."""
-    with patch("ghostclaw.core.llm_client.AsyncOpenAI"), \
-         patch("ghostclaw.core.llm_client.AsyncAnthropic"):
+    with patch("ghostclaw.core.llm_client.providers.AsyncOpenAI"), \
+         patch("ghostclaw.core.llm_client.providers.AsyncAnthropic"):
         config = GhostclawConfig(retry_attempts=1, retry_backoff_factor=0.01, api_key="dummy")
         client = LLMClient(config, ".")
 

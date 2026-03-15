@@ -24,12 +24,12 @@ class ReportIndexer:
     async def save(self, report: Dict[str, Any], repo_path: str, timestamp: Optional[str] = None) -> int:
         """Save a new report and return its run_id."""
         await self._ensure_db()
-        await self.fts.ensure_initialized()
 
         timestamp = timestamp or report.get("metadata", {}).get("timestamp") or datetime.now().isoformat()
         vcs = report.get("metadata", {}).get("vcs", {})
 
         async with aiosqlite.connect(self.db_path) as db:
+            await self.fts.ensure_initialized(db=db)
             await self.fts._register_searchable_function(db)
             async with db.execute(
                 "INSERT INTO reports (timestamp, vibe_score, stack, repo_path, vcs_commit, vcs_branch, vcs_dirty, report_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -45,6 +45,7 @@ class ReportIndexer:
                 ),
             ) as cursor:
                 run_id = cursor.lastrowid
+            await db.commit()
 
             # Store embeddings if enhanced
             if self.embedding_mgr:
@@ -56,7 +57,15 @@ class ReportIndexer:
                         "vibe_score": report.get("vibe_score"),
                         "stack": report.get("stack"),
                     }
-                    await self.embedding_mgr.vector_store.add_chunks(run_id, chunks, base_metadata)
+                    # Rename chunks key from id to chunk_id for vector_store compatibility
+                    formatted_chunks = []
+                    for c in chunks:
+                        formatted_chunks.append({
+                            "chunk_id": c["id"],
+                            "text": c["text"]
+                        })
+
+                    await self.embedding_mgr.vector_store.add_chunks(run_id, formatted_chunks, base_metadata)
                     logger.debug("Stored %d embeddings for run_id=%d", len(chunks), run_id)
                 except Exception as e:
                     logger.error("Failed to store embeddings for run_id=%d: %s", run_id, e)
@@ -72,6 +81,7 @@ class ReportIndexer:
 
     async def _ensure_db(self) -> None:
         """Ensure reports table exists."""
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
