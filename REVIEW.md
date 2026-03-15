@@ -14,6 +14,10 @@ This document summarizes the recent architectural updates and fixes implemented 
 
 - Enforced simultaneous writing to both `sqlite` and `qmd` storage backends when QMD is enabled, even with custom plugin filters.
 
+### Automatic .gitignore Management
+
+- Ghostclaw now automatically adds `.ghostclaw/` to the project's `.gitignore` file when running analysis in local mode, ensuring internal storage and reports are not accidentally committed.
+
 ### Enhanced Error Reporting
 
 - The `MarkdownFormatter` and `TerminalFormatter` now include a dedicated "Adapter Errors" section.

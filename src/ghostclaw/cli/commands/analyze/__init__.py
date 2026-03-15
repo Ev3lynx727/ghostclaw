@@ -186,7 +186,16 @@ class AnalyzeCommand(Command):
 
         report_dir = repo_path if args.create_pr else (repo_path / ".ghostclaw" / "storage" / "reports")
         report_dir.mkdir(parents=True, exist_ok=True)
-        
+
+        if not args.create_pr:
+            gitignore_path = repo_path / '.gitignore'
+            if gitignore_path.exists():
+                content = gitignore_path.read_text(encoding='utf-8')
+                if '.ghostclaw' not in content and '.ghostclaw/' not in content:
+                    newline = '\n' if not content.endswith('\n') else ''
+                    with open(gitignore_path, 'a', encoding='utf-8') as f:
+                        f.write(f'{newline}# Added by Ghostclaw\n.ghostclaw/\n')
+
         report_file_path = report_dir / filename
         try:
             report_file_path.write_text(MarkdownFormatter().format(report), encoding='utf-8')
