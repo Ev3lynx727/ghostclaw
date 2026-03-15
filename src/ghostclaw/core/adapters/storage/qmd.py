@@ -13,29 +13,37 @@ except ImportError:
 
 from ghostclaw.core.adapters.base import StorageAdapter, AdapterMetadata
 from ghostclaw.core.adapters.hooks import hookimpl
+from ghostclaw.core.config import GhostclawConfig
+from ghostclaw.core.qmd_store import QMDMemoryStore
 
 logger = logging.getLogger("ghostclaw.qmd")
 
 
 class QMDStorageAdapter(StorageAdapter):
     """
-    Persists ArchitectureReports to a QMD backend.
+    Persists ArchitectureReports to a QMD backend with vector embeddings.
 
-    Currently uses SQLite with a separate storage path from the default
-    SQLiteStorageAdapter, enabling hybrid operation (both can be active).
-    Future: Replace SQLite with a true vector-capable database.
+    Uses QMDMemoryStore for unified write path (ensures FTS and embeddings).
+    Implements StorageAdapter interface for plugin compatibility.
     """
 
     def __init__(self):
         # QMD uses its own directory under .ghostclaw/storage/qmd/
         self.db_path = Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "ghostclaw.db"
         self._initialized = False
+        self._memory_store = None
+        # Determine embedding_backend from project config
+        try:
+            cfg = GhostclawConfig.load(".")
+            self.embedding_backend = getattr(cfg, 'embedding_backend', 'fastembed')
+        except Exception:
+            self.embedding_backend = 'fastembed'
 
-    async def _ensure_db(self):
-        if self._initialized:
-            return
+    async def _ensure_db_schema(self):
+        """Ensure the base reports table exists (for backward compatibility)."""
+        if not HAS_AIOSQLITE:
+            raise ImportError("aiosqlite is required for QMDStorageAdapter")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS reports (
@@ -48,18 +56,38 @@ class QMDStorageAdapter(StorageAdapter):
                     report_json TEXT,
                     repo_path TEXT,
                     vcs_commit TEXT,
-                    vcs_branch TEXT
+                    vcs_branch TEXT,
+                    vcs_dirty BOOLEAN
                 )
             """)
             await db.commit()
-        self._initialized = True
+
+    async def _get_memory_store(self) -> QMDMemoryStore:
+        """Lazy-initialize the QMDMemoryStore with enhanced mode."""
+        if self._memory_store is None:
+            # Determine ai_buff_enabled from project config
+            try:
+                from ghostclaw.core.config import GhostclawConfig
+                # Assume adapter is used at repo root; acquire cwd or use db_path.parents[?]
+                repo_path = self.db_path.parent.parent.parent.parent  # .ghostclaw/storage/qmd/ghostclaw.db -> repo root
+                cfg = GhostclawConfig.load(repo_path)
+                ai_buff = getattr(cfg, 'ai_buff_enabled', False)
+            except Exception:
+                ai_buff = False
+            self._memory_store = QMDMemoryStore(
+                db_path=self.db_path,
+                use_enhanced=True,
+                embedding_backend=self.embedding_backend,
+                ai_buff_enabled=ai_buff
+            )
+        return self._memory_store
 
     def get_metadata(self) -> AdapterMetadata:
         return AdapterMetadata(
             name="qmd",
-            version="0.1.0",
-            description="QMD (Quantum Memory Database) backend for high-performance architectural memory.",
-            dependencies=["aiosqlite"],
+            version="0.2.0-alpha",
+            description="QMD (Quantum Memory Database) backend with hybrid BM25+vector search (enhanced).",
+            dependencies=["aiosqlite", "lancedb", "sentence-transformers"],
         )
 
     async def is_available(self) -> bool:
@@ -72,53 +100,33 @@ class QMDStorageAdapter(StorageAdapter):
 
     async def save_report(self, report: Any) -> str:
         """Save report to QMD store and return its ID."""
-        await self._ensure_db()
-
+        mem = await self._get_memory_store()
+        # Convert report to dict if needed
         if hasattr(report, "model_dump"):
             data = report.model_dump()
         else:
             data = report
-
-        vcs = data.get("metadata", {}).get("vcs", {})
-
-        async with aiosqlite.connect(self.db_path) as db:
-            cursor = await db.execute(
-                """
-                INSERT INTO reports
-                (vibe_score, stack, files_analyzed, total_lines, report_json, repo_path, vcs_commit, vcs_branch)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    data.get("vibe_score", 0),
-                    data.get("stack", "unknown"),
-                    data.get("files_analyzed", 0),
-                    data.get("total_lines", 0),
-                    json.dumps(data),
-                    str(Path.cwd()),
-                    vcs.get("commit"),
-                    vcs.get("branch"),
-                ),
-            )
-            await db.commit()
-            return str(cursor.lastrowid)
+        repo_path = str(Path.cwd())
+        # Delegate to memory_store, which handles FTS + embeddings
+        run_id = await mem.save_run(data, repo_path=repo_path)
+        return str(run_id)
 
     async def get_history(self, limit: int = 10) -> List[Any]:
         """Retrieve recent reports from QMD store."""
-        await self._ensure_db()
-
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(
-                "SELECT * FROM reports ORDER BY id DESC LIMIT ?", (limit,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-                results = []
-                for row in rows:
-                    data = json.loads(row["report_json"])
-                    data["_db_id"] = row["id"]
-                    data["_db_timestamp"] = row["timestamp"]
-                    results.append(data)
-                return results
+        mem = await self._get_memory_store()
+        # Use memory_store.list_runs and then fetch each full report
+        summaries = await mem.list_runs(limit=limit)
+        results = []
+        for summary in summaries:
+            full = await mem.get_run(summary["id"])
+            if full:
+                # The get_run returns a dict with "report" key containing the full report
+                # Merge metadata
+                full_data = full["report"].copy()
+                full_data["_db_id"] = full["id"]
+                full_data["_db_timestamp"] = full["timestamp"]
+                results.append(full_data)
+        return results
 
     # ------------------------------------------------------------------
     # Hook implementations

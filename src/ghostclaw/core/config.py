@@ -70,6 +70,31 @@ class GhostclawConfig(BaseSettings):
         default=False,
         description="Use QMD (Quantum Memory Database) backend for memory operations (experimental)"
     )
+    embedding_backend: str = Field(
+        default="fastembed",
+        description="Embedding backend for QMD hybrid search (fastembed, sentence-transformers, openai)"
+    )
+    embedding_cache_size: int = Field(
+        default=1000,
+        description="Maximum number of cached query embeddings for QMD (LRU)"
+    )
+    embedding_cache_ttl: int = Field(
+        default=3600,
+        description="Embedding cache TTL in seconds (default 1 hour)"
+    )
+    # AI-Buff settings (Phase 3, not yet released)
+    search_cache_size: int = Field(
+        default=500,
+        description="Maximum number of cached search results for QMD"
+    )
+    search_cache_ttl: int = Field(
+        default=300,
+        description="Search result cache TTL in seconds (default 5 minutes)"
+    )
+    ai_buff_enabled: bool = Field(
+        default=False,
+        description="Enable AI-Buff optimizations (pre-fetching, query planning) for QMD (experimental)"
+    )
 
     # Analysis Behavior
     dry_run: bool = Field(

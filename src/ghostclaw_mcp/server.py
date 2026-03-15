@@ -62,7 +62,14 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
 
     if use_qmd:
         qmd_db_path = db_path.parent / "qmd" / "ghostclaw.db"
-        return QMDMemoryStore(db_path=qmd_db_path)
+        # Determine embedding backend from config (default: sentence-transformers)
+        embedding_backend = "fastembed"
+        try:
+            cfg = GhostclawConfig.load(repo_path or ".")
+            embedding_backend = getattr(cfg, 'embedding_backend', 'fastembed')
+        except Exception:
+            pass
+        return QMDMemoryStore(db_path=qmd_db_path, embedding_backend=embedding_backend)
     else:
         return MemoryStore(db_path=db_path)
 

@@ -26,7 +26,9 @@ class AIInsights(BaseModel):
     patches: List[Dict] = Field(default_factory=list)
 
 class ArchitectureReport(BaseModel):
+    repo_path: str
     vibe_score: int
+
     stack: str
     files_analyzed: int
     total_lines: int
