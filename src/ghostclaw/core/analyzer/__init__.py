@@ -73,7 +73,7 @@ class CodebaseAnalyzer:
         config = config or GhostclawConfig()
         
         delta_mode = getattr(config, 'delta_mode', False)
-        delta_base_ref = getattr(config, 'delta_base_ref', 'HEAD~1')
+        delta_base_ref = getattr(config, 'delta_base_ref', None) or 'HEAD~1'
 
         fingerprint = None
         if use_cache and self.cache is not None:
