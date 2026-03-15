@@ -32,11 +32,13 @@ class ReportIndexer:
         async with aiosqlite.connect(self.db_path) as db:
             await self.fts._register_searchable_function(db)
             async with db.execute(
-                "INSERT INTO reports (timestamp, vibe_score, stack, repo_path, vcs_commit, vcs_branch, vcs_dirty, report_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO reports (timestamp, vibe_score, stack, files_analyzed, total_lines, repo_path, vcs_commit, vcs_branch, vcs_dirty, report_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     timestamp,
                     report.get("vibe_score", 0),
                     report.get("stack", ""),
+                    report.get("files_analyzed", 0),
+                    report.get("total_lines", 0),
                     repo_path,
                     vcs.get("commit", ""),
                     vcs.get("branch", ""),
@@ -84,6 +86,8 @@ class ReportIndexer:
                     timestamp TEXT NOT NULL,
                     vibe_score INTEGER NOT NULL,
                     stack TEXT NOT NULL,
+                    files_analyzed INTEGER,
+                    total_lines INTEGER,
                     repo_path TEXT NOT NULL,
                     vcs_commit TEXT,
                     vcs_branch TEXT,

@@ -56,7 +56,8 @@ class QMDStorageAdapter(StorageAdapter):
                     report_json TEXT,
                     repo_path TEXT,
                     vcs_commit TEXT,
-                    vcs_branch TEXT
+                    vcs_branch TEXT,
+                    vcs_dirty BOOLEAN
                 )
             """)
             await db.commit()

@@ -86,6 +86,11 @@ class GhostAgent:
             if self.config.use_ai:
                 report = await self._perform_synthesis(report)
             
+            # Persistence & Final Broadcast
+            from ghostclaw.core.adapters.registry import registry
+            await registry.save_report(report)
+            await self._emit(AgentEvent.POST_SYNTHESIS, report)
+
             self.timings['total'] = time.perf_counter() - self._start_time
             return report
         except Exception as e:
@@ -153,10 +158,5 @@ class GhostAgent:
             report["ai_synthesis"] = "".join(content)
             report["ai_reasoning"] = "".join(reasoning)
 
-        # Persistence & Final Broadcast
-        from ghostclaw.core.adapters.registry import registry
-        await registry.save_report(report)
-        await self._emit(AgentEvent.POST_SYNTHESIS, report)
-        
         logger.info("Synthesis complete.")
         return report
