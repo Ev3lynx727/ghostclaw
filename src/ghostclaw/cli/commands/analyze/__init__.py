@@ -104,7 +104,7 @@ class AnalyzeCommand(Command):
 
         report, service = await self._run_analysis(args.repo_path, cli_overrides, args)
 
-        self._print_delta_summary(report)
+        if getattr(args, 'delta_summary', False): self._print_delta_summary(report)
         self._format_and_print_report(report, args)
 
         report_file_path = None
