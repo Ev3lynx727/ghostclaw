@@ -29,7 +29,7 @@ class EmbeddingManager:
 
         # Helper to create chunk
         def make_chunk(text: str, kind: str, extra: Dict = None):
-            chunk_id = hashlib.sha1(f"{run_id}:{kind}:{text[:100]}".encode()).hexdigest()[:16]
+            chunk_id = hashlib.sha256(f"{run_id}:{kind}:{text[:100]}".encode()).hexdigest()[:16]
             meta = {
                 "run_id": run_id,
                 "kind": kind,
