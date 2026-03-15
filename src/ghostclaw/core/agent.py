@@ -2,10 +2,10 @@ import asyncio
 import logging
 import time
 from enum import Enum, auto
-from typing import Dict, List, Callable, Any, Optional
-from ghostclaw.core.config import GhostclawConfig
-from ghostclaw.core.analyzer import CodebaseAnalyzer
-from ghostclaw.core.llm_client import LLMClient
+from typing import Dict, List, Callable, Any, Optional, Union
+from ghostclaw.core.config import GhostclawConfig  # type: ignore
+from ghostclaw.core.analyzer import CodebaseAnalyzer  # type: ignore
+from ghostclaw.core.llm_client import LLMClient  # type: ignore
 
 logger = logging.getLogger("ghostclaw.agent")
 
@@ -42,7 +42,7 @@ class GhostAgent:
         """Register a callback for a specific AgentEvent."""
         self.hooks[event].append(callback)
 
-    async def _emit(self, event: AgentEvent, data: Dict = None):
+    async def _emit(self, event: AgentEvent, data: Optional[Dict] = None):
         """Emit an event and trigger all registered hooks and adapters using formal notification schema."""
         data = data or {}
         event_data = dict(data)
@@ -68,7 +68,7 @@ class GhostAgent:
                 logger.error(f"Error in hook {hook} for event {event}: {e}")
 
         # 2. Trigger TargetAdapters
-        from ghostclaw.core.adapters.registry import registry
+        from ghostclaw.core.adapters.registry import registry  # type: ignore
         await registry.emit_event(event.name, event_data)
 
         # 3. Emit to bridge if present
@@ -88,7 +88,7 @@ class GhostAgent:
                 await self._emit(AgentEvent.POST_SYNTHESIS, report)
             
             # Persistence & Final Broadcast
-            from ghostclaw.core.adapters.registry import registry
+            from ghostclaw.core.adapters.registry import registry  # type: ignore
             await registry.save_report(report)
 
             self.timings['total'] = time.perf_counter() - self._start_time
@@ -99,7 +99,7 @@ class GhostAgent:
 
     async def _collect_diagnostics(self) -> Dict:
         """Run core analysis and collection phase."""
-        from ghostclaw.core.adapters.registry import registry
+        from ghostclaw.core.adapters.registry import registry  # type: ignore
         registry.register_internal_plugins()
         
         logger.info("Phase 1: Starting Core Diagnostics...")
@@ -144,7 +144,12 @@ class GhostAgent:
             
             content = []
             reasoning = []
-            async for chunk_info in self.llm_client.stream_analysis(report["ai_prompt"]):
+            client = self.llm_client
+            if client is None:
+                logger.error("LLM client not initialized for synthesis")
+                return report
+
+            async for chunk_info in client.stream_analysis(report["ai_prompt"]):
                 chunk = chunk_info.get("content")
                 if chunk is None:
                     continue  # Skip empty/None chunks

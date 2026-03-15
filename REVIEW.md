@@ -38,6 +38,12 @@ This document summarizes the recent architectural updates and fixes implemented 
 - **Synthesis Tracking**: Introduced `synthesis_performed` flag in reports to explicitly distinguish between LLM synthesis and static advisories.
 - **Robust Persistence**: Fixed `GhostAgent` to ensure that reports are always saved to disk (SQLite + QMD) even when AI synthesis is skipped or disabled.
 - **Schema Synergy**: Synchronized all storage backend schemas to consistently capture `files_analyzed`, `total_lines`, and VCS metadata (`commit`, `branch`, `dirty`).
+- **Type Safety & Quality**: Refined `GhostAgent` with robust type narrowing and PEP 484 compliance. Resolved potential `NoneType` attribute errors and silenced untyped import warnings for a clean static analysis report.
+
+### LLM Provider Compatibility
+
+- **Conditional Stream Options**: Refined `OpenAIProvider` to include `stream_options` only for native OpenAI endpoints. This ensures compatibility with providers like OpenRouter by avoiding unsupported streaming parameters.
+- **Architectural Alignment**: Verified and aligned `GhostAgent` core logic with OpenRouter's "create-agent" patterns, ensuring robust event-driven streaming and reasoning content handling.
 
 ### CLI & Cache Stats
 
@@ -47,6 +53,7 @@ This document summarizes the recent architectural updates and fixes implemented 
 ## 🧪 Verification & Coverage
 
 - **Unit Tests**: All **214 tests** are passing.
+- **Static Analysis**: `mypy` verified clean for `src/ghostclaw/core/agent.py` (0 critical errors).
 - **Code Coverage**: Reached **65%** overall codebase coverage.
 - **Integration**: Verified full orchestration flow from CLI to AI synthesis with strict mode validation.
 

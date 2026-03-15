@@ -23,6 +23,7 @@ class OpenAIProvider(BaseProvider):
     """Provider for OpenAI and OpenRouter (OpenAI-compatible)."""
 
     def __init__(self, api_key: str, base_url: Optional[str] = None, headers: Optional[Dict[str, str]] = None, client_cls=AsyncOpenAI):
+        self.base_url = base_url
         self.client = client_cls(api_key=api_key, base_url=base_url, default_headers=headers)
 
     async def generate(self, model: str, system_prompt: str, prompt: str) -> Dict[str, Any]:
@@ -49,15 +50,20 @@ class OpenAIProvider(BaseProvider):
         }
 
     async def stream(self, model: str, system_prompt: str, prompt: str) -> AsyncGenerator[Dict[str, Any], None]:
-        stream = await self.client.chat.completions.create(
-            model=model,
-            messages=[
+        kwargs = {
+            "model": model,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            stream=True,
-            stream_options={"include_usage": True}
-        )
+            "stream": True,
+        }
+        
+        # stream_options is only supported by native OpenAI
+        if self.base_url is None:
+            kwargs["stream_options"] = {"include_usage": True}
+            
+        stream = await self.client.chat.completions.create(**kwargs)
         async for chunk in stream:
             if not chunk.choices:
                 if hasattr(chunk, 'usage') and chunk.usage:
