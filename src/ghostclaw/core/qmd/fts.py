@@ -112,6 +112,7 @@ class BM25Search:
         """Perform BM25 search."""
         results = []
         async with aiosqlite.connect(self.db_path) as db:
+            await self._register_searchable_function(db)
             db.row_factory = aiosqlite.Row
             sql = """
                 SELECT r.id, r.timestamp, r.vibe_score, r.stack, r.repo_path, r.report_json,
