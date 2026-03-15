@@ -93,6 +93,8 @@ class GhostAgent:
 
             self.timings['total'] = time.perf_counter() - self._start_time
             return report
+
+
         except Exception as e:
             await self._emit(AgentEvent.ERROR, {"error": str(e)})
             raise e

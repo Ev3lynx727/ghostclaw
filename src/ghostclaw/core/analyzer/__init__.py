@@ -183,7 +183,9 @@ class CodebaseAnalyzer:
             __version__ = "unknown"
 
         report_data = {
+            "repo_path": str(root_path),
             "vibe_score": vibe_score, "stack": stack, "files_analyzed": total_files, "total_lines": total_lines,
+
             "issues": issues, "architectural_ghosts": ghosts, "red_flags": flags, "coupling_metrics": coupling_metrics,
             "errors": errors,
             "metadata": {
