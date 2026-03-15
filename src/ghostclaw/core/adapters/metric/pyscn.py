@@ -19,8 +19,11 @@ class PySCNAdapter(AsyncProcessMetricAdapter):
 
     async def is_available(self) -> bool:
         """Check if pyscn binary is in the PATH."""
-        result = await self.run_tool(["pyscn", "--version"])
-        return result.get("returncode") == 0
+        try:
+            result = await self.run_tool(["pyscn", "--version"])
+            return result.get("returncode") == 0
+        except Exception:
+            return False
 
     @hookimpl
     async def ghost_analyze(self, root: str, files: List[str]) -> Dict[str, Any]:
@@ -29,7 +32,8 @@ class PySCNAdapter(AsyncProcessMetricAdapter):
 
     async def analyze(self, root: str, files: List[str]) -> Dict[str, Any]:
         """Perform analysis using pyscn (ABC implementation)."""
-        if not await self.is_available():
+        is_avail = await self.is_available()
+        if not is_avail:
             return {}
 
         # Run pyscn analyze

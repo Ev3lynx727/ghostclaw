@@ -52,7 +52,7 @@ async def test_pyscn_adapter_analyze_success(adapter):
 
 @pytest.mark.asyncio
 async def test_pyscn_adapter_analyze_unavailable(adapter):
-    with patch.object(adapter, 'is_available', return_value=asyncio.Future()) as mock_avail:
-        mock_avail.return_value.set_result(False)
+    with patch.object(adapter, 'is_available', new_callable=AsyncMock) as mock_avail:
+        mock_avail.return_value = False
         result = await adapter.analyze("/tmp", [])
         assert result == {}

@@ -31,7 +31,7 @@ class EmbeddingManager:
         def make_chunk(text: str, kind: str, extra: Dict = None):
             chunk_id = hashlib.sha1(f"{run_id}:{kind}:{text[:100]}".encode()).hexdigest()[:16]
             meta = {
-                "run_id": run_id,
+                "report_id": run_id,
                 "kind": kind,
                 "repo_path": repo_path,
                 "timestamp": timestamp,

@@ -1,6 +1,7 @@
 """QueryEngine — read operations: list, get, search, diff, knowledge_graph."""
 
 import aiosqlite
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -71,9 +72,10 @@ class QueryEngine:
             return []
 
         # Decide strategy
-        use_hybrid = self.use_hybrid()
-        if use_hybrid:
+        if self.vector_store is not None and getattr(self, 'use_hybrid_mode', True):
             results = await self._hybrid_search(query, limit, repo_path, stack, min_score, max_score, alpha)
+        elif self.fts is not None:
+            results = await self.fts.search(query, limit, repo_path, stack, min_score, max_score)
         else:
             results = await self._legacy_search(query, limit, repo_path, stack, min_score, max_score)
 
@@ -97,8 +99,10 @@ class QueryEngine:
         alpha: float = 0.6,
     ) -> List[Dict[str, Any]]:
         """Hybrid BM25 + vector similarity search."""
-        bm25_task = self.fts.search(query, limit=limit*2, repo_path=repo_path, stack=stack, min_score=min_score, max_score=max_score)
-        vector_task = self.vector_store.search(query, limit=limit*2, repo_path=repo_path, stack=stack, min_score=min_score, max_score=max_score)
+        # For hybrid, we search with BROADER limits then apply STRICT filtering during merge.
+        # This ensures that even if one engine missed a result due to ranking, it can still be caught.
+        bm25_task = self.fts.search(query, limit=limit*10, repo_path=None, stack=None, min_score=None, max_score=None)
+        vector_task = self.vector_store.search(query, limit=limit*10, repo_path=None, stack=None, min_score=None, max_score=None)
         bm25_results, vector_results = await asyncio.gather(bm25_task, vector_task)
 
         # Merge and rerank (same as before)
@@ -125,6 +129,26 @@ class QueryEngine:
         combined = list(results_by_id.values())
         for r in combined:
             r['score'] = (1 - r['_bm25_norm']) * alpha + r['_vector_sim'] * (1 - alpha)
+
+        # Apply strict filters if provided
+        if repo_path:
+            combined = [r for r in combined if str(r.get("repo_path")).rstrip('/') == str(repo_path).rstrip('/')]
+        if stack:
+            combined = [r for r in combined if str(r.get("stack")).lower() == str(stack).lower()]
+
+        # Deduplicate by ID after potential additions from vector/BM25 tasks
+        seen_ids = set()
+        unique_combined = []
+        for r in combined:
+            if r["id"] not in seen_ids:
+                unique_combined.append(r)
+                seen_ids.add(r["id"])
+        combined = unique_combined
+
+        if min_score is not None:
+            combined = [r for r in combined if r.get("vibe_score") is not None and r["vibe_score"] >= min_score]
+        if max_score is not None:
+            combined = [r for r in combined if r.get("vibe_score") is not None and r["vibe_score"] <= max_score]
 
         combined.sort(key=lambda x: x['score'], reverse=True)
         return combined[:limit]
@@ -223,21 +247,54 @@ class QueryEngine:
         use_cache = limit <= 10
         return QueryPlan(use_hybrid=True, use_cache=use_cache, alpha=alpha)
 
-    async def diff_runs(self, run_id1: int, run_id2: int) -> Dict[str, Any]:
+    async def diff_runs(self, run_id1: int, run_id2: int) -> Optional[Dict[str, Any]]:
         """Compare two architecture reports."""
         if run_id1 == run_id2:
             raise ValueError("Cannot diff same run")
-        r1 = await self.get_run(run_id1)
-        r2 = await self.get_run(run_id2)
-        if not r1 or not r2:
-            raise ValueError("Run not found")
+        r1_data = await self.get_run(run_id1)
+        r2_data = await self.get_run(run_id2)
+        if not r1_data or not r2_data:
+            # Try to fetch them if they weren't returned by get_run for some reason
+            return None
+
+        r1 = r1_data.get("report", {})
+        r2 = r2_data.get("report", {})
+
+        # Normalize items for diff
+        def _make_mapping(items):
+            mapping = {}
+            for item in items:
+                if isinstance(item, dict):
+                    key = json.dumps(item, sort_keys=True)
+                else:
+                    key = str(item)
+                mapping[key] = item
+            return mapping
+
+        issues_a = _make_mapping(r1.get("issues", []))
+        issues_b = _make_mapping(r2.get("issues", []))
+        ghosts_a = _make_mapping(r1.get("architectural_ghosts", []))
+        ghosts_b = _make_mapping(r2.get("architectural_ghosts", []))
+
+        new_issue_keys = set(issues_b.keys()) - set(issues_a.keys())
+        resolved_ghost_keys = set(ghosts_a.keys()) - set(ghosts_b.keys())
+
         diff = {
-            "run1": r1,
-            "run2": r2,
+            "run_a": {"id": run_id1, "timestamp": r1_data.get("timestamp")},
+            "run_b": {"id": run_id2, "timestamp": r2_data.get("timestamp")},
+            "vibe_score_delta": (r2.get("vibe_score", 0) - r1.get("vibe_score", 0)),
+            "new_issues": [issues_b[k] for k in new_issue_keys],
+            "resolved_issues": [],
+            "new_ghosts": [],
+            "resolved_ghosts": [ghosts_a[k] for k in resolved_ghost_keys],
+            "new_flags": [],
+            "resolved_flags": [],
             "field_diffs": [],
-            "issue_count_diff": len(r2.get("issues", [])) - len(r1.get("issues", [])),
-            "ghost_count_diff": len(r2.get("architectural_ghosts", [])) - len(r1.get("architectural_ghosts", [])),
-            "red_flag_count_diff": len(r2.get("red_flags", [])) - len(r1.get("red_flags", [])),
+            "metrics_comparison": {
+                "files_analyzed": {"before": r1.get("files_analyzed", 0), "after": r2.get("files_analyzed", 0)},
+                "total_lines": {"before": r1.get("total_lines", 0), "after": r2.get("total_lines", 0)},
+                "vibe_score": {"before": r1.get("vibe_score", 0), "after": r2.get("vibe_score", 0)},
+            }
         }
         for field in ["vibe_score", "files_analyzed", "total_lines"]:
             if r1.get(field) != r2.get(field):
@@ -246,19 +303,37 @@ class QueryEngine:
 
     async def knowledge_graph(self, limit: int = 50) -> Dict[str, Any]:
         """Return a knowledge graph across recent runs."""
-        recent = await self.list_runs(limit=limit)
-        nodes = {}
-        edges = {}
-        for run in recent:
-            stack = run.get("stack", "unknown")
-            nodes[stack] = nodes.get(stack, 0) + 1
-            # Co-occurrence edges within same repo
-            for other in recent:
-                if other["id"] != run["id"] and other.get("repo_path") == run.get("repo_path"):
-                    other_stack = other.get("stack", "unknown")
-                    if other_stack != stack:
-                        edge_key = tuple(sorted([stack, other_stack]))
-                        edges[edge_key] = edges.get(edge_key, 0) + 1
-        node_list = [{"id": k, "type": "stack", "count": v} for k, v in nodes.items()]
-        edge_list = [{"source": a, "target": b, "weight": w} for (a, b), w in edges.items()]
-        return {"nodes": node_list, "edges": edge_list}
+        # To get issues/ghosts, we need the full reports
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM reports ORDER BY timestamp DESC LIMIT ?", (limit,)) as cursor:
+                rows = await cursor.fetchall()
+
+        runs = []
+        for r in rows:
+            data = dict(r)
+            data["report"] = json.loads(data["report_json"])
+            runs.append(data)
+
+        issue_counts = {}
+        ghost_counts = {}
+        for r in runs:
+            rep = r["report"]
+            for issue in rep.get("issues", []):
+                msg = issue.get("message", str(issue)) if isinstance(issue, dict) else str(issue)
+                issue_counts[msg] = issue_counts.get(msg, 0) + 1
+            for ghost in rep.get("architectural_ghosts", []):
+                msg = ghost.get("message", str(ghost)) if isinstance(ghost, dict) else str(ghost)
+                ghost_counts[msg] = ghost_counts.get(msg, 0) + 1
+
+        return {
+            "total_runs": len(runs),
+            "stacks_seen": sorted(list(set(r.get("stack") for r in runs if r.get("stack")))),
+            "score_trend": [{"timestamp": r.get("timestamp"), "vibe_score": r.get("vibe_score")} for r in runs],
+            "recurring_issues": [{"item": k, "count": v} for k, v in issue_counts.items()],
+            "recurring_ghosts": [{"item": k, "count": v} for k, v in ghost_counts.items()],
+            "recurring_flags": [],
+            "coupling_hotspots": [],
+            "nodes": [],
+            "edges": []
+        }

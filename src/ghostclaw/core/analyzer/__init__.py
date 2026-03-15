@@ -5,18 +5,18 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Dict, Optional, List
-from ghostclaw.core.detector import detect_stack, find_files, find_files_parallel
+
+from ghostclaw.core.detector import find_files, find_files_parallel
 from ghostclaw.core.validator import RuleValidator
-from ghostclaw.stacks import get_analyzer
 from ghostclaw.core.cache import LocalCache, compute_fingerprint
 from ghostclaw.core.config import GhostclawConfig
-from ghostclaw.core.llm_client import LLMClient
 from ghostclaw.core.context_builder import ContextBuilder
 from ghostclaw.core.models import ArchitectureReport
-from ghostclaw.core.score import ScoringEngine
 from ghostclaw.core import git_utils
 
-
+from ghostclaw.core.analyzer.metrics import get_metrics
+from ghostclaw.core.analyzer.stacks import get_stack_info
+from ghostclaw.core.analyzer.scoring import compute_vibe
 
 
 class CodebaseAnalyzer:
@@ -25,10 +25,6 @@ class CodebaseAnalyzer:
     def __init__(self, validator: RuleValidator = None, cache: LocalCache = None):
         """
         Initialize the analyzer with optional injected dependencies.
-
-        Args:
-            validator: Rule engine to use (Phase 4)
-            cache: Optional LocalCache instance for result caching
         """
         self.validator = validator or RuleValidator()
         self.cache = cache
@@ -41,7 +37,6 @@ class CodebaseAnalyzer:
         if not reports_dir.exists():
             return None
 
-        # Resolve base_ref to a commit SHA
         try:
             import subprocess
             result = subprocess.run(
@@ -49,19 +44,16 @@ class CodebaseAnalyzer:
                 capture_output=True, text=True, check=False, timeout=5
             )
             if result.returncode != 0:
-                # Invalid ref; fall back to latest
                 base_sha = None
             else:
                 base_sha = result.stdout.strip()
         except Exception:
             base_sha = None
 
-        # Collect candidate JSON reports
         json_files = list(reports_dir.glob("*.json"))
         if not json_files:
             return None
 
-        # If we have a SHA, try to find exact match
         if base_sha:
             for path in json_files:
                 try:
@@ -71,15 +63,6 @@ class CodebaseAnalyzer:
                         return data
                 except Exception:
                     continue
-
-        # Fallback: return latest report by modification time
-        if base_sha:
-            # Only warn if we tried to match a specific SHA but failed
-            try:
-                import sys
-                print(f"⚠️  Could not find base report for commit {base_sha[:8]}. Using latest report as base.", file=sys.stderr)
-            except Exception:
-                pass
 
         latest = max(json_files, key=lambda p: p.stat().st_mtime)
         try:
@@ -91,31 +74,17 @@ class CodebaseAnalyzer:
     async def analyze(self, root: str, use_cache: bool = True, config: Optional[GhostclawConfig] = None) -> ArchitectureReport:
         """
         Perform a complete architectural analysis of a codebase.
-
-        Args:
-            root: Path to repository root
-            use_cache: Whether to use/write cache (if cache enabled)
-            config: GhostclawConfig instance with user settings
-
-
-        Returns:
-            Complete analysis report with vibe score, issues, ghosts, etc.
         """
         root_path = Path(root)
         config = config or GhostclawConfig()
-        use_pyscn = config.use_pyscn
-        use_ai_codeindex = config.use_ai_codeindex
 
-        # Delta mode detection (Phase 2)
         delta_mode = getattr(config, 'delta_mode', False)
         delta_base_ref = getattr(config, 'delta_base_ref', None) or 'HEAD~1'
 
-        # Prepare for delta metadata
         diff_result = None
         changed_rel_paths = []
 
         fingerprint = None
-        # 0. Cache shortcut if enabled
         if use_cache and self.cache is not None:
             base_fingerprint = await asyncio.to_thread(compute_fingerprint, root_path)
             delta_suffix = f":delta={delta_mode}:base={delta_base_ref}" if delta_mode else ""
@@ -124,24 +93,20 @@ class CodebaseAnalyzer:
 
             cached_data = await asyncio.to_thread(self.cache.get, fingerprint)
             if cached_data is not None:
-                # Mark as cache hit for transparency
                 cached_data.setdefault("metadata", {})["cache_hit"] = True
                 return ArchitectureReport(**cached_data)
 
         # 1. Detect stack
-        stack = await asyncio.to_thread(detect_stack, root)
+        stack, analyzer = await get_stack_info(root)
 
         # 2. Find relevant files based on stack (Delta-Ctx aware)
-        analyzer = get_analyzer(stack)
         extensions = analyzer.get_extensions() if analyzer else []
         if self.progress_cb: self.progress_cb("Scanning files")
 
         if delta_mode:
-            # Delta mode: analyze only changed files from git diff
             diff_result = await asyncio.to_thread(git_utils.get_git_diff, delta_base_ref, root_path)
             changed_rel_paths = diff_result.files_changed
 
-            # Filter to existing source files that match stack extensions
             files = []
             for rel_path in changed_rel_paths:
                 abs_path = root_path / rel_path
@@ -152,9 +117,8 @@ class CodebaseAnalyzer:
                 files.append(str(abs_path))
 
             if self.progress_cb:
-                self.progress_cb(f"Delta: analyzing {len(files)} changed files (from {len(changed_rel_paths)} diff hunks)")
+                self.progress_cb(f"Delta: analyzing {len(files)} changed files")
         else:
-            # Full scan: all files matching stack extensions
             if extensions:
                 if config.parallel_enabled:
                     files = await find_files_parallel(root, extensions, config.concurrency_limit)
@@ -164,31 +128,8 @@ class CodebaseAnalyzer:
                 files = []
 
         # 3. Compute base metrics
-        def _get_metrics(file_list, threshold):
-            total_lines = 0
-            large_files = []
-            line_counts = []
-            for f in file_list:
-                try:
-                    with open(f, 'rb') as file:
-                        count = 0
-                        while True:
-                            chunk = file.read(65536)
-                            if not chunk:
-                                break
-                            count += chunk.count(b'\n')
-                        if count > 0 or Path(f).stat().st_size > 0:
-                            count += 1
-                        total_lines += count
-                        line_counts.append(count)
-                        if count > threshold:
-                            large_files.append(f)
-                except Exception:
-                    continue
-            return total_lines, line_counts, large_files
-
         threshold = (analyzer.get_large_file_threshold() if analyzer else 300)
-        total_lines, line_counts, large_files = await asyncio.to_thread(_get_metrics, files, threshold)
+        total_lines, line_counts, large_files = await asyncio.to_thread(get_metrics, files, threshold)
 
         total_files = len(files)
         avg_lines = sum(line_counts) / total_files if total_files > 0 else 0
@@ -206,30 +147,22 @@ class CodebaseAnalyzer:
         from ghostclaw.core.adapters.registry import registry
         registry.register_internal_plugins()
         
-        # Load local plugins if any
         local_plugins = root_path / ".ghostclaw" / "plugins"
         if local_plugins.exists():
             registry.load_external_plugins(local_plugins)
 
-        # Apply plugin enable/disable filter from config
         if config.plugins_enabled is not None:
             registry.enabled_plugins = set(config.plugins_enabled)
         else:
-            # No explicit plugin filter from user
             if config.use_qmd:
-                # All plugins (internal + external) enabled, including qmd
                 registry.enabled_plugins = None
             else:
-                # All plugins except qmd
                 from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
                 plugins = set(INTERNAL_PLUGINS)
                 plugins.discard("qmd")
-                # Include any external plugins that were loaded
                 plugins.update(registry.external_plugins)
                 registry.enabled_plugins = plugins
 
-        # If QMD backend is requested via config.use_qmd, ensure both 'sqlite' and 'qmd' are enabled (dual-write)
-        # This overrides any user omission from plugins_enabled.
         if config.use_qmd and registry.enabled_plugins is not None:
             registry.enabled_plugins.add("sqlite")
             registry.enabled_plugins.add("qmd")
@@ -238,7 +171,6 @@ class CodebaseAnalyzer:
         adapter_results = await registry.run_analysis(root, files)
         if self.progress_cb: self.progress_cb("Adapters completed")
 
-        # Unify findings from all adapters
         issues = []
         ghosts = []
         flags = []
@@ -246,7 +178,6 @@ class CodebaseAnalyzer:
         import_edges = []
         symbol_index = ""
 
-        # Collect errors from adapter registry (if any)
         errors = list(getattr(registry, 'errors', []))
 
         for res in adapter_results:
@@ -257,7 +188,7 @@ class CodebaseAnalyzer:
             if "symbol_index" in res:
                 symbol_index += res["symbol_index"] + "\n"
 
-        # 5. Legacy Stack-specific analysis (Pre-adapter porting)
+        # 5. Legacy Stack-specific analysis
         if analyzer:
             stack_result = await asyncio.to_thread(analyzer.analyze, root, files, base_metrics)
             issues.extend(stack_result.get('issues', []))
@@ -270,7 +201,7 @@ class CodebaseAnalyzer:
         else:
             issues.append("Standard stack detection failed.")
 
-        # 5. Rule validation (Phase 4)
+        # 6. Rule validation
         try:
             report_with_rules = await asyncio.to_thread(self.validator.validate, stack, {
                 "issues": issues,
@@ -290,8 +221,7 @@ class CodebaseAnalyzer:
         except Exception as e:
             issues.append(f"Rule validation failed: {str(e)}")
 
-        # 6. Final vibe score
-        # Attempt to use a custom ScoringAdapter first
+        # 7. Final vibe score
         context_data = {
             "metrics": base_metrics,
             "issues": issues,
@@ -301,15 +231,9 @@ class CodebaseAnalyzer:
             "files": files,
             "coupling_metrics": coupling_metrics
         }
+        vibe_score = await compute_vibe(context_data)
 
-        from ghostclaw.core.adapters.registry import registry
-        custom_score = await registry.compute_custom_vibe(context=context_data)
-        if custom_score is not None:
-            vibe_score = int(custom_score)
-        else:
-            vibe_score = ScoringEngine.compute_vibe_score(base_metrics, len(issues), len(ghosts))
-
-        # 7. Metadata
+        # 8. Metadata
         try:
             from ghostclaw.cli import __version__
         except ImportError:
@@ -335,7 +259,6 @@ class CodebaseAnalyzer:
             }
         }
 
-        # Add VCS metadata (commit SHA, branch, dirty status)
         try:
             report_data["metadata"]["vcs"] = {
                 "commit": git_utils.get_current_sha(Path(root)),
@@ -343,10 +266,8 @@ class CodebaseAnalyzer:
                 "dirty": git_utils.has_uncommitted_changes(Path(root))
             }
         except Exception:
-            # If git fails, ignore VCS metadata
             pass
 
-        # Attach delta-context metadata if in delta mode
         if delta_mode:
             report_data["metadata"]["delta"] = {
                 "mode": True,
@@ -355,11 +276,10 @@ class CodebaseAnalyzer:
                 "files_changed": changed_rel_paths
             }
 
-        # 8. Prompt Building (Delta or Full)
+        # 9. Prompt Building
         if config.use_ai:
             context_builder = ContextBuilder()
             if delta_mode:
-                # Delta mode: load base report and build delta prompt
                 base_report = self._find_base_report(root_path, base_ref=delta_base_ref)
                 prompt = context_builder.build_delta_prompt(
                     current_metrics=base_metrics,
@@ -370,7 +290,6 @@ class CodebaseAnalyzer:
                     base_report=base_report
                 )
             else:
-                # Full analysis prompt
                 prompt = context_builder.build_prompt(
                     metrics=base_metrics,
                     issues=issues,
@@ -383,7 +302,7 @@ class CodebaseAnalyzer:
                 )
             report_data["ai_prompt"] = prompt
 
-        # 9. Cache pre-synthesis
+        # 10. Cache pre-synthesis
         if fingerprint is not None:
             report_data["metadata"]["fingerprint"] = fingerprint
             if use_cache and self.cache is not None:
