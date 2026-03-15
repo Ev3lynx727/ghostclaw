@@ -25,6 +25,7 @@ This document summarizes the recent architectural updates and fixes implemented 
 
 - **Interface Alignment**: Refactored `QueryEngine` to ensure `diff_runs` and `knowledge_graph` outputs match the standard `MemoryStore` contract.
 - **Initialization Reliability**: Fixed `sqlite3.OperationalError` by ensuring database directories are created recursively during lazy initialization in `BM25Search` and `ReportIndexer`.
+- **Read Method Safety**: Restored `_db_exists()` guards in `QMDMemoryStore` to ensure read methods gracefully handle missing databases by returning safe defaults (empty lists/dicts or `None`).
 - **Dependency Injection**: Updated `QMDMemoryStore` to properly propagate configuration for enhanced search, embedding backends, and the "AI-Buff" scheme.
 
 ### CLI & Cache Stats

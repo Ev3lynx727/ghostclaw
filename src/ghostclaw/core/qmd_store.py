@@ -91,16 +91,22 @@ class QMDMemoryStore:
         repo_path: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """List recent runs."""
+        if not self._db_exists():
+            return []
         return await self.query_engine.list_runs(limit=limit, repo_path=repo_path)
 
     async def get_run(self, run_id: int) -> Optional[Dict[str, Any]]:
         """Get a single report by run_id."""
+        if not self._db_exists():
+            return None
         return await self.query_engine.get_run(run_id)
 
     async def get_previous_run(
         self, repo_path: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Get the most recent analysis run, optionally filtered by repo path."""
+        if not self._db_exists():
+            return None
         runs = await self.query_engine.list_runs(limit=1, repo_path=repo_path)
         if not runs:
             return None
@@ -117,6 +123,8 @@ class QMDMemoryStore:
         alpha: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """Search across saved reports using hybrid BM25 + vector search."""
+        if not self._db_exists():
+            return []
         if alpha is None:
             # Default weighting: AI-Buff might prefer vector results
             alpha = 0.4 if self.ai_buff_enabled else 0.6
@@ -133,6 +141,8 @@ class QMDMemoryStore:
 
     async def diff_runs(self, run_id_a: int, run_id_b: int) -> Optional[Dict[str, Any]]:
         """Compare two analysis runs."""
+        if not self._db_exists():
+            return None
         try:
             return await self.query_engine.diff_runs(run_id_a, run_id_b)
         except (ValueError, Exception) as e:
@@ -145,6 +155,18 @@ class QMDMemoryStore:
         limit: int = 50,
     ) -> Dict[str, Any]:
         """Build a knowledge graph from accumulated analysis history."""
+        if not self._db_exists():
+            return {
+                "total_runs": 0,
+                "stacks_seen": [],
+                "score_trend": [],
+                "recurring_issues": [],
+                "recurring_ghosts": [],
+                "recurring_flags": [],
+                "coupling_hotspots": [],
+                "nodes": [],
+                "edges": []
+            }
         # QueryEngine.knowledge_graph accepts limit
         return await self.query_engine.knowledge_graph(limit=limit)
 
