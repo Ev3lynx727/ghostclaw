@@ -69,6 +69,7 @@ class ReportIndexer:
         await self._ensure_db()
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute("DELETE FROM reports WHERE id = ?", (run_id,))
+            await db.commit()
             return cursor.rowcount > 0
 
     async def _ensure_db(self) -> None:
