@@ -113,9 +113,9 @@ class QueryEngine:
         if bm25_results:
             bm25_scores = [r['score'] for r in bm25_results]
             bm25_min, bm25_max = min(bm25_scores), max(bm25_scores)
-            bm25_range = bm25_max - bm25_min or 1
+            bm25_range = bm25_max - bm25_min
             for r in bm25_results:
-                norm = (r['score'] - bm25_min) / bm25_range
+                norm = (r['score'] - bm25_min) / bm25_range if bm25_range > 0 else 1.0
                 r['_bm25_norm'] = norm
                 r['_vector_sim'] = 0.0
                 results_by_id[r['id']] = r
