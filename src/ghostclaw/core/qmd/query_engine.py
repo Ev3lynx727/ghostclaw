@@ -71,6 +71,9 @@ class QueryEngine:
         if not query:
             return []
 
+        # Ensure FTS is initialized (idempotent; creates table only if missing)
+        await self.fts.ensure_initialized()
+
         # Decide strategy
         use_hybrid = self.use_hybrid()
         if use_hybrid:
