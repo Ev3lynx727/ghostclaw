@@ -67,9 +67,6 @@ class ReportIndexer:
     async def delete(self, run_id: int) -> bool:
         """Delete a report by run_id. Returns True if deleted."""
         await self._ensure_db()
-    async def delete(self, run_id: int) -> bool:
-        """Delete a report by run_id. Returns True if deleted."""
-        await self._ensure_db()
         async with aiosqlite.connect(self.db_path) as db:
             await self.fts._register_searchable_function(db)
             cursor = await db.execute("DELETE FROM reports WHERE id = ?", (run_id,))
