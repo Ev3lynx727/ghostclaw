@@ -115,6 +115,9 @@ class AnalyzeCommand(Command):
             await self._handle_pr_creation(report, report_file_path, args.repo_path, args)
 
         self._print_auxiliary_info(report, service, args)
+        if args.strict and report.get('errors'):
+            print(f"\n\x1b[31m❌ Analysis failed due to {len(report['errors'])} adapter error(s) (--strict mode).\x1b[0m", file=sys.stderr)
+            return 1
         return 0
 
     def _build_cli_overrides(self, args: Namespace) -> Dict[str, Any]:
@@ -216,6 +219,9 @@ class AnalyzeCommand(Command):
         if getattr(args, 'show_tokens', False):
             tokens = report.get('metadata', {}).get('tokens', {})
             print(f"\n=== Token Usage ===\nTotal: {tokens.get('total', 0)}", file=sys.stderr)
+        if getattr(args, 'cache_stats', False) and getattr(service, 'cache', None):
+            stats = service.cache.info()
+            print(f"\n=== Cache Statistics ===\nCache: {stats.get('cache_dir')}\nentries: {stats.get('entries')}", file=info_file)
         remote_url = detect_github_remote(args.repo_path)
         if remote_url and not args.create_pr:
             print(f"💡 Tip: Use --create-pr to upload findings.", file=info_file)

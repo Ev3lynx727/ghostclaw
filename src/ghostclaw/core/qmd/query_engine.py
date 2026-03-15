@@ -1,5 +1,6 @@
 """QueryEngine — read operations: list, get, search, diff, knowledge_graph."""
 
+import asyncio
 import aiosqlite
 import json
 import logging
@@ -74,6 +75,8 @@ class QueryEngine:
         use_hybrid = self.use_hybrid()
         if use_hybrid:
             results = await self._hybrid_search(query, limit, repo_path, stack, min_score, max_score, alpha)
+        elif self.fts and self.fts.is_initialized():
+            results = await self.fts.search(query, limit, repo_path, stack, min_score, max_score)
         else:
             results = await self._legacy_search(query, limit, repo_path, stack, min_score, max_score)
 
@@ -115,12 +118,14 @@ class QueryEngine:
                 results_by_id[r['id']] = r
 
         for r in vector_results:
+            rid = r.get('id') or r.get('report_id')
             r['_vector_sim'] = r['score']
             r['_bm25_norm'] = 0.0
-            if r['id'] in results_by_id:
-                results_by_id[r['id']]['_vector_sim'] = r['score']
+            if rid in results_by_id:
+                results_by_id[rid]['_vector_sim'] = r['score']
             else:
-                results_by_id[r['id']] = r
+                r['id'] = rid  # Ensure 'id' is present for consistency
+                results_by_id[rid] = r
 
         combined = list(results_by_id.values())
         for r in combined:
@@ -223,42 +228,82 @@ class QueryEngine:
         use_cache = limit <= 10
         return QueryPlan(use_hybrid=True, use_cache=use_cache, alpha=alpha)
 
-    async def diff_runs(self, run_id1: int, run_id2: int) -> Dict[str, Any]:
-        """Compare two architecture reports."""
-        if run_id1 == run_id2:
+    async def diff_runs(self, run_id_a: int, run_id_b: int) -> Dict[str, Any]:
+        """Compare two architecture reports, returning a MemoryStore-compatible diff."""
+        if run_id_a == run_id_b:
             raise ValueError("Cannot diff same run")
-        r1 = await self.get_run(run_id1)
-        r2 = await self.get_run(run_id2)
+        r1 = await self.get_run(run_id_a)
+        r2 = await self.get_run(run_id_b)
         if not r1 or not r2:
             raise ValueError("Run not found")
+
+        report_a = r1.get("report", {})
+        report_b = r2.get("report", {})
+
+        new_issues = [i for i in report_b.get("issues", []) if i not in report_a.get("issues", [])]
+        resolved_issues = [i for i in report_a.get("issues", []) if i not in report_b.get("issues", [])]
+        new_ghosts = [g for g in report_b.get("architectural_ghosts", []) if g not in report_a.get("architectural_ghosts", [])]
+        resolved_ghosts = [g for g in report_a.get("architectural_ghosts", []) if g not in report_b.get("architectural_ghosts", [])]
+        new_flags = [f for f in report_b.get("red_flags", []) if f not in report_a.get("red_flags", [])]
+        resolved_flags = [f for f in report_a.get("red_flags", []) if f not in report_b.get("red_flags", [])]
+
         diff = {
-            "run1": r1,
-            "run2": r2,
-            "field_diffs": [],
-            "issue_count_diff": len(r2.get("issues", [])) - len(r1.get("issues", [])),
-            "ghost_count_diff": len(r2.get("architectural_ghosts", [])) - len(r1.get("architectural_ghosts", [])),
-            "red_flag_count_diff": len(r2.get("red_flags", [])) - len(r1.get("red_flags", [])),
+            "vibe_score_delta": report_b.get("vibe_score", 0) - report_a.get("vibe_score", 0),
+            "new_issues": new_issues,
+            "resolved_issues": resolved_issues,
+            "new_ghosts": new_ghosts,
+            "resolved_ghosts": resolved_ghosts,
+            "new_flags": new_flags,
+            "resolved_flags": resolved_flags,
+            "metrics_comparison": {}, # Stub for now
+            "run_a": r1,
+            "run_b": r2,
         }
-        for field in ["vibe_score", "files_analyzed", "total_lines"]:
-            if r1.get(field) != r2.get(field):
-                diff["field_diffs"].append({"field": field, "old": r1.get(field), "new": r2.get(field)})
         return diff
 
     async def knowledge_graph(self, limit: int = 50) -> Dict[str, Any]:
-        """Return a knowledge graph across recent runs."""
-        recent = await self.list_runs(limit=limit)
-        nodes = {}
-        edges = {}
-        for run in recent:
+        """Return a MemoryStore-compatible knowledge graph across recent runs."""
+        recent_runs = []
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM reports ORDER BY timestamp DESC LIMIT ?", (limit,)) as cursor:
+                rows = await cursor.fetchall()
+                for row in rows:
+                    data = dict(row)
+                    data["report"] = json.loads(data["report_json"])
+                    recent_runs.append(data)
+
+        total_runs = len(recent_runs)
+        stacks_seen = {}
+        score_trend = []
+        recurring_issues = {}
+        recurring_ghosts = {}
+        recurring_flags = {}
+
+        for run in reversed(recent_runs): # chronological
+            report = run["report"]
             stack = run.get("stack", "unknown")
-            nodes[stack] = nodes.get(stack, 0) + 1
-            # Co-occurrence edges within same repo
-            for other in recent:
-                if other["id"] != run["id"] and other.get("repo_path") == run.get("repo_path"):
-                    other_stack = other.get("stack", "unknown")
-                    if other_stack != stack:
-                        edge_key = tuple(sorted([stack, other_stack]))
-                        edges[edge_key] = edges.get(edge_key, 0) + 1
-        node_list = [{"id": k, "type": "stack", "count": v} for k, v in nodes.items()]
-        edge_list = [{"source": a, "target": b, "weight": w} for (a, b), w in edges.items()]
-        return {"nodes": node_list, "edges": edge_list}
+            stacks_seen[stack] = stacks_seen.get(stack, 0) + 1
+            score_trend.append({"timestamp": run["timestamp"], "score": run["vibe_score"]})
+            
+            for item in report.get("issues", []):
+                recurring_issues[item] = recurring_issues.get(item, 0) + 1
+            for item in report.get("architectural_ghosts", []):
+                recurring_ghosts[item] = recurring_ghosts.get(item, 0) + 1
+            for item in report.get("red_flags", []):
+                recurring_flags[item] = recurring_flags.get(item, 0) + 1
+
+        def to_recurring_list(d):
+            return [{"item": k, "count": v} for k, v in d.items() if v > 1]
+
+        return {
+            "total_runs": total_runs,
+            "stacks_seen": stacks_seen,
+            "score_trend": score_trend,
+            "recurring_issues": to_recurring_list(recurring_issues),
+            "recurring_ghosts": to_recurring_list(recurring_ghosts),
+            "recurring_flags": to_recurring_list(recurring_flags),
+            "coupling_hotspots": [], # Stub
+            "nodes": [], # Legacy QMD nodes
+            "edges": [], # Legacy QMD edges
+        }

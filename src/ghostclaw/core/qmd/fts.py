@@ -58,6 +58,7 @@ class BM25Search:
         if self._initialized:
             return
 
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
             await self._register_searchable_function(db)
             async with db.execute(

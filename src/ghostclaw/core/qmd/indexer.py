@@ -45,6 +45,7 @@ class ReportIndexer:
                 ),
             ) as cursor:
                 run_id = cursor.lastrowid
+                await db.commit()
 
             # Store embeddings if enhanced
             if self.embedding_mgr:
@@ -72,6 +73,7 @@ class ReportIndexer:
 
     async def _ensure_db(self) -> None:
         """Ensure reports table exists."""
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """

@@ -136,6 +136,7 @@ class CodebaseAnalyzer:
 
         if self.progress_cb: self.progress_cb("Running adapters")
         adapter_results = await registry.run_analysis(root, files)
+        errors = list(getattr(registry, 'errors', []))
         
         issues, ghosts, flags, coupling_metrics, symbol_index = [], [], [], {}, ""
         for res in adapter_results:
@@ -177,6 +178,7 @@ class CodebaseAnalyzer:
         report_data = {
             "vibe_score": vibe_score, "stack": stack, "files_analyzed": total_files, "total_lines": total_lines,
             "issues": issues, "architectural_ghosts": ghosts, "red_flags": flags, "coupling_metrics": coupling_metrics,
+            "errors": errors,
             "metadata": {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "analyzer": "ghostclaw-async", "version": __version__,

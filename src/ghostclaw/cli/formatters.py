@@ -93,6 +93,13 @@ class MarkdownFormatter(BaseFormatter):
                 lines.append(f"- {flag}")
             lines.append("")
 
+        errors = report.get('errors', [])
+        if errors:
+            lines.append("## ⚠️ Adapter Errors")
+            for err in errors:
+                lines.append(f"- {err}")
+            lines.append("")
+
         reasoning = report.get('ai_reasoning')
         if reasoning:
             lines.append("## AI Architect Reasoning")
