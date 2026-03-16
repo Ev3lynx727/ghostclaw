@@ -1,8 +1,9 @@
-"""Python (Django/FastAPI) stack analyzer with AST coupling."""
+"""Python (Django/FastAPI) stack analyzer with AST coupling and cognitive complexity."""
 
 from typing import Dict, List
 from ghostclaw.core.coupling import PythonImportAnalyzer
 from .base import StackAnalyzer
+from ghostclaw.lib.complexity import analyze_files_cognitive
 
 
 class PythonAnalyzer(StackAnalyzer):
@@ -33,6 +34,11 @@ class PythonAnalyzer(StackAnalyzer):
         except Exception as e:
             coupling_metrics = {}
             issues.append(f"AST analysis failed: {str(e)}")
+
+        # Add cognitive complexity metrics via complexipy (if available)
+        cognitive_data = analyze_files_cognitive(files)
+        if cognitive_data:
+            coupling_metrics.update(cognitive_data)
 
         # Note: File size metrics are handled by validator rules, not here
 

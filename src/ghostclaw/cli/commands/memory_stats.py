@@ -55,7 +55,13 @@ class MemoryStatsCommand(Command):
             db_path=db_path,
             use_enhanced=True,
             embedding_backend=getattr(cfg, 'embedding_backend', 'fastembed'),
-            ai_buff_enabled=getattr(cfg, 'ai_buff_enabled', False)
+            ai_buff_enabled=getattr(cfg, 'ai_buff_enabled', False),
+            prefetch_enabled=getattr(cfg, 'prefetch_enabled', True),
+            prefetch_workers=getattr(cfg, 'prefetch_workers', 2),
+            prefetch_window=getattr(cfg, 'prefetch_window', 2),
+            prefetch_hours=getattr(cfg, 'prefetch_hours', 24),
+            prefetch_vibe_delta=getattr(cfg, 'prefetch_vibe_delta', 10),
+            prefetch_stack_count=getattr(cfg, 'prefetch_stack_count', 5),
         )
         stats = store.get_stats()
 
@@ -83,4 +89,16 @@ class MemoryStatsCommand(Command):
         else:
             print("\nSearch Result Cache: disabled")
 
-        print("\nNote: Caches are per-process and reset on restart.")
+        if 'prefetch' in stats and stats['prefetch']:
+            pf = stats['prefetch']
+            print(f"\nPrefetch Manager (AI-Buff):")
+            print(f"  Status: {'enabled' if pf.get('enabled') else 'disabled'}")
+            print(f"  Workers: {pf.get('workers')}")
+            print(f"  Pending: {pf.get('pending')}")
+            print(f"  Completed: {pf.get('completed')}")
+            print(f"  Errors: {pf.get('errors')}")
+            print(f"  Cache hits after prefetch: {pf.get('cache_hits_after_prefetch')}")
+        else:
+            print("\nPrefetch Manager: disabled")
+
+        print("\nNote: Caches and prefetch stats are per-process and reset on restart.")

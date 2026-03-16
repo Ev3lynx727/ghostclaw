@@ -30,12 +30,24 @@ class QMDMemoryStore:
         use_enhanced: bool = False,
         embedding_backend: str = "fastembed",
         ai_buff_enabled: bool = False,
+        prefetch_enabled: bool = True,
+        prefetch_workers: int = 2,
+        prefetch_window: int = 2,
+        prefetch_hours: int = 24,
+        prefetch_vibe_delta: int = 10,
+        prefetch_stack_count: int = 5,
     ):
         # Use .ghostclaw/storage/qmd/ instead of .ghostclaw/storage/
         self.db_path = db_path or Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "ghostclaw.db"
         self.use_enhanced = use_enhanced
         self.embedding_backend = embedding_backend
         self.ai_buff_enabled = ai_buff_enabled
+        # Prefetch configuration
+        self.prefetch_enabled = prefetch_enabled and ai_buff_enabled
+        self.prefetch_window = prefetch_window
+        self.prefetch_hours = prefetch_hours
+        self.prefetch_vibe_delta = prefetch_vibe_delta
+        self.prefetch_stack_count = prefetch_stack_count
 
         # Subsystems
         # Using late imports to avoid circular dependencies
@@ -44,9 +56,16 @@ class QMDMemoryStore:
         from .qmd.query_engine import QueryEngine
         from .vector_store import VectorStore
         from .qmd.embeddings import EmbeddingManager
-
+        from .search_cache import SearchCache  # relative import from same package (core)
+        from .prefetch import PrefetchManager
 
         self.fts = BM25Search(self.db_path)
+
+        # Initialize SearchCache if AI-Buff is enabled
+        self.search_cache = None
+        if ai_buff_enabled:
+            # Defaults: maxsize=500, ttl=300 (5min)
+            self.search_cache = SearchCache(maxsize=500, ttl=300)
 
         if self.use_enhanced:
             # VectorStore defaults its db_path to .ghostclaw/storage/qmd/lancedb
@@ -62,7 +81,14 @@ class QMDMemoryStore:
             self.embedding_mgr = None
 
         self.indexer = ReportIndexer(self.db_path, self.fts, self.embedding_mgr)
-        self.query_engine = QueryEngine(self.db_path, self.fts, self.vector_store)
+        self.query_engine = QueryEngine(
+            self.db_path, self.fts, self.vector_store, self.search_cache
+        )
+
+        # Prefetch manager (requires AI-Buff enabled)
+        self.prefetch_manager = None
+        if self.prefetch_enabled:
+            self.prefetch_manager = PrefetchManager(self)
 
     def get_stats(self) -> Dict[str, Any]:
         """Return statistics for the memory store."""
@@ -78,11 +104,18 @@ class QMDMemoryStore:
                 stats["embedding_cache"] = self.vector_store._embedding_cache.stats()
             else:
                 stats["embedding_cache"] = None
-            
-            stats["search_cache"] = None
         else:
             stats["embedding_cache"] = None
+
+        if self.search_cache:
+            stats["search_cache"] = self.search_cache.stats()
+        else:
             stats["search_cache"] = None
+
+        if self.prefetch_manager:
+            stats["prefetch"] = self.prefetch_manager.get_stats()
+        else:
+            stats["prefetch"] = None
 
         return stats
 
@@ -100,7 +133,23 @@ class QMDMemoryStore:
         """Get a single report by run_id."""
         if not self._db_exists():
             return None
-        return await self.query_engine.get_run(run_id)
+        run = await self.query_engine.get_run(run_id)
+
+        # Trigger prefetch if enabled
+        if self.prefetch_manager and run:
+            context = {
+                "action": "get_run",
+                "run_id": run_id,
+                "run_data": run,
+                "filters": {"repo_path": run.get("repo_path")},
+                "prefetch_window": self.prefetch_window,
+                "prefetch_hours": self.prefetch_hours,
+                "prefetch_vibe_delta": self.prefetch_vibe_delta,
+                "prefetch_stack_count": self.prefetch_stack_count,
+            }
+            self.prefetch_manager.trigger(context)
+
+        return run
 
     async def get_previous_run(
         self, repo_path: Optional[str] = None
@@ -126,11 +175,23 @@ class QMDMemoryStore:
         """Search across saved reports using hybrid BM25 + vector search."""
         if not self._db_exists():
             return []
-        if alpha is None:
-            # Default weighting: AI-Buff might prefer vector results
-            alpha = 0.4 if self.ai_buff_enabled else 0.6
 
-        return await self.query_engine.search(
+        # Determine alpha using query planning if not explicitly provided
+        if alpha is None:
+            if self.ai_buff_enabled:
+                # Build filters dict for planning
+                filters = {
+                    "repo_path": repo_path,
+                    "stack": stack,
+                    "min_score": min_score,
+                    "max_score": max_score,
+                }
+                plan = self.query_engine._plan_query(query, limit, filters)
+                alpha = plan.alpha
+            else:
+                alpha = 0.6
+
+        results = await self.query_engine.search(
             query=query,
             limit=limit,
             repo_path=repo_path,
@@ -139,6 +200,21 @@ class QMDMemoryStore:
             max_score=max_score,
             alpha=alpha
         )
+
+        # Trigger prefetch based on search results (if repo_path filter used)
+        if self.prefetch_manager and repo_path:
+            context = {
+                "action": "search",
+                "query": query,
+                "filters": {"repo_path": repo_path, "stack": stack},
+                "prefetch_window": self.prefetch_window,
+                "prefetch_hours": self.prefetch_hours,
+                "prefetch_vibe_delta": self.prefetch_vibe_delta,
+                "prefetch_stack_count": self.prefetch_stack_count,
+            }
+            self.prefetch_manager.trigger(context)
+
+        return results
 
     async def diff_runs(self, run_id_a: int, run_id_b: int) -> Optional[Dict[str, Any]]:
         """Compare two analysis runs."""

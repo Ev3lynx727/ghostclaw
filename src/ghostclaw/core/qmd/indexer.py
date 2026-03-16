@@ -76,9 +76,10 @@ class ReportIndexer:
             return cursor.rowcount > 0
 
     async def _ensure_db(self) -> None:
-        """Ensure reports table exists."""
+        """Ensure reports table exists and has required columns."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
+            # Create table if not exists
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS reports (
@@ -96,4 +97,14 @@ class ReportIndexer:
                 )
             """
             )
+            # Migration: add columns if missing (for older DBs)
+            async with db.execute("PRAGMA table_info(reports)") as cursor:
+                rows = await cursor.fetchall()
+                column_names = [row[1] for row in rows]  # row[1] is name
+
+            if 'files_analyzed' not in column_names:
+                await db.execute("ALTER TABLE reports ADD COLUMN files_analyzed INTEGER")
+            if 'total_lines' not in column_names:
+                await db.execute("ALTER TABLE reports ADD COLUMN total_lines INTEGER")
+
             await db.commit()

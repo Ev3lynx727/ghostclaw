@@ -39,7 +39,11 @@ full = [
     "mcp>=1.0.0",
     "ai-codeindex>=0.1.0",
     "pyscn>=0.1.0",
-    "codebert-score>=0.1.0"
+    "codebert-score>=0.1.0",
+    "complexipy>=0.1.0"
+]
+complexity = [
+    "complexipy>=0.1.0"
 ]
 mcp = [
     "mcp>=1.0.0"

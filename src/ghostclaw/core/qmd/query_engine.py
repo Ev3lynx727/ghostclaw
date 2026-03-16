@@ -24,16 +24,17 @@ class QueryPlan:
 class QueryEngine:
     """Handles all read-only queries against the QMD store."""
 
-    def __init__(self, db_path: Path, fts: BM25Search, vector_store=None):
+    def __init__(self, db_path: Path, fts: BM25Search, vector_store=None, search_cache=None):
         self.db_path = db_path
         self.fts = fts
         self.vector_store = vector_store
+        self.search_cache = search_cache
 
     async def list_runs(self, limit: int = 10, repo_path: Optional[str] = None) -> List[Dict[str, Any]]:
         """List recent runs, optionally filtered by repo_path."""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            sql = "SELECT id, timestamp, vibe_score, stack, repo_path FROM reports"
+            sql = "SELECT id, timestamp, vibe_score, stack, files_analyzed, total_lines, repo_path FROM reports"
             params = []
             if repo_path:
                 sql += " WHERE repo_path = ?"
@@ -71,6 +72,15 @@ class QueryEngine:
         if not query:
             return []
 
+        # Check cache first (if available)
+        if self.search_cache:
+            cached = self.search_cache.get(
+                query=query, limit=limit, repo_path=repo_path,
+                stack=stack, min_score=min_score, max_score=max_score
+            )
+            if cached is not None:
+                return cached
+
         # Ensure FTS is initialized (idempotent; creates table only if missing)
         await self.fts.ensure_initialized()
 
@@ -86,6 +96,13 @@ class QueryEngine:
         # Apply snippets
         for r in results:
             r["matched_snippets"] = self._extract_snippets(r.get("report", {}), query)
+
+        # Store in cache (if available)
+        if self.search_cache:
+            self.search_cache.set(
+                query=query, results=results, limit=limit, repo_path=repo_path,
+                stack=stack, min_score=min_score, max_score=max_score
+            )
 
         return results
 
@@ -136,6 +153,10 @@ class QueryEngine:
             r['score'] = r['_bm25_norm'] * alpha + r['_vector_sim'] * (1 - alpha)
 
         combined.sort(key=lambda x: x['score'], reverse=True)
+
+        # Hydrate: for results without a full report (vector-only), fetch from DB
+        await self._hydrate_missing_reports(combined)
+
         return combined[:limit]
 
     async def _legacy_search(
@@ -219,18 +240,81 @@ class QueryEngine:
             parts.append(str(report["ai_synthesis"]))
         return " ".join(parts)
 
-    # AI-Buff: query planning (stub)
+    async def _hydrate_missing_reports(self, results: List[Dict]) -> None:
+        """For results lacking a full report (vector-only), fetch from DB."""
+        missing_ids = [r['id'] for r in results if 'report' not in r or not r['report']]
+        if not missing_ids:
+            return
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            placeholders = ','.join('?' for _ in missing_ids)
+            sql = f"""
+                SELECT id, timestamp, vibe_score, stack, files_analyzed, total_lines, repo_path, report_json
+                FROM reports
+                WHERE id IN ({placeholders})
+            """
+            async with db.execute(sql, missing_ids) as cursor:
+                rows = await cursor.fetchall()
+                data_by_id = {row['id']: dict(row) for row in rows}
+
+            for r in results:
+                rid = r['id']
+                if rid in data_by_id and ('report' not in r or not r['report']):
+                    row = data_by_id[rid]
+                    try:
+                        report = json.loads(row['report_json'])
+                    except (json.JSONDecodeError, TypeError):
+                        report = {}
+                    # Update top-level fields and report
+                    r.update({
+                        'timestamp': row['timestamp'],
+                        'vibe_score': row['vibe_score'],
+                        'stack': row['stack'],
+                        'repo_path': row['repo_path'],
+                        'files_analyzed': row['files_analyzed'],
+                        'total_lines': row['total_lines'],
+                        'report': report,
+                    })
+
+    # AI-Buff: query planning
     def _plan_query(self, query: str, limit: int, filters: dict) -> QueryPlan:
-        """Decide query execution strategy based on input."""
+        """Decide query execution strategy based on input characteristics."""
+        score = 0.0
+        weight_sum = 0.0
+
+        # 1. Token count (existing heuristic)
         token_count = len(query.split())
         if token_count <= 3:
-            alpha = 0.9
+            score += 0.15  # favor BM25
         elif token_count >= 10:
-            alpha = 0.3
-        else:
-            alpha = 0.6
+            score -= 0.15  # favor vector
+        weight_sum += 0.15
+
+        # 2. Exact quotes present → strongly favor BM25
+        if '"' in query or "'" in query:
+            score += 0.25
+        weight_sum += 0.25
+
+        # 3. Code-like symbols (camelCase, snake_case, dots) → BM25 good
+        if any(char in query for char in ['.', '_']) or any(c.islower() and nxt.isupper() for c, nxt in zip(query, query[1:])):
+            score += 0.20
+        weight_sum += 0.20
+
+        # 4. Filters present (repo_path, stack) → narrower search, BM25 OK
+        if filters.get('repo_path') or filters.get('stack'):
+            score += 0.15
+        weight_sum += 0.15
+
+        # Normalize to [0..1] and map to alpha range [0.9..0.3]
+        # Higher score → more BM25 → alpha closer to 1.0
+        normalized = (score / weight_sum) if weight_sum > 0 else 0.5
+        alpha = 0.9 - normalized * 0.6
+
+        # Use cache for small limits (typical of agent follow-up queries)
         use_cache = limit <= 10
-        return QueryPlan(use_hybrid=True, use_cache=use_cache, alpha=alpha)
+
+        return QueryPlan(use_hybrid=True, use_cache=use_cache, alpha=round(alpha, 2))
 
     async def diff_runs(self, run_id_a: int, run_id_b: int) -> Dict[str, Any]:
         """Compare two architecture reports, returning a MemoryStore-compatible diff."""

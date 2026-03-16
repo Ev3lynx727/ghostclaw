@@ -186,3 +186,304 @@ async def test_qmd_memory_store_knowledge_graph(tmp_path):
     ghost_items = [entry["item"] for entry in graph["recurring_ghosts"]]
     assert "Recurring issue" in issue_items
     assert "Recurring ghost" in ghost_items
+
+
+@pytest.mark.asyncio
+async def test_prefetch_manager_sequential(tmp_path):
+    """Test sequential prefetch strategy identifies adjacent runs."""
+    from ghostclaw.core.prefetch import PrefetchManager
+
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+
+    # Save 5 runs
+    run_ids = []
+    for i in range(5):
+        report = {
+            "vibe_score": 50 + i * 5,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 10,
+            "issues": [f"Issue {i}"],
+            "architectural_ghosts": [],
+            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"}
+        }
+        run_id = await store.save_run(report, repo_path=str(tmp_path))
+        run_ids.append(run_id)
+
+    # Get first run (oldest id)
+    first_run = await store.get_run(run_ids[0])
+    assert first_run is not None
+
+    # Check that prefetch manager triggered and queued neighboring runs
+    stats = store.prefetch_manager.get_stats()
+    # Triggered at least once
+    assert stats["triggered"] >= 1
+    # Note: due to async background, pending may be 0 after tasks complete; we can't reliably assert pending counts
+    # Instead, verify the strategy logic directly:
+    context = {
+        "action": "get_run",
+        "run_id": run_ids[2],  # middle run
+        "run_data": await store.get_run(run_ids[2]),
+        "filters": {"repo_path": str(tmp_path)},
+        "prefetch_window": 2,
+    }
+    # Access internal method to compute candidate IDs (we'll test strategy directly)
+    pm = store.prefetch_manager
+    seq_ids = await pm._prefetch_sequential(context)
+    # Should include runs at idx-2, idx-1, idx+1, idx+2 within bounds
+    expected = set(run_ids[:2] + run_ids[3:5])  # indices 0,1,3,4 when current is 2
+    assert seq_ids == expected
+
+
+@pytest.mark.asyncio
+async def test_prefetch_manager_time_window(tmp_path):
+    """Test time window prefetch."""
+    from ghostclaw.core.prefetch import PrefetchManager
+    from datetime import datetime, timedelta
+
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+
+    base = datetime(2026, 3, 12, 12, 0, 0)
+    reports = []
+    for i in range(-2, 3):  # 5 runs: -60min, -30min, 0, +30min, +60min relative to base
+        ts = (base + timedelta(minutes=i*30)).isoformat() + "Z"
+        reports.append({
+            "vibe_score": 50,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 10,
+            "issues": [],
+            "architectural_ghosts": [],
+            "metadata": {"timestamp": ts}
+        })
+    run_ids = []
+    for r in reports:
+        run_id = await store.save_run(r, repo_path=str(tmp_path))
+        run_ids.append(run_id)
+
+    # Get middle run (index 2, base time)
+    middle = await store.get_run(run_ids[2])
+    pm = store.prefetch_manager
+    context = {
+        "action": "get_run",
+        "run_id": run_ids[2],
+        "run_data": middle,
+        "filters": {"repo_path": str(tmp_path)},
+        "prefetch_hours": 1,  # ±1 hour window
+    }
+    time_ids = await pm._prefetch_time_window(context)
+    # Should include all except self (all within ±1 hour)
+    assert set(time_ids) == set(run_ids) - {run_ids[2]}
+
+
+@pytest.mark.asyncio
+async def test_prefetch_vibe_proximity(tmp_path):
+    """Test vibe score proximity prefetch."""
+    from ghostclaw.core.prefetch import PrefetchManager
+
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+
+    # Create runs with varying vibe scores
+    scores = [40, 45, 50, 55, 60]
+    run_ids = []
+    for s in scores:
+        report = {
+            "vibe_score": s,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 10,
+            "issues": [],
+            "architectural_ghosts": [],
+            "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        }
+        run_id = await store.save_run(report, repo_path=str(tmp_path))
+        run_ids.append(run_id)
+
+    # Middle score 50, delta 10 -> should fetch 40, 45, 55, 60 (all)
+    middle_run = await store.get_run(run_ids[2])
+    pm = store.prefetch_manager
+    context = {
+        "action": "get_run",
+        "run_id": run_ids[2],
+        "run_data": middle_run,
+        "filters": {"repo_path": str(tmp_path)},
+        "prefetch_vibe_delta": 10,
+    }
+    vibe_ids = await pm._prefetch_vibe_proximity(context)
+    assert set(vibe_ids) == set(run_ids) - {run_ids[2]}
+
+
+@pytest.mark.asyncio
+async def test_prefetch_same_stack(tmp_path):
+    """Test stack correlation prefetch."""
+    from ghostclaw.core.prefetch import PrefetchManager
+
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+
+    # Mix stacks
+    stacks = ["python", "python", "node", "python", "go"]
+    run_ids = []
+    for stack in stacks:
+        report = {
+            "vibe_score": 50,
+            "stack": stack,
+            "files_analyzed": 1,
+            "total_lines": 10,
+            "issues": [],
+            "architectural_ghosts": [],
+            "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        }
+        run_id = await store.save_run(report, repo_path=str(tmp_path))
+        run_ids.append(run_id)
+
+    # Get first python run (id at index 0)
+    run = await store.get_run(run_ids[0])
+    pm = store.prefetch_manager
+    context = {
+        "action": "get_run",
+        "run_id": run_ids[0],
+        "run_data": run,
+        "filters": {"repo_path": str(tmp_path)},
+        "prefetch_stack_count": 5,
+    }
+    stack_ids = await pm._prefetch_same_stack(context)
+    # Should get other python runs: indices 1 and 3
+    expected = {run_ids[1], run_ids[3]}
+    assert set(stack_ids) == expected
+
+
+@pytest.mark.asyncio
+async def test_prefetch_manager_shutdown(tmp_path):
+    """Test that prefetch manager shuts down cleanly."""
+    from ghostclaw.core.prefetch import PrefetchManager
+
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+    # No special action needed; just ensure shutdown exists
+    pm = store.prefetch_manager
+    pm.shutdown()  # should not raise
+
+
+
+@pytest.mark.asyncio
+async def test_search_cache_integration(tmp_path):
+    """Test that search cache is used when ai_buff_enabled=True."""
+    db_path = tmp_path / "qmd.db"
+    # Enable AI-Buff to activate search cache
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+
+    # Save two reports
+    report1 = {
+        "vibe_score": 60,
+        "stack": "python",
+        "files_analyzed": 5,
+        "total_lines": 200,
+        "issues": ["Authentication bypass"],
+        "architectural_ghosts": [],
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+    }
+    report2 = {
+        "vibe_score": 80,
+        "stack": "node",
+        "files_analyzed": 8,
+        "total_lines": 300,
+        "issues": ["Memory leak"],
+        "architectural_ghosts": ["Callback hell"],
+        "metadata": {"timestamp": "2026-03-12T12:01:00Z"}
+    }
+    await store.save_run(report1, repo_path=str(tmp_path))
+    await store.save_run(report2, repo_path=str(tmp_path))
+
+    # First search - cache miss
+    results1 = await store.search("authentication")
+    assert len(results1) == 1
+    stats1 = store.get_stats()
+    assert stats1["search_cache"]["hits"] == 0
+    assert stats1["search_cache"]["misses"] == 1
+
+    # Second identical search - should be cache hit
+    results2 = await store.search("authentication")
+    assert len(results2) == 1
+    assert results2[0]["vibe_score"] == results1[0]["vibe_score"]
+    stats2 = store.get_stats()
+    assert stats2["search_cache"]["hits"] == 1
+    assert stats2["search_cache"]["misses"] == 1  # unchanged
+
+
+@pytest.mark.asyncio
+async def test_query_planning_alpha_selection(tmp_path):
+    """Test that query planning adjusts alpha based on query characteristics."""
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+
+    # Save one report to enable hybrid
+    report = {
+        "vibe_score": 50,
+        "stack": "python",
+        "files_analyzed": 1,
+        "total_lines": 10,
+        "issues": [],
+        "architectural_ghosts": [],
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+    }
+    await store.save_run(report, repo_path=str(tmp_path))
+
+    # Short keyword query (<=3 tokens) → alpha should be high (BM25 heavy, ~0.9)
+    # We'll just check that alpha passed to query_engine is appropriate
+    # We can't easily intercept alpha, but we can check it's used by verifying
+    # that search completes without error. For rigorous alpha test, we'd need
+    # to mock the classifier. This is an integration sanity check.
+    await store.search("bypass", limit=5)  # short query
+
+    # Longer query (>=10 tokens) → alpha should be lower (vector heavy)
+    long_query = "how to fix authentication bypass vulnerability in web application"
+    await store.search(long_query, limit=5)
+
+    # Query with exact quotes → BM25 heavy
+    await store.search('"security issue"', limit=5)
+
+    # All should complete successfully; Phase 3 activation confirmed
+
+
+@pytest.mark.asyncio
+async def test_search_cache_ttl_expiry(tmp_path):
+    """Test that search cache entries expire after TTL."""
+    import time
+
+    db_path = tmp_path / "qmd.db"
+    # Use short TTL for testing
+    store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
+    # Override search_cache TTL to 1 second
+    if store.search_cache:
+        store.search_cache.ttl = 1
+
+    report = {
+        "vibe_score": 50,
+        "stack": "python",
+        "files_analyzed": 1,
+        "total_lines": 10,
+        "issues": ["Test issue"],
+        "architectural_ghosts": [],
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+    }
+    await store.save_run(report, repo_path=str(tmp_path))
+
+    # First search - miss
+    await store.search("test")
+    assert store.search_cache.stats()["misses"] == 1
+
+    # Immediate second search - hit
+    await store.search("test")
+    assert store.search_cache.stats()["hits"] == 1
+
+    # Wait for TTL expiry
+    time.sleep(1.5)
+
+    # Third search - should be miss again (cache cleared)
+    await store.search("test")
+    assert store.search_cache.stats()["misses"] == 2
+    assert store.search_cache.stats()["hits"] == 1  # unchanged

@@ -62,14 +62,38 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
 
     if use_qmd:
         qmd_db_path = db_path.parent / "qmd" / "ghostclaw.db"
-        # Determine embedding backend from config (default: sentence-transformers)
+        # Determine embedding backend and prefetch settings from config
         embedding_backend = "fastembed"
+        ai_buff_enabled = False
+        prefetch_enabled = True
+        prefetch_workers = 2
+        prefetch_window = 2
+        prefetch_hours = 24
+        prefetch_vibe_delta = 10
+        prefetch_stack_count = 5
         try:
             cfg = GhostclawConfig.load(repo_path or ".")
             embedding_backend = getattr(cfg, 'embedding_backend', 'fastembed')
+            ai_buff_enabled = getattr(cfg, 'ai_buff_enabled', False)
+            prefetch_enabled = getattr(cfg, 'prefetch_enabled', True)
+            prefetch_workers = getattr(cfg, 'prefetch_workers', 2)
+            prefetch_window = getattr(cfg, 'prefetch_window', 2)
+            prefetch_hours = getattr(cfg, 'prefetch_hours', 24)
+            prefetch_vibe_delta = getattr(cfg, 'prefetch_vibe_delta', 10)
+            prefetch_stack_count = getattr(cfg, 'prefetch_stack_count', 5)
         except Exception:
             pass
-        return QMDMemoryStore(db_path=qmd_db_path, embedding_backend=embedding_backend)
+        return QMDMemoryStore(
+            db_path=qmd_db_path,
+            embedding_backend=embedding_backend,
+            ai_buff_enabled=ai_buff_enabled,
+            prefetch_enabled=prefetch_enabled,
+            prefetch_workers=prefetch_workers,
+            prefetch_window=prefetch_window,
+            prefetch_hours=prefetch_hours,
+            prefetch_vibe_delta=prefetch_vibe_delta,
+            prefetch_stack_count=prefetch_stack_count,
+        )
     else:
         return MemoryStore(db_path=db_path)
 
@@ -85,7 +109,7 @@ async def ghostclaw_analyze(repo_path: str) -> str:
 
     analyzer = get_analyzer()
     report = await analyzer.analyze(repo_path)
-    return json.dumps(report, indent=2)
+    return report.model_dump_json(indent=2)
 
 
 @mcp.tool() if HAS_MCP else lambda x: x
@@ -99,7 +123,7 @@ async def ghostclaw_get_ghosts(repo_path: str) -> str:
 
     analyzer = get_analyzer()
     report = await analyzer.analyze(repo_path)
-    ghosts = report.get("architectural_ghosts", [])
+    ghosts = report.architectural_ghosts
     return json.dumps({"architectural_ghosts": ghosts}, indent=2)
 
 
@@ -116,8 +140,8 @@ async def ghostclaw_refactor_plan(repo_path: str) -> str:
     report = await analyzer.analyze(repo_path)
 
     # Placeholder for advanced refactor planning logic (Phase 2 enhancement)
-    issues = report.get("issues", [])
-    ghosts = report.get("architectural_ghosts", [])
+    issues = report.issues
+    ghosts = report.architectural_ghosts
 
     plan = [
         "### Ghostclaw Refactor Blueprint",

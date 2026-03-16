@@ -1,8 +1,9 @@
-"""Node.js / React / TypeScript stack analyzer with coupling."""
+"""Node.js / React / TypeScript stack analyzer with coupling and cognitive complexity."""
 
 from typing import Dict, List
 from ghostclaw.core.node_coupling import NodeImportAnalyzer
 from .base import StackAnalyzer
+from ghostclaw.lib.complexity import analyze_files_cognitive
 
 
 class NodeAnalyzer(StackAnalyzer):
@@ -32,6 +33,11 @@ class NodeAnalyzer(StackAnalyzer):
         except Exception as e:
             coupling_metrics = {}
             issues.append(f"Import analysis failed: {str(e)}")
+
+        # Add cognitive complexity metrics via complexipy (if available)
+        cognitive_data = analyze_files_cognitive(files)
+        if cognitive_data:
+            coupling_metrics.update(cognitive_data)
 
         # File size metrics handled by validator rules
 

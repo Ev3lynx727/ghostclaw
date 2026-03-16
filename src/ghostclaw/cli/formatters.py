@@ -66,9 +66,22 @@ class MarkdownFormatter(BaseFormatter):
         if metrics:
             avg_ccn = metrics.get('avg_ccn')
             avg_nd = metrics.get('avg_nd')
+            avg_cog = metrics.get('avg_cognitive')
+            max_cog = metrics.get('max_cognitive')
+            # Traditional metrics (keep original format)
             if avg_ccn is not None or avg_nd is not None:
-                lines.append(f"- **Avg CCN**: {avg_ccn or 'N/A'}")
-                lines.append(f"- **Avg Nesting Depth**: {avg_nd or 'N/A'}")
+                if avg_ccn is not None:
+                    lines.append(f"- **Avg CCN**: {avg_ccn}")
+                if avg_nd is not None:
+                    lines.append(f"- **Avg Nesting Depth**: {avg_nd}")
+            # Cognitive complexity metrics (new)
+            if avg_cog is not None or max_cog is not None:
+                cog_parts = []
+                if avg_cog is not None:
+                    cog_parts.append(f"Avg Cognitive: {avg_cog}")
+                if max_cog is not None:
+                    cog_parts.append(f"Max Cognitive: {max_cog}")
+                lines.append(f"- **Cognitive**: {' | '.join(cog_parts)}")
 
         lines.append("")
 
@@ -162,8 +175,24 @@ class TerminalFormatter(BaseFormatter):
         if metrics:
             avg_ccn = metrics.get('avg_ccn')
             avg_nd = metrics.get('avg_nd')
+            avg_cog = metrics.get('avg_cognitive')
+            max_cog = metrics.get('max_cognitive')
+            # Traditional metrics (original format)
             if avg_ccn is not None or avg_nd is not None:
-                lines.append(f"   Metrics: Avg CCN: {avg_ccn or 'N/A'}, Avg Nesting: {avg_nd or 'N/A'}")
+                parts = []
+                if avg_ccn is not None:
+                    parts.append(f"Avg CCN: {avg_ccn}")
+                if avg_nd is not None:
+                    parts.append(f"Avg Nesting: {avg_nd}")
+                lines.append(f"   Metrics: {', '.join(parts)}")
+            # Cognitive complexity metrics
+            if avg_cog is not None or max_cog is not None:
+                cog_parts = []
+                if avg_cog is not None:
+                    cog_parts.append(f"Avg Cognitive: {avg_cog}")
+                if max_cog is not None:
+                    cog_parts.append(f"Max Cognitive: {max_cog}")
+                lines.append(f"   Cognitive: {', '.join(cog_parts)}")
 
         lines.append("")
 

@@ -93,7 +93,33 @@ class GhostclawConfig(BaseSettings):
     )
     ai_buff_enabled: bool = Field(
         default=False,
-        description="Enable AI-Buff optimizations (pre-fetching, query planning) for QMD (experimental)"
+        description="Enable AI-Buff optimizations (query planning, caching) for QMD (experimental)"
+    )
+
+    # Prefetch settings (Phase 4)
+    prefetch_enabled: bool = Field(
+        default=True,
+        description="Enable pre-fetching of likely-needed runs when ai_buff_enabled is True"
+    )
+    prefetch_workers: int = Field(
+        default=2,
+        description="Number of background threads for prefetch operations"
+    )
+    prefetch_window: int = Field(
+        default=2,
+        description="Number of adjacent runs to prefetch in sequential strategy (delta analysis)"
+    )
+    prefetch_hours: int = Field(
+        default=24,
+        description="Time window in hours for time-based prefetch strategy"
+    )
+    prefetch_vibe_delta: int = Field(
+        default=10,
+        description="Vibe score +/- delta for vibe proximity prefetch"
+    )
+    prefetch_stack_count: int = Field(
+        default=5,
+        description="Number of recent runs with matching stack to prefetch"
     )
 
     # Analysis Behavior

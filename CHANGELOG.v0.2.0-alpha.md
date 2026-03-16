@@ -160,12 +160,61 @@ pip install 'ghostclaw[qmd]'  # sentence-transformers already included
 
 ## Up Next (Phase 3+)
 
-- AI-Buff Scheme: embedding cache, result cache, query planning
-- Query optimization: short queries boost BM25, long queries boost vector
-- IVF-PQ index support once LanceDB API stabilizes
-- Migration tooling for existing QMD users
+- **Phase 3 AI-Buff (completed 2026-03-17):** embedding cache, search cache, query planning, stats
+- **Phase 4 Prefetch (completed 2026-03-17):** anticipatory loading of related runs
+- **Phase 5 Migration:** legacy QMD auto-migration tooling
+- **Phase 6 Vector Optimization:** IVF-PQ index + adaptive alpha tuning
 - End-to-end integration tests with real codebases
 - Performance tuning and monitoring
+
+---
+
+## Recent Updates (2026-03-17)
+
+### Phase 4: Prefetch — Completed
+
+- **PrefetchManager** — async-native background preloading of likely-needed runs
+- **4 strategies:**
+  - Sequential (delta pattern): pre-fetch N-1, N-2, N+1, N+2 from same repo
+  - Time window: runs within ±X hours
+  - Vibe proximity: runs with similar vibe_score (±delta)
+  - Stack correlation: recent runs with same stack
+- **Configuration:** `prefetch_enabled`, `prefetch_window`, `prefetch_hours`, `prefetch_vibe_delta`, `prefetch_stack_count`
+- **Integration:** auto-triggers on `get_run()` and `search()` (with `repo_path`)
+- **Stats:** `store.get_stats()["prefetch"]` reports `triggered`, `completed`, `errors`, `pending`
+- **Tests:** 5 new unit tests (`test_qmd_store.py`) — all passing; total QMD tests now 31/31
+- **Adapter coverage:** QMDStorageAdapter and MCP server pass prefetch config
+
+---
+
+## Phase 3: AI-Buff — Completed (2026-03-17)
+
+- **EmbeddingCache** — LRU cache (1000 entries, 1h TTL) for query embeddings
+- **SearchCache** — LRU cache (500 entries, 5min TTL) for search result sets
+- **Query Planning** — dynamic alpha selection based on query features:
+  - Token count, exact quotes, code symbols, filter constraints
+  - Alpha range 0.3–0.9 (BM25-heavy for short/exact queries, vector-heavy for long)
+- **Stats CLI:** `ghostclaw memory-stats` shows cache hit rates
+- **Tests:** 3 new tests; all QMD tests (20/20 at that time) passing
+
+---
+
+## v0.2.0-beta Changes (since alpha)
+
+- Fixed: MCP JSON serialization (use Pydantic model attributes)
+- Added: Cognitive complexity via `complexipy` to stack analyzers (shell, python, node, typescript)
+- Fixed: QMD hydration for vector-only results (missing `report` dict)
+- Fixed: `list_runs` returns `files_analyzed`, `total_lines` per MemoryStore contract
+- Added: Schema migration for missing columns (auto `ALTER TABLE`)
+- Updated: Formatters now show cognitive metrics separately
+- Improved: Config schema expanded with prefetch fields
+- Tests: 222 passed, 2 skipped (full unit suite)
+
+---
+
+**Branch:** feature/v0.2.0-alpha-qmd-optimize  
+**Status:** Beta — Phase 3 & 4 complete, ready for real-world testing  
+**Release candidate:** v0.2.0-beta (2026-03-17)
 
 ---
 

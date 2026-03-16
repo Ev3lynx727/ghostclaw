@@ -65,20 +65,38 @@ class QMDStorageAdapter(StorageAdapter):
     async def _get_memory_store(self) -> QMDMemoryStore:
         """Lazy-initialize the QMDMemoryStore with enhanced mode."""
         if self._memory_store is None:
-            # Determine ai_buff_enabled from project config
+            # Determine ai_buff_enabled and prefetch settings from project config
             try:
                 from ghostclaw.core.config import GhostclawConfig
-                # Assume adapter is used at repo root; acquire cwd or use db_path.parents[?]
                 repo_path = self.db_path.parent.parent.parent.parent  # .ghostclaw/storage/qmd/ghostclaw.db -> repo root
                 cfg = GhostclawConfig.load(repo_path)
                 ai_buff = getattr(cfg, 'ai_buff_enabled', False)
+                prefetch_enabled = getattr(cfg, 'prefetch_enabled', True)
+                prefetch_workers = getattr(cfg, 'prefetch_workers', 2)
+                prefetch_window = getattr(cfg, 'prefetch_window', 2)
+                prefetch_hours = getattr(cfg, 'prefetch_hours', 24)
+                prefetch_vibe_delta = getattr(cfg, 'prefetch_vibe_delta', 10)
+                prefetch_stack_count = getattr(cfg, 'prefetch_stack_count', 5)
             except Exception:
                 ai_buff = False
+                prefetch_enabled = True
+                prefetch_workers = 2
+                prefetch_window = 2
+                prefetch_hours = 24
+                prefetch_vibe_delta = 10
+                prefetch_stack_count = 5
+
             self._memory_store = QMDMemoryStore(
                 db_path=self.db_path,
                 use_enhanced=True,
                 embedding_backend=self.embedding_backend,
-                ai_buff_enabled=ai_buff
+                ai_buff_enabled=ai_buff,
+                prefetch_enabled=prefetch_enabled,
+                prefetch_workers=prefetch_workers,
+                prefetch_window=prefetch_window,
+                prefetch_hours=prefetch_hours,
+                prefetch_vibe_delta=prefetch_vibe_delta,
+                prefetch_stack_count=prefetch_stack_count,
             )
         return self._memory_store
 

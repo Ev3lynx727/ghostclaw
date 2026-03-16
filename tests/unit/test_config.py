@@ -38,6 +38,8 @@ def test_config_optional_bool_env_vars(monkeypatch, tmp_path):
     """Test that Optional[bool] env vars are correctly converted from strings."""
     # Run in a clean temporary directory to avoid picking up the real .ghostclaw/ghostclaw.json
     monkeypatch.chdir(tmp_path)
+    # Also isolate global config by setting HOME to tmp_path
+    monkeypatch.setenv("HOME", str(tmp_path))
     # Test use_pyscn (Optional[bool])
     monkeypatch.setenv("GHOSTCLAW_USE_PYSCN", "true")
     config = GhostclawConfig.load(".")
