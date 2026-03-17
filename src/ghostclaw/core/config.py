@@ -74,6 +74,10 @@ class GhostclawConfig(BaseSettings):
         default="fastembed",
         description="Embedding backend for QMD hybrid search (fastembed, sentence-transformers, openai)"
     )
+    embedding_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        description="Model name for the embedding backend (sentence-transformers or openai). Fastembed uses its own default."
+    )
     embedding_cache_size: int = Field(
         default=1000,
         description="Maximum number of cached query embeddings for QMD (LRU)"

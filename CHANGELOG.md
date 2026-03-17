@@ -13,6 +13,7 @@ All notable changes to Ghostclaw will be documented here.
 - **AI-Buff** features (caching, prefetch, query planning) are now production-ready (removed experimental label).
 - **QMD backend** is now considered stable for general use.
 - **README** updated with AI-Buff feature highlights and v0.2.1-beta notice.
+- **Config:** Added `embedding_model` option to customize model name for `sentence-transformers` or `openai` backends (fastembed uses its own default).
 
 ### Fixed
 - CLI import error: added `migrate_legacy_storage` stub in `core/migration.py`.
