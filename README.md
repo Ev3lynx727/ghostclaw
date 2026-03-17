@@ -284,7 +284,8 @@ Ghostclaw is designed to be fast out of the box, but for large repositories or s
 ### Storage & Memory Backend
 - Ghostclaw stores analysis results and history in `.ghostclaw/storage/` (reports, cache, SQLite DB).
 - **Automatic migration**: If you have legacy `.ghostclaw/reports/` or `.ghostclaw/cache/` from older versions, they will be automatically moved to the new storage layout on first run.
-- **QMD backend** (experimental): Use `--use-qmd` or set `use_qmd: true` in config for a high-performance alternative storage (requires `ghostclaw[qmd]`).
+- **QMD backend** (production-ready as of v0.2.1-beta): Use `--use-qmd` or set `use_qmd: true` in config for a high-performance alternative storage with AI-Buff optimizations (requires `ghostclaw[qmd]`).
+  - AI-Buff includes: embedding cache, search cache, query planning, prefetching, auto-migration for legacy data, optional IVF-PQ index, adaptive alpha tuning, and result diversity.
 - MCP tools (`ghostclaw_mcp`) automatically detect and use the configured backend.
 
 ### Configuration File

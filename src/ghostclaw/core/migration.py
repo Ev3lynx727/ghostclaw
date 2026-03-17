@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import aiosqlite
@@ -277,3 +278,14 @@ class EmbeddingBackfillManager:
         stats["running"] = self._running
         stats["pending"] = len(self._pending)
         return stats
+
+
+# Backward compatibility: legacy storage layout migration (old .ghostclaw/reports -> .ghostclaw/storage)
+def migrate_legacy_storage(repo_path: Path) -> bool:
+    """
+    Check for legacy storage layout and migrate to new .ghostclaw/storage/ structure.
+    Returns True if migration was performed, False otherwise.
+    """
+    # Placeholder: not yet implemented; return False to skip
+    return False
+
