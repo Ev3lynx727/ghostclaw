@@ -40,6 +40,8 @@ class QMDMemoryStore:
         auto_migrate: bool = True,
         migration_batch_size: int = 50,
         migration_throttle_ms: int = 100,
+        max_chunks_per_report: Optional[int] = None,
+        vector_index_config: Optional[Dict] = None,
     ):
         # Use .ghostclaw/storage/qmd/ instead of .ghostclaw/storage/
         self.db_path = db_path or Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "ghostclaw.db"
@@ -56,6 +58,10 @@ class QMDMemoryStore:
         self.auto_migrate = auto_migrate and use_enhanced and ai_buff_enabled
         self.migration_batch_size = migration_batch_size
         self.migration_throttle_ms = migration_throttle_ms
+
+        # Phase 6: Vector optimization & diversity
+        self.max_chunks_per_report = max_chunks_per_report
+        self.vector_index_config = vector_index_config or {}
 
         # Subsystems
         # Using late imports to avoid circular dependencies
@@ -82,7 +88,8 @@ class QMDMemoryStore:
             lancedb_path = self.db_path.parent / "lancedb"
             self.vector_store = VectorStore(
                 db_path=lancedb_path,
-                embedding_backend=self.embedding_backend
+                embedding_backend=self.embedding_backend,
+                index_config=self.vector_index_config
             )
             self.embedding_mgr = EmbeddingManager(self.vector_store, self.embedding_backend)
         else:
@@ -91,7 +98,11 @@ class QMDMemoryStore:
 
         self.indexer = ReportIndexer(self.db_path, self.fts, self.embedding_mgr)
         self.query_engine = QueryEngine(
-            self.db_path, self.fts, self.vector_store, self.search_cache
+            self.db_path,
+            self.fts,
+            self.vector_store,
+            self.search_cache,
+            max_chunks_per_report=self.max_chunks_per_report
         )
 
         # Prefetch manager (requires AI-Buff enabled)
@@ -109,6 +120,17 @@ class QMDMemoryStore:
             )
             # Start migration in background (fire-and-forget)
             asyncio.create_task(self.backfill_manager.start_background())
+
+        # Schedule vector index creation in background if configured
+        if self.vector_store and self.vector_index_config.get("enabled", True):
+            asyncio.create_task(self._maybe_create_index())
+
+    async def _maybe_create_index(self):
+        """Background task to create IVF-PQ index once data is available."""
+        try:
+            await self.vector_store.ensure_index()
+        except Exception as e:
+            logger.warning("Failed to create vector index: %s", e)
 
     def get_stats(self) -> Dict[str, Any]:
         """Return statistics for the memory store."""

@@ -21,11 +21,11 @@ class VectorStore:
 
     def __init__(self, db_path: Optional[Path] = None, embedding_backend: str = "fastembed",
                  embedding_cache_size: int = 1000, embedding_cache_ttl: int = 3600,
-                 embedding_cache_dir: Optional[str] = None):
+                 embedding_cache_dir: Optional[str] = None, index_config: Optional[Dict] = None):
         self.db_path = db_path or Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "lancedb"
         self.embedding_backend = embedding_backend
         self._provider = EmbeddingProvider(backend=embedding_backend, cache_dir=embedding_cache_dir)
-        self._index = VectorIndex(db_path=self.db_path)
+        self._index = VectorIndex(db_path=self.db_path, index_config=index_config)
         self._embedding_cache = EmbeddingCache(maxsize=embedding_cache_size, ttl=embedding_cache_ttl)
 
     async def initialize(self) -> None:
@@ -184,6 +184,10 @@ class VectorStore:
     async def close(self) -> None:
         """Close connections."""
         pass
+
+    async def ensure_index(self) -> None:
+        """Ensure vector index (IVF-PQ) is created if configured."""
+        await self._index.ensure_index()
 
     async def add_chunks_for_report(
         self,

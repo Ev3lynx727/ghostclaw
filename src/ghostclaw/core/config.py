@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Optional, List, get_origin, get_args, Union
+from typing import Optional, List, Dict, get_origin, get_args, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -134,6 +134,16 @@ class GhostclawConfig(BaseSettings):
     migration_throttle_ms: int = Field(
         default=100,
         description="Milliseconds to wait between migration batches (rate limiting)"
+    )
+
+    # Vector Index Optimization (Phase 6)
+    max_chunks_per_report: Optional[int] = Field(
+        default=None,
+        description="Maximum chunks per report in hybrid search results (diversity limit, None = unlimited)"
+    )
+    vector_index: Optional[Dict] = Field(
+        default=None,
+        description="Vector index configuration (enabled, type, partitions, sub_vectors, training_sample_size). Example: {\"enabled\": true, \"type\": \"ivf_pq\", \"partitions\": 256, \"sub_vectors\": 64, \"training_sample_size\": 10000}"
     )
 
     # Analysis Behavior

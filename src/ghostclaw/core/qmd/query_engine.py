@@ -24,11 +24,17 @@ class QueryPlan:
 class QueryEngine:
     """Handles all read-only queries against the QMD store."""
 
-    def __init__(self, db_path: Path, fts: BM25Search, vector_store=None, search_cache=None):
+    def __init__(self, db_path: Path, fts: BM25Search, vector_store=None, search_cache=None, classifier=None, max_chunks_per_report: Optional[int] = None):
         self.db_path = db_path
         self.fts = fts
         self.vector_store = vector_store
         self.search_cache = search_cache
+        if classifier is None:
+            from .query_classifier import QueryClassifier
+            self.classifier = QueryClassifier()
+        else:
+            self.classifier = classifier
+        self.max_chunks_per_report = max_chunks_per_report
 
     async def list_runs(self, limit: int = 10, repo_path: Optional[str] = None) -> List[Dict[str, Any]]:
         """List recent runs, optionally filtered by repo_path."""
@@ -154,6 +160,17 @@ class QueryEngine:
 
         combined.sort(key=lambda x: x['score'], reverse=True)
 
+        # Apply diversity limit: cap chunks per report
+        if self.max_chunks_per_report:
+            limited = []
+            counts = {}
+            for r in combined:
+                rid = r['id']
+                if counts.get(rid, 0) < self.max_chunks_per_report:
+                    limited.append(r)
+                    counts[rid] = counts.get(rid, 0) + 1
+            combined = limited
+
         # Hydrate: for results without a full report (vector-only), fetch from DB
         await self._hydrate_missing_reports(combined)
 
@@ -277,44 +294,12 @@ class QueryEngine:
                         'report': report,
                     })
 
-    # AI-Buff: query planning
+    # AI-Buff: query planning — uses classifier
     def _plan_query(self, query: str, limit: int, filters: dict) -> QueryPlan:
-        """Decide query execution strategy based on input characteristics."""
-        score = 0.0
-        weight_sum = 0.0
-
-        # 1. Token count (existing heuristic)
-        token_count = len(query.split())
-        if token_count <= 3:
-            score += 0.15  # favor BM25
-        elif token_count >= 10:
-            score -= 0.15  # favor vector
-        weight_sum += 0.15
-
-        # 2. Exact quotes present → strongly favor BM25
-        if '"' in query or "'" in query:
-            score += 0.25
-        weight_sum += 0.25
-
-        # 3. Code-like symbols (camelCase, snake_case, dots) → BM25 good
-        if any(char in query for char in ['.', '_']) or any(c.islower() and nxt.isupper() for c, nxt in zip(query, query[1:])):
-            score += 0.20
-        weight_sum += 0.20
-
-        # 4. Filters present (repo_path, stack) → narrower search, BM25 OK
-        if filters.get('repo_path') or filters.get('stack'):
-            score += 0.15
-        weight_sum += 0.15
-
-        # Normalize to [0..1] and map to alpha range [0.9..0.3]
-        # Higher score → more BM25 → alpha closer to 1.0
-        normalized = (score / weight_sum) if weight_sum > 0 else 0.5
-        alpha = 0.9 - normalized * 0.6
-
-        # Use cache for small limits (typical of agent follow-up queries)
+        """Decide query execution strategy based on input."""
+        alpha = self.classifier.classify(query, filters)
         use_cache = limit <= 10
-
-        return QueryPlan(use_hybrid=True, use_cache=use_cache, alpha=round(alpha, 2))
+        return QueryPlan(use_hybrid=True, use_cache=use_cache, alpha=alpha)
 
     async def diff_runs(self, run_id_a: int, run_id_b: int) -> Dict[str, Any]:
         """Compare two architecture reports, returning a MemoryStore-compatible diff."""

@@ -622,3 +622,79 @@ async def test_migration_stats_output(tmp_path):
     assert "completed_at" in mig_stats
     assert "last_error" in mig_stats
     assert "pending" in mig_stats
+
+
+def test_query_classifier_alpha_ranges():
+    """Test that QueryClassifier returns appropriate alpha values."""
+    from ghostclaw.core.qmd.query_classifier import QueryClassifier
+    clf = QueryClassifier()
+
+    # Short keyword query (1 token) → BM25 heavy → alpha = 0.9
+    alpha_short = clf.classify("auth", {})
+    assert alpha_short == 0.9, f"Expected alpha=0.9 for short query, got {alpha_short}"
+
+    # Long query (>=10 tokens) → vector heavy → alpha = 0.3
+    long_query = "how to fix authentication bypass vulnerability in large web applications with many endpoints"
+    alpha_long = clf.classify(long_query, {})
+    assert alpha_long == 0.3, f"Expected alpha=0.3 for long query, got {alpha_long}"
+
+    # Exact quotes → BM25 heavy (medium base + 0.3 = 0.9 cap)
+    alpha_quotes = clf.classify('"security issue"', {})
+    assert alpha_quotes >= 0.8  # 0.6+0.3 = 0.9
+
+    # Code symbols → BM25 heavy (medium +0.2 -> 0.8)
+    alpha_code = clf.classify("myVar.camelCase(foo_bar)", {})
+    assert alpha_code >= 0.8
+
+    # With filters (repo_path) → BM25 heavy (medium +0.1 -> 0.7)
+    alpha_filters = clf.classify("test", {"repo_path": "/path/to/repo"})
+    assert alpha_filters >= 0.7
+
+
+@pytest.mark.asyncio
+async def test_hybrid_diversity_limit(tmp_path):
+    """Test that max_chunks_per_report limits chunks from same report."""
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(
+        db_path=db_path,
+        use_enhanced=True,
+        ai_buff_enabled=True,
+        max_chunks_per_report=1  # only 1 chunk per report allowed
+    )
+    # Save two reports; they will be embedded
+    report1 = {
+        "vibe_score": 50,
+        "stack": "python",
+        "files_analyzed": 1,
+        "total_lines": 10,
+        "issues": ["Issue A1", "Issue A2"],  # Two issues will create two chunks
+        "architectural_ghosts": [],
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+    }
+    report2 = {
+        "vibe_score": 60,
+        "stack": "python",
+        "files_analyzed": 1,
+        "total_lines": 10,
+        "issues": ["Issue B1"],
+        "architectural_ghosts": [],
+        "metadata": {"timestamp": "2026-03-12T12:01:00Z"}
+    }
+    await store.save_run(report1, repo_path=str(tmp_path))
+    await store.save_run(report2, repo_path=str(tmp_path))
+
+    # Search for something that matches both reports (e.g., "Issue")
+    results = await store.search("Issue", limit=10)
+    # Count how many chunks come from each report
+    counts = {}
+    for r in results:
+        rid = r.get('id') or r.get('report_id')
+        if rid is None:
+            # try to get run id from metadata? fallback to report.id?
+            # Actually the result dict from hybrid search includes 'id' field which is report_id
+            continue
+        counts[rid] = counts.get(rid, 0) + 1
+
+    # With max_chunks_per_report=1, each report should appear at most once
+    for c in counts.values():
+        assert c <= 1, f"Expected at most 1 chunk per report, got {c}"

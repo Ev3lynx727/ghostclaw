@@ -62,7 +62,7 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
 
     if use_qmd:
         qmd_db_path = db_path.parent / "qmd" / "ghostclaw.db"
-        # Determine embedding backend and prefetch settings from config
+        # Determine embedding backend, prefetch, migration, and Phase 6 settings from config
         embedding_backend = "fastembed"
         ai_buff_enabled = False
         prefetch_enabled = True
@@ -71,6 +71,11 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
         prefetch_hours = 24
         prefetch_vibe_delta = 10
         prefetch_stack_count = 5
+        auto_migrate = True
+        migration_batch_size = 50
+        migration_throttle_ms = 100
+        max_chunks_per_report = None
+        vector_index_config = {}
         try:
             cfg = GhostclawConfig.load(repo_path or ".")
             embedding_backend = getattr(cfg, 'embedding_backend', 'fastembed')
@@ -81,6 +86,12 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
             prefetch_hours = getattr(cfg, 'prefetch_hours', 24)
             prefetch_vibe_delta = getattr(cfg, 'prefetch_vibe_delta', 10)
             prefetch_stack_count = getattr(cfg, 'prefetch_stack_count', 5)
+            auto_migrate = getattr(cfg, 'auto_migrate', True)
+            migration_batch_size = getattr(cfg, 'migration_batch_size', 50)
+            migration_throttle_ms = getattr(cfg, 'migration_throttle_ms', 100)
+            max_chunks_per_report = getattr(cfg, 'max_chunks_per_report', None)
+            if hasattr(cfg, 'vector_index'):
+                vector_index_config = getattr(cfg, 'vector_index', {})
         except Exception:
             pass
         return QMDMemoryStore(
@@ -96,6 +107,8 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
             auto_migrate=auto_migrate,
             migration_batch_size=migration_batch_size,
             migration_throttle_ms=migration_throttle_ms,
+            max_chunks_per_report=max_chunks_per_report,
+            vector_index_config=vector_index_config,
         )
     else:
         return MemoryStore(db_path=db_path)

@@ -80,6 +80,12 @@ class QMDStorageAdapter(StorageAdapter):
                 auto_migrate = getattr(cfg, 'auto_migrate', True)
                 migration_batch_size = getattr(cfg, 'migration_batch_size', 50)
                 migration_throttle_ms = getattr(cfg, 'migration_throttle_ms', 100)
+                # Phase 6: vector optimization & diversity
+                max_chunks_per_report = getattr(cfg, 'max_chunks_per_report', None)
+                vector_index_config = {}
+                if hasattr(cfg, 'vector_index'):
+                    vector_index_config = getattr(cfg, 'vector_index', {})
+                # Optionally also get classifier config but not used directly here
             except Exception:
                 ai_buff = False
                 prefetch_enabled = True
@@ -91,6 +97,8 @@ class QMDStorageAdapter(StorageAdapter):
                 auto_migrate = True
                 migration_batch_size = 50
                 migration_throttle_ms = 100
+                max_chunks_per_report = None
+                vector_index_config = {}
 
             self._memory_store = QMDMemoryStore(
                 db_path=self.db_path,
@@ -106,6 +114,8 @@ class QMDStorageAdapter(StorageAdapter):
                 auto_migrate=auto_migrate,
                 migration_batch_size=migration_batch_size,
                 migration_throttle_ms=migration_throttle_ms,
+                max_chunks_per_report=max_chunks_per_report,
+                vector_index_config=vector_index_config,
             )
         return self._memory_store
 
