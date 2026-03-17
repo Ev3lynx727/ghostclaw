@@ -17,6 +17,7 @@ All notable changes to Ghostclaw will be documented here.
 ### Fixed
 - CLI import error: added `migrate_legacy_storage` stub in `core/migration.py`.
 - Minor: `ghostclaw qmd migrate status` now works without warning.
+- **PySCN integration**: Gracefully handle repositories with no Python files (no false error issues).
 
 ---
 
