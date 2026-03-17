@@ -60,7 +60,8 @@ semantic = [
 qmd = [
     "lancedb>=0.12.0",
     "fastembed>=0.4.0",  # default embedding backend (lightweight, no torch)
-    "numpy>=1.24.0"
+    "numpy>=1.24.0",
+    "pandas>=2.0.0"      # used in vector_store for table scans
 ]
 # For sentence-transformers backend (requires torch), install: pip install torch first, then pip install sentence-transformers
 config = [
