@@ -35,6 +35,10 @@ class PySCNAdapter(AsyncProcessMetricAdapter):
         # Run pyscn analyze
         result = await self.run_tool(["pyscn", "analyze", root, "--json"])
         if result.get("returncode") != 0:
+            stderr = result.get("stderr", "").lower()
+            # Known "no files" patterns — treat as empty, not an error
+            if any(phrase in stderr for phrase in ["no python files", "no files found", "no matching files"]):
+                return {}
             return {"issues": [f"PySCN error: {result.get('stderr')}"]}
 
         data = self.parse_json(result.get("stdout", "{}"))
@@ -44,12 +48,11 @@ class PySCNAdapter(AsyncProcessMetricAdapter):
         # Transform native output to GhostEngine dialect
         issues = []
         ghosts = []
-        
-        # Example transformation (mapping pyscn concepts to Ghostclaw)
+
         clones = data.get("clones", [])
         if clones:
             ghosts.append(f"Found {len(clones)} structural clones via PySCN.")
-            
+
         dead_code = data.get("dead_code", [])
         if dead_code:
             issues.append(f"Detected {len(dead_code)} dead code entries via PySCN.")
