@@ -162,8 +162,8 @@ pip install 'ghostclaw[qmd]'  # sentence-transformers already included
 
 - **Phase 3 AI-Buff (completed 2026-03-17):** embedding cache, search cache, query planning, stats
 - **Phase 4 Prefetch (completed 2026-03-17):** anticipatory loading of related runs
-- **Phase 5 Migration:** legacy QMD auto-migration tooling
-- **Phase 6 Vector Optimization:** IVF-PQ index + adaptive alpha tuning
+- **Phase 5 Migration (completed 2026-03-17):** legacy QMD auto-migration tooling
+- **Phase 6 Vector Optimization (completed 2026-03-17):** IVF-PQ index + adaptive alpha tuning
 - End-to-end integration tests with real codebases
 - Performance tuning and monitoring
 
@@ -209,6 +209,37 @@ pip install 'ghostclaw[qmd]'  # sentence-transformers already included
 - Updated: Formatters now show cognitive metrics separately
 - Improved: Config schema expanded with prefetch fields
 - Tests: 222 passed, 2 skipped (full unit suite)
+
+---
+
+### Phase 5: Migration — Completed (2026-03-17)
+
+- **EmbeddingBackfillManager** — async-native background migration for legacy QMD reports without embeddings
+- **Auto-migration** — triggers on startup when `auto_migrate=true` + `use_qmd=true` + `ai_buff_enabled=true`
+- **Resumable** — `migration_state` table tracks progress; survives restarts
+- **Stats** — `store.get_stats()["migration"]` (running, triggered, completed, errors, pending)
+- **CLI** — `ghostclaw qmd migrate status|stop|trigger`
+- **Config** — `auto_migrate`, `migration_batch_size`, `migration_throttle_ms`
+- **VectorStore helpers** — `get_indexed_run_ids()`, `add_chunks_for_report()`, `search_by_run_id()`
+- **Tests:** 3 new unit tests; all 34 QMD tests passing
+
+---
+
+### Phase 6: Vector Optimization & Adaptive Alpha — Completed (2026-03-17)
+
+- **IVF-PQ vector index** (optional, disabled by default)
+  - `VectorIndex.ensure_index()` trains on existing vectors and creates LanceDB IVF-PQ index
+  - Configurable via `vector_index` dict: `enabled`, `type`, `partitions`, `sub_vectors`, `training_sample_size`
+  - Background task auto-runs after store init; fallback to brute-force on errors or insufficient data (<1000 vectors)
+- **QueryClassifier** — rule-based alpha selection
+  - Short (≤3 tokens): 0.9
+  - Long (≥10 tokens): 0.3
+  - Medium (4-9): base 0.6 + adjustments (exact quotes +0.3, code symbols +0.2, filters +0.1)
+  - Integrated into `QueryEngine._plan_query()`
+- **Result Diversity** — `max_chunks_per_report` limits duplicate chunks from same report in results
+- **Config** — `max_chunks_per_report` (Optional[int]), `vector_index` (Optional[Dict])
+- **Tests:** 2 new unit tests (`test_query_classifier_alpha_ranges`, `test_hybrid_diversity_limit`)
+- **Total QMD tests:** 36/36 passing
 
 ---
 
