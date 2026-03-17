@@ -77,6 +77,9 @@ class QMDStorageAdapter(StorageAdapter):
                 prefetch_hours = getattr(cfg, 'prefetch_hours', 24)
                 prefetch_vibe_delta = getattr(cfg, 'prefetch_vibe_delta', 10)
                 prefetch_stack_count = getattr(cfg, 'prefetch_stack_count', 5)
+                auto_migrate = getattr(cfg, 'auto_migrate', True)
+                migration_batch_size = getattr(cfg, 'migration_batch_size', 50)
+                migration_throttle_ms = getattr(cfg, 'migration_throttle_ms', 100)
             except Exception:
                 ai_buff = False
                 prefetch_enabled = True
@@ -85,6 +88,9 @@ class QMDStorageAdapter(StorageAdapter):
                 prefetch_hours = 24
                 prefetch_vibe_delta = 10
                 prefetch_stack_count = 5
+                auto_migrate = True
+                migration_batch_size = 50
+                migration_throttle_ms = 100
 
             self._memory_store = QMDMemoryStore(
                 db_path=self.db_path,
@@ -97,6 +103,9 @@ class QMDStorageAdapter(StorageAdapter):
                 prefetch_hours=prefetch_hours,
                 prefetch_vibe_delta=prefetch_vibe_delta,
                 prefetch_stack_count=prefetch_stack_count,
+                auto_migrate=auto_migrate,
+                migration_batch_size=migration_batch_size,
+                migration_throttle_ms=migration_throttle_ms,
             )
         return self._memory_store
 

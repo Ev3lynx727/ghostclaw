@@ -9,6 +9,7 @@ providing the same interface as MemoryStore. Future versions may
 integrate a true vector database or specialized QMD engine.
 """
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -36,6 +37,9 @@ class QMDMemoryStore:
         prefetch_hours: int = 24,
         prefetch_vibe_delta: int = 10,
         prefetch_stack_count: int = 5,
+        auto_migrate: bool = True,
+        migration_batch_size: int = 50,
+        migration_throttle_ms: int = 100,
     ):
         # Use .ghostclaw/storage/qmd/ instead of .ghostclaw/storage/
         self.db_path = db_path or Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "ghostclaw.db"
@@ -48,6 +52,10 @@ class QMDMemoryStore:
         self.prefetch_hours = prefetch_hours
         self.prefetch_vibe_delta = prefetch_vibe_delta
         self.prefetch_stack_count = prefetch_stack_count
+        # Migration configuration
+        self.auto_migrate = auto_migrate and use_enhanced and ai_buff_enabled
+        self.migration_batch_size = migration_batch_size
+        self.migration_throttle_ms = migration_throttle_ms
 
         # Subsystems
         # Using late imports to avoid circular dependencies
@@ -58,6 +66,7 @@ class QMDMemoryStore:
         from .qmd.embeddings import EmbeddingManager
         from .search_cache import SearchCache  # relative import from same package (core)
         from .prefetch import PrefetchManager
+        from .migration import EmbeddingBackfillManager
 
         self.fts = BM25Search(self.db_path)
 
@@ -90,6 +99,17 @@ class QMDMemoryStore:
         if self.prefetch_enabled:
             self.prefetch_manager = PrefetchManager(self)
 
+        # Migration manager (backfill embeddings for legacy reports)
+        self.backfill_manager = None
+        if self.auto_migrate and self.use_enhanced and self.vector_store and self.embedding_mgr:
+            self.backfill_manager = EmbeddingBackfillManager(
+                self,
+                batch_size=self.migration_batch_size,
+                throttle_ms=self.migration_throttle_ms
+            )
+            # Start migration in background (fire-and-forget)
+            asyncio.create_task(self.backfill_manager.start_background())
+
     def get_stats(self) -> Dict[str, Any]:
         """Return statistics for the memory store."""
         stats = {
@@ -116,6 +136,11 @@ class QMDMemoryStore:
             stats["prefetch"] = self.prefetch_manager.get_stats()
         else:
             stats["prefetch"] = None
+
+        if self.backfill_manager:
+            stats["migration"] = self.backfill_manager.get_stats()
+        else:
+            stats["migration"] = None
 
         return stats
 

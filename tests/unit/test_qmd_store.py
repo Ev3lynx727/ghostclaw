@@ -1,7 +1,8 @@
 """Tests for QMDMemoryStore."""
+import json
+import aiosqlite
 import pytest
 import asyncio
-import json
 from pathlib import Path
 from ghostclaw.core.qmd_store import QMDMemoryStore
 
@@ -487,3 +488,137 @@ async def test_search_cache_ttl_expiry(tmp_path):
     await store.search("test")
     assert store.search_cache.stats()["misses"] == 2
     assert store.search_cache.stats()["hits"] == 1  # unchanged
+
+
+# --- Migration Manager Tests ---
+
+@pytest.mark.asyncio
+async def test_migration_needs_migration(tmp_path):
+    """Test that needs_migration correctly detects missing embeddings."""
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(
+        db_path=db_path,
+        use_enhanced=True,
+        ai_buff_enabled=True,
+        auto_migrate=False  # we'll manually manage
+    )
+    # Manually create backfill manager
+    from ghostclaw.core.migration import EmbeddingBackfillManager
+    store.backfill_manager = EmbeddingBackfillManager(store, batch_size=10, throttle_ms=0)
+
+    # Save a report (this will embed automatically)
+    report = {
+        "vibe_score": 50,
+        "stack": "python",
+        "files_analyzed": 1,
+        "total_lines": 10,
+        "issues": ["Test issue"],
+        "architectural_ghosts": [],
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+    }
+    await store.save_run(report, repo_path=str(tmp_path))
+
+    # After save, embeddings exist, so migration not needed
+    assert not await store.backfill_manager.needs_migration()
+
+
+@pytest.mark.asyncio
+async def test_migration_process_report(tmp_path):
+    """Test that backfill embeds a legacy report correctly."""
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(
+        db_path=db_path,
+        use_enhanced=True,
+        ai_buff_enabled=True,
+        auto_migrate=False
+    )
+    from ghostclaw.core.migration import EmbeddingBackfillManager
+    store.backfill_manager = EmbeddingBackfillManager(store, batch_size=1, throttle_ms=0)
+
+    # Manually insert a legacy report (no embeddings)
+    report_data = {
+        "vibe_score": 75,
+        "stack": "node",
+        "files_analyzed": 2,
+        "total_lines": 100,
+        "issues": ["Memory leak"],
+        "architectural_ghosts": ["Callback hell"],
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z", "repo_path": str(tmp_path)}
+    }
+    async with aiosqlite.connect(db_path) as db:
+        # Ensure reports table exists (indexer would normally create)
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                vibe_score INTEGER NOT NULL,
+                stack TEXT NOT NULL,
+                files_analyzed INTEGER,
+                total_lines INTEGER,
+                report_json TEXT NOT NULL,
+                repo_path TEXT
+            )
+            """
+        )
+        await db.execute(
+            "INSERT INTO reports (timestamp, vibe_score, stack, files_analyzed, total_lines, report_json, repo_path) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                report_data["metadata"]["timestamp"],
+                report_data["vibe_score"],
+                report_data["stack"],
+                report_data["files_analyzed"],
+                report_data["total_lines"],
+                json.dumps(report_data),
+                report_data["metadata"]["repo_path"]
+            )
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT last_insert_rowid()")
+        row = await cursor.fetchone()
+        run_id = row[0]
+
+    # Confirm needs_migration is True (since no embeddings yet)
+    assert await store.backfill_manager.needs_migration()
+
+    # Fetch the report row and process
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT * FROM reports WHERE id = ?", (run_id,))
+        row = await cursor.fetchone()
+        run = dict(row)
+
+    await store.backfill_manager._process_report(run)
+
+    # Verify embeddings now exist
+    if store.vector_store:
+        chunks = await store.vector_store.search_by_run_id(run_id, limit=10)
+        assert len(chunks) > 0, "Backfill should have added chunks to vector store"
+
+
+@pytest.mark.asyncio
+async def test_migration_stats_output(tmp_path):
+    """Test that get_stats() includes migration info."""
+    db_path = tmp_path / "qmd.db"
+    store = QMDMemoryStore(
+        db_path=db_path,
+        use_enhanced=True,
+        ai_buff_enabled=True,
+        auto_migrate=False
+    )
+    from ghostclaw.core.migration import EmbeddingBackfillManager
+    store.backfill_manager = EmbeddingBackfillManager(store, batch_size=50, throttle_ms=100)
+
+    stats = store.get_stats()
+    assert "migration" in stats
+    mig_stats = stats["migration"]
+    assert mig_stats is not None
+    # Check presence of expected fields
+    assert "running" in mig_stats
+    assert "total_runs" in mig_stats
+    assert "processed_runs" in mig_stats
+    assert "errors" in mig_stats
+    assert "started_at" in mig_stats
+    assert "completed_at" in mig_stats
+    assert "last_error" in mig_stats
+    assert "pending" in mig_stats

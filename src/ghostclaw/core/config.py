@@ -122,6 +122,20 @@ class GhostclawConfig(BaseSettings):
         description="Number of recent runs with matching stack to prefetch"
     )
 
+    # Migration settings (Phase 5)
+    auto_migrate: bool = Field(
+        default=True,
+        description="Automatically migrate legacy QMD embeddings in background"
+    )
+    migration_batch_size: int = Field(
+        default=50,
+        description="Number of reports to process per migration batch"
+    )
+    migration_throttle_ms: int = Field(
+        default=100,
+        description="Milliseconds to wait between migration batches (rate limiting)"
+    )
+
     # Analysis Behavior
     dry_run: bool = Field(
         default=False,

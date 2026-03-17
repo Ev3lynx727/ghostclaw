@@ -93,6 +93,9 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
             prefetch_hours=prefetch_hours,
             prefetch_vibe_delta=prefetch_vibe_delta,
             prefetch_stack_count=prefetch_stack_count,
+            auto_migrate=auto_migrate,
+            migration_batch_size=migration_batch_size,
+            migration_throttle_ms=migration_throttle_ms,
         )
     else:
         return MemoryStore(db_path=db_path)

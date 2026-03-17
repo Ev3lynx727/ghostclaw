@@ -150,6 +150,28 @@ class VectorStore:
         """Remove all chunks belonging to a report."""
         logger.warning("delete_report not fully implemented in LanceDB alpha")
 
+    async def search_by_run_id(self, report_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Retrieve chunks for a specific report_id (for verification/debugging).
+        Simple scan filter; not optimized for large-scale use.
+        """
+        await self.ensure_table()
+        try:
+            table = self._table
+            if table is None:
+                return []
+            # Use LanceDB/Arrow to filter. Since we don't have a query API, we'll scan all and filter.
+            # This is okay for small tests.
+            df = table.to_pandas() if hasattr(table, 'to_pandas') else None
+            if df is None:
+                return []
+            filtered = df[df['report_id'] == report_id]
+            # Return as list of dicts with expected keys
+            return filtered.to_dict('records')[:limit]
+        except Exception as e:
+            logger.warning("search_by_run_id failed: %s", e)
+            return []
+
     async def clear(self) -> None:
         """Drop the entire embeddings table."""
         self._index.clear()
@@ -162,3 +184,72 @@ class VectorStore:
     async def close(self) -> None:
         """Close connections."""
         pass
+
+    async def add_chunks_for_report(
+        self,
+        report_id: int,
+        report: Dict[str, Any],
+        metadata: Dict[str, Any]
+    ) -> None:
+        """
+        Convenience method: extract chunks from a report dict and add them to the vector store.
+        Chunking follows the same strategy used during normal save_run.
+        """
+        chunks = []
+        # Issues
+        for issue in report.get("issues", []):
+            chunks.append({
+                "chunk_id": f"issue-{len(chunks)}",
+                "text": str(issue)
+            })
+        # Ghosts
+        for ghost in report.get("architectural_ghosts", []):
+            chunks.append({
+                "chunk_id": f"ghost-{len(chunks)}",
+                "text": str(ghost)
+            })
+        # Flags
+        for flag in report.get("red_flags", []):
+            chunks.append({
+                "chunk_id": f"flag-{len(chunks)}",
+                "text": str(flag)
+            })
+        # AI synthesis
+        synthesis = report.get("ai_synthesis") or report.get("ai_reasoning")
+        if synthesis:
+            # Split synthesis into paragraphs for better granularity
+            paragraphs = str(synthesis).split("\n\n")
+            for i, para in enumerate(paragraphs):
+                if para.strip():
+                    chunks.append({
+                        "chunk_id": f"synthesis-{i}",
+                        "text": para.strip()
+                    })
+
+        if not chunks:
+            logger.debug("No chunks to embed for report %d", report_id)
+            return
+
+        await self.add_chunks(report_id, chunks, metadata)
+
+    async def get_indexed_run_ids(self) -> List[int]:
+        """
+        Return a list of distinct report_ids that have embeddings in the vector store.
+        Used by migration manager to detect work.
+        """
+        await self.ensure_table()
+        # LanceDB: scan table, collect unique report_id
+        try:
+            table = self._table
+            if table is None:
+                return []
+            # Use LanceDB's scan to get all records; convert to python list
+            # This is a small scan; for millions of chunks we might want a distinct count optimization
+            results = table.to_pandas() if hasattr(table, 'to_pandas') else []
+            if hasattr(results, 'report_id'):
+                ids = results['report_id'].unique().tolist()
+                return [int(i) for i in ids]
+            return []
+        except Exception as e:
+            logger.warning("Failed to get indexed run IDs: %s", e)
+            return []
