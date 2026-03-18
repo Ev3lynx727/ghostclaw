@@ -21,6 +21,9 @@ class QMDMigrateCommand(Command):
         return "Show migration status and manage background embedding backfill for QMD"
 
     def configure_parser(self, parser: argparse.ArgumentParser):
+        # Store parser for later use in execute (e.g., print_help)
+        self.parser = parser
+
         subparsers = parser.add_subparsers(dest="subcommand", help="Migration actions")
 
         # status
@@ -144,5 +147,5 @@ class QMDMigrateCommand(Command):
                 return 0
 
         else:
-            parser.print_help()
+            self.parser.print_help()
             return 1

@@ -10,42 +10,51 @@ Before installing Ghostclaw, you must have [OpenClaw](https://openclaw.ai/) and 
 
 ## Quick Start (Installation)
 
-### Method 1: NPM (Recommended)
+Ghostclaw can be installed via **npm** (recommended for OpenClaw users) or **pip** (for Python environments). Choose the method that fits your workflow.
 
-Install Ghostclaw globally from the npm registry:
+### via NPM (Recommended for OpenClaw)
+
+Install globally from the npm registry:
 
 ```bash
 npm install -g ghostclaw
 ```
 
-### Method 2: NPX
-
-To run it without explicitly installing globally:
+Or run directly with npx:
 
 ```bash
 npx ghostclaw /path/to/repo
 ```
 
-You can also add it via OpenClaw skills:
+You can also add it as an OpenClaw skill:
 
 ```bash
 npx skills add Ev3lynx727/ghostclaw
 ```
 
-### Method 3: ClawHub
+### via ClawHub
 
-Install skills only via ClawHub by running:
+Install using ClawHub (skill-only manager):
 
 ```bash
 clawhub install skill ghostclaw
 ```
 
-### Method 4: Build from source
+### via PyPI (Python)
+
+Install using pip (includes both CLI and library):
 
 ```bash
+# Latest stable release
+pip install ghostclaw
+
+# Or install the pre-release beta
+pip install --pre ghostclaw
+
+# For development, install from source
 git clone https://github.com/Ev3lynx727/ghostclaw.git
 cd ghostclaw
-pip install .
+pip install -e .
 ```
 
 For a detailed integration guide, see **[GUIDE.md](docs/GUIDE.md)**.

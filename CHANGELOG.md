@@ -8,16 +8,18 @@ All notable changes to Ghostclaw will be documented here.
 - **Phase 5: Migration** — `EmbeddingBackfillManager` for legacy QMD reports; auto-migration on startup; resumable state; CLI `ghostclaw qmd migrate status|stop|trigger`.
 - **Phase 6: Vector Optimization** — Optional IVF-PQ index (`VectorIndex.ensure_index()`); `QueryClassifier` for adaptive alpha; `max_chunks_per_report` diversity limit.
 - **docs/references.md** — Comprehensive source code reference for plugin developers.
+- **Plugin Auto-Discovery** — Ghostclaw now automatically discovers plugins installed via setuptools entry points (`ghostclaw.plugins` group). This eliminates manual copying to `.ghostclaw/plugins/` and simplifies CI/CD. See `PLUGINS.md` for details.
+- **README Update** — Installation section now includes both `npm` and `pip` methods for clarity.
 
 ### Changed
 - **AI-Buff** features (caching, prefetch, query planning) are now production-ready (removed experimental label).
 - **QMD backend** is now considered stable for general use.
-- **README** updated with AI-Buff feature highlights and v0.2.1-beta notice.
 - **Config:** Added `embedding_model` option to customize model name for `sentence-transformers` or `openai` backends (fastembed uses its own default).
+- **Versioning** — Pre-release versions now use `-beta` suffix (e.g., `0.2.1-beta`).
 
 ### Fixed
 - CLI import error: added `migrate_legacy_storage` stub in `core/migration.py`.
-- Minor: `ghostclaw qmd migrate status` now works without warning.
+- **`ghostclaw qmd-migrate` NameError**: Fixed missing `parser` reference in command handler.
 - **PySCN integration**: Gracefully handle repositories with no Python files (no false error issues).
 - **Dependencies**: Added `pandas` to `qmd` extra (required for vector store table scans). CI installs `.[qmd]` to get all QMD deps.
 

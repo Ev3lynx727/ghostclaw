@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostclaw"
-version = "0.2.0"
+version = "0.2.1-beta"
 description = "Architectural code review assistant that perceives code vibes"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -17,6 +17,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Quality Assurance",
 ]
+# Optional URLs for PyPI
+urls = {Homepage = "https://github.com/Ev3lynx727/ghostclaw", Repository = "https://github.com/Ev3lynx727/ghostclaw.git"}
 
 dependencies = [
     "pyyaml>=6.0.3",

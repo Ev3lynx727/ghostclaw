@@ -21,8 +21,8 @@ class PluginService:
         # Import registry lazily to allow patching via ghostclaw.cli.services.registry
         from ghostclaw.cli.services import registry
         registry.register_internal_plugins()
-        if self.plugins_dir.exists():
-            registry.load_external_plugins(self.plugins_dir)
+        # Always attempt to load external plugins (directory may not exist yet)
+        registry.load_external_plugins(self.plugins_dir)
 
     def list_plugins(self) -> List[Dict[str, Any]]:
         self.initialize_registry()

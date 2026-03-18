@@ -29,6 +29,7 @@ build/
 .pyscn/
 .ai-codeindex/
 .cache/
+.codeguardian
 # Node / NPM
 node_modules/
 package-lock.json

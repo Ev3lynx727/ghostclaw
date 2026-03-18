@@ -2,6 +2,7 @@
 
 import pluggy
 import importlib.util
+import inspect
 import sys
 import logging
 from pathlib import Path
@@ -67,17 +68,51 @@ class PluginRegistry:
     def load_external_plugins(self, plugins_dir: Path):
         """
         Scan a directory for plugins and register them.
-        
-        A plugin is a Python module or package with 'hookimpl' markers.
-        """
-        if not plugins_dir.exists():
-            return
 
-        for path in plugins_dir.iterdir():
-            if path.is_dir() and (path / "__init__.py").exists():
-                self._load_module_plugin(path.name, path / "__init__.py")
-            elif path.suffix == ".py":
-                self._load_module_plugin(path.stem, path)
+        Also discovers plugins installed via setuptools entry points
+        (ghostclaw.plugins group), allowing pip-installed plugins to be
+        auto-discovered without manual copying to .ghostclaw/plugins/.
+        """
+        # Load from local plugins directory if it exists
+        if plugins_dir.exists():
+            for path in plugins_dir.iterdir():
+                if path.is_dir() and (path / "__init__.py").exists():
+                    self._load_module_plugin(path.name, path / "__init__.py")
+                elif path.suffix == ".py":
+                    self._load_module_plugin(path.stem, path)
+
+        # Discover pip-installed plugins via setuptools entry points
+        try:
+            import importlib.metadata
+            eps = importlib.metadata.entry_points()
+            group = eps.select(group='ghostclaw.plugins')
+            for ep in group:
+                # Skip if already registered (e.g., from local plugins dir)
+                if self.pm.get_plugin(ep.name):
+                    logger.debug(f"Plugin {ep.name} already registered, skipping entry point")
+                    continue
+                try:
+                    obj = ep.load()
+                    # If it's a class, instantiate it
+                    if inspect.isclass(obj):
+                        try:
+                            obj = obj()
+                        except Exception as e:
+                            logger.error(f"Failed to instantiate plugin {ep.name} from {ep.value}: {e}")
+                            continue
+                    # Register the plugin (our _tracked_register will add to _registered_plugins)
+                    self.pm.register(obj, name=ep.name)
+                    logger.debug(f"Loaded plugin {ep.name} from entry point {ep.value}")
+                except Exception as e:
+                    logger.error(f"Failed to load entry point {ep.name}: {e}")
+        except Exception as e:
+            logger.debug(f"Error loading setuptools entry points: {e}")
+
+        # After loading all plugins, update external_plugins set with any
+        # non-internal plugin that's not already tracked
+        for name, _ in self._registered_plugins:
+            if name not in self.internal_plugins:
+                self.external_plugins.add(name)
 
     def _load_module_plugin(self, name: str, path: Path):
         """Dynamically load a python module and register its adapters."""
