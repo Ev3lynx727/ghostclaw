@@ -1,0 +1,34 @@
+{
+  "tasks": [
+    {
+      "name": "Install Dependencies",
+      "cmd": "pip install -e '.[full]'",
+      "preview": "Install ghostclaw with all optional dependencies (QMD, complexity, semantic, etc.)"
+    },
+    {
+      "name": "Run Tests",
+      "cmd": "pytest -xvs",
+      "preview": "Run the full test suite with verbose output"
+    },
+    {
+      "name": "Quick Test",
+      "cmd": "pytest -x --tb=short",
+      "preview": "Run tests with shorter traceback format"
+    },
+    {
+      "name": "Analyze Sample",
+      "cmd": "ghostclaw analyze ./sample_repo --use-qmd",
+      "preview": "Run QMD-powered analysis on the included sample repository"
+    },
+    {
+      "name": "Analyze Sample (Basic)",
+      "cmd": "ghostclaw analyze ./sample_repo",
+      "preview": "Run standard analysis without QMD vector memory"
+    },
+    {
+      "name": "Memory Stats",
+      "cmd": "ghostclaw memory-stats --repo ./sample_repo",
+      "preview": "Show QMD memory statistics for the sample repo"
+    }
+  ]
+}

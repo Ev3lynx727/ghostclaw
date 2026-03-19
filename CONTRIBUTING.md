@@ -2,43 +2,66 @@
 
 Thank you for your interest in contributing to Ghostclaw!
 
-## Adding a new command
+## Development Environment
 
-Ghostclaw's CLI is built using a modular Commander architecture. Adding a new command is designed to be simple and require no changes to central files like the main CLI script.
+### Option 1: Dev Container (Recommended for Local Development)
 
-### 1. Create a Command Class
+Ghostclaw includes a Dev Container configuration for VS Code. This provides a consistent development environment with all dependencies pre-installed.
 
-Create a new `.py` file inside `src/ghostclaw/cli/commands/` and define a class that inherits from `ghostclaw.cli.commander.Command`.
+1. Install [Docker](https://docs.docker.com/get-docker/) and [VS Code](https://code.visualstudio.com/)
+2. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+3. Open the repository in VS Code
+4. Click "Reopen in Container" when prompted (or use the Command Palette: "Dev Containers: Reopen in Container")
 
-```python
-from argparse import ArgumentParser, Namespace
-from ghostclaw.cli.commander import Command
+The container will:
+- Build from Python 3.12 slim image
+- Install all dependencies: `pip install -e ".[full]"`
+- Pre-warm the embedding model for QMD features
+- Configure Ruff linting and formatting
 
-class MyCommand(Command):
-    @property
-    def name(self) -> str:
-        return "my-command"
+### Option 2: codesandbox.io (Quick Online Testing)
 
-    @property
-    def description(self) -> str:
-        return "Does something cool."
+For quick experiments without local setup:
 
-    def configure_parser(self, parser: ArgumentParser) -> None:
-        parser.add_argument("--cool-flag", action="store_true")
+1. Go to [codesandbox.io](https://codesandbox.io)
+2. Choose "Python" template
+3. Push this repository (or fork it to your GitHub and import)
+4. The `.codesandbox/` config will auto-install dependencies
+5. Use the left sidebar "Tasks" panel to run:
+   - **Analyze Sample** — test QMD analysis on `sample_repo/`
+   - **Run Tests** — execute pytest suite
+   - **Memory Stats** — check QMD metrics
 
-    async def execute(self, args: Namespace) -> int:
-        print("Cool things happening.")
-        return 0
-```
+No PostgreSQL or external services needed — everything runs in the sandbox.
 
-### 2. Auto-Discovery
+### Option 3: Local Setup (Manual)
 
-You don't need to manually register your command! The CLI uses an auto-discovery registry that scans `src/ghostclaw/cli/commands/` for any subclasses of `Command`. When you run `ghostclaw`, it will be automatically available.
+If you prefer to set up manually:
 
-### 3. Architecture Best Practices
+\`\`\`bash
+# Clone and enter repository
+git clone https://github.com/your-username/ghostclaw.git
+cd ghostclaw
 
-- **Keep `execute` Thin:** For non-trivial operations, create a Service class in `src/ghostclaw/cli/services/`.
-- **Use Formatters:** For formatting reports or complex console outputs, utilize classes in `src/ghostclaw/cli/formatters/`.
-- **Unit Tests:** Add a test file for your command in `tests/unit/cli/commands/`.
+# Install all optional dependencies (QMD, semantic, complexity, etc.)
+pip install -e ".[full]"
 
-For complete details, see [docs/COMMAND_DEVELOPMENT.md](docs/COMMAND_DEVELOPMENT.md).
+# Optional: pre-warm embedding model
+python -c "from ghostclaw.qmd.embedding import EmbeddingManager; EmbeddingManager()"
+
+# Run tests
+pytest -xvs
+\`\`\`
+
+## Repository Structure
+
+- \`src/ghostclaw/\` — core package
+- \`src/ghostclaw/cli/commands/\` — CLI command implementations
+- \`src/ghostclaw/cli/services/\` — business logic services
+- \`tests/\` — unit and integration tests
+- \`.codesandbox/\` — codesandbox.io configuration
+- \`.devcontainer/\` — VS Code Dev Container configuration
+- \`sample_repo/\` — minimal Python project for quick testing
+
+For more details on architecture, see [PROJECT_SYMBOLS.md](PROJECT_SYMBOLS.md).
+
