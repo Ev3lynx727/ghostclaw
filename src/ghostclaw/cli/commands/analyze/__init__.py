@@ -30,6 +30,11 @@ class AnalyzeCommand(Command):
         return "Analyze codebase architecture"
 
     def configure_parser(self, parser: ArgumentParser) -> None:
+        """
+        Register command-line arguments for the `analyze` subcommand.
+        
+        Sets up flags and options covering repository input/output, delta-mode, QMD/embedding backend selection, caching, parallelism, AI synthesis controls, engine integrations (PySCN, AI-CodeIndex), orchestrator routing, reliability, and observability.
+        """
         parser.add_argument("repo_path", nargs="?", default=".", help="Path to the repository to analyze")
         parser.add_argument("--json", action="store_true", help="Output raw JSON")
         parser.add_argument("--no-write-report", action="store_true", help="Skip writing the .md report file")
@@ -70,6 +75,10 @@ class AnalyzeCommand(Command):
         parser.add_argument("--no-pyscn", action="store_true", help="Explicitly disable PySCN integration")
         parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
         parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
+
+        # Orchestrator
+        parser.add_argument("--orchestrate", action="store_true", help="Enable orchestrator routing")
+        parser.add_argument("--no-orchestrate", action="store_true", help="Disable orchestrator routing")
 
         # Reliability
         parser.add_argument("--strict", action="store_true", help="Treat adapter errors as fatal")
@@ -121,6 +130,25 @@ class AnalyzeCommand(Command):
         return 0
 
     def _build_cli_overrides(self, args: Namespace) -> Dict[str, Any]:
+        """
+        Build a dictionary of service configuration overrides derived from parsed CLI arguments.
+        
+        Parameters:
+            args (Namespace): Parsed command-line arguments for the `analyze` subcommand.
+        
+        Returns:
+            Dict[str, Any]: A mapping of configuration override keys to values. Possible keys include:
+                - 'use_ai': True or False to enable or disable AI features.
+                - 'ai_provider', 'ai_model': strings selecting AI provider and model.
+                - 'dry_run', 'verbose', 'patch': booleans controlling AI synthesis behavior.
+                - 'delta_mode', 'delta_base_ref': delta analysis mode flag and base ref.
+                - 'use_qmd', 'embedding_backend': QMD usage flag and embedding backend name.
+                - 'use_pyscn': True or False to enable/disable PySCN integration.
+                - 'use_ai_codeindex': True or False to enable/disable AI-CodeIndex integration.
+                - 'orchestrator': object with {'enabled': bool} when either orchestrator flag was provided.
+                - 'parallel_enabled': False when parallelism is disabled via CLI.
+                - 'concurrency_limit': integer concurrency limit when provided.
+        """
         overrides: Dict[str, Any] = {}
         if args.use_ai: overrides['use_ai'] = True
         elif args.no_ai: overrides['use_ai'] = False
@@ -137,6 +165,11 @@ class AnalyzeCommand(Command):
         elif args.no_pyscn: overrides['use_pyscn'] = False
         if args.ai_codeindex: overrides['use_ai_codeindex'] = True
         elif args.no_ai_codeindex: overrides['use_ai_codeindex'] = False
+
+        # Orchestrator flags
+        if args.orchestrate or args.no_orchestrate:
+            overrides['orchestrator'] = {'enabled': args.orchestrate}
+
         if args.no_parallel: overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: overrides['concurrency_limit'] = args.concurrency_limit
         return overrides

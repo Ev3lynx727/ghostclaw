@@ -68,7 +68,19 @@ class CodebaseAnalyzer:
             return None
 
     async def analyze(self, root: str, use_cache: bool = True, config: Optional[GhostclawConfig] = None) -> ArchitectureReport:
-        """Perform a complete architectural analysis of a codebase."""
+        """
+        Run a full architectural analysis of the repository at `root`.
+        
+        Performs stack detection, file discovery (optionally in delta mode), metric collection, adapter/plugin analysis, stack-specific legacy analysis, rule validation, scoring, metadata enrichment, optional AI prompt construction, and optional fingerprint-based caching.
+        
+        Parameters:
+            root (str): Path to the repository or project root to analyze.
+            use_cache (bool): If true and a LocalCache is configured on the analyzer, attempt to read/write a cached report keyed by a fingerprint derived from the repository and relevant config.
+            config (Optional[GhostclawConfig]): Analysis configuration (controls delta mode, plugin selection, AI usage, parallel file discovery, and other analysis options).
+        
+        Returns:
+            ArchitectureReport: A consolidated report containing scores, issues, architectural ghosts, red flags, coupling metrics, metadata (including optional VCS and delta context), adapter errors, and an optional AI prompt.
+        """
         root_path = Path(root)
         config = config or GhostclawConfig()
         
@@ -128,7 +140,10 @@ class CodebaseAnalyzer:
             registry.load_external_plugins(root_path / ".ghostclaw" / "plugins")
 
         # Apply plugin filter
-        if config.plugins_enabled is not None:
+        # Orchestrator enforcement: if orchestrator is enabled, force only orchestrator to run
+        if config.orchestrator and config.orchestrator.get('enabled'):
+            registry.enabled_plugins = {'orchestrator'}
+        elif config.plugins_enabled is not None:
             registry.enabled_plugins = set(config.plugins_enabled)
         elif config.use_qmd:
             registry.enabled_plugins = None  # All plugins enabled including qmd
