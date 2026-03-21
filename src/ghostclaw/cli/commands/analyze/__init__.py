@@ -71,6 +71,10 @@ class AnalyzeCommand(Command):
         parser.add_argument("--ai-codeindex", action="store_true", help="Enable AI-CodeIndex integration")
         parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
 
+        # Orchestrator
+        orchestrator_group = parser.add_mutually_exclusive_group()
+        orchestrator_group.add_argument("--orchestrate", action="store_true", help="Enable orchestrator routing")
+        orchestrator_group.add_argument("--no-orchestrate", action="store_true", help="Disable orchestrator routing")
         # Reliability
         parser.add_argument("--strict", action="store_true", help="Treat adapter errors as fatal")
 
@@ -137,6 +141,11 @@ class AnalyzeCommand(Command):
         elif args.no_pyscn: overrides['use_pyscn'] = False
         if args.ai_codeindex: overrides['use_ai_codeindex'] = True
         elif args.no_ai_codeindex: overrides['use_ai_codeindex'] = False
+
+        # Orchestrator flags
+        if args.orchestrate or args.no_orchestrate:
+            overrides['orchestrate'] = args.orchestrate
+
         if args.no_parallel: overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: overrides['concurrency_limit'] = args.concurrency_limit
         return overrides

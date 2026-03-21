@@ -128,7 +128,11 @@ class CodebaseAnalyzer:
             registry.load_external_plugins(root_path / ".ghostclaw" / "plugins")
 
         # Apply plugin filter
-        if config.plugins_enabled is not None:
+        # Orchestrator enforcement: if orchestrator is enabled (via CLI or config), force only orchestrator to run
+        orchestrator_enabled = config.orchestrate or (config.orchestrator and config.orchestrator.get('enabled', False))
+        if orchestrator_enabled:
+            registry.enabled_plugins = {'orchestrator'}
+        elif config.plugins_enabled is not None:
             registry.enabled_plugins = set(config.plugins_enabled)
         elif config.use_qmd:
             registry.enabled_plugins = None  # All plugins enabled including qmd
