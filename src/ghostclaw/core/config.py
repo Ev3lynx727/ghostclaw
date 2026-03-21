@@ -199,6 +199,12 @@ class GhostclawConfig(BaseSettings):
         default=None, description="List of enabled plugin names. None means all enabled."
     )
 
+    # Orchestrator Configuration
+    orchestrator: Optional[Dict] = Field(
+        default=None,
+        description="Orchestrator plugin configuration (routing, LLM, weights). See documentation for options."
+    )
+
     # Analysis Thresholds
     large_file_threshold: int = Field(
         default=300, description="Lines threshold for 'large file' detection"
