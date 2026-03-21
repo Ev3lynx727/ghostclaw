@@ -41,6 +41,9 @@ async def test_analyze_command_execute(mocker, tmp_path):
         no_pyscn=True,
         ai_codeindex=False,
         no_ai_codeindex=True,
+        # Orchestrator flags (new)
+        orchestrate=False,
+        no_orchestrate=False,
         no_parallel=True,
         concurrency_limit=None,
         strict=False,
@@ -52,7 +55,8 @@ async def test_analyze_command_execute(mocker, tmp_path):
         delta=False,
         delta_base_ref="HEAD~1",
         # QMD backend (v0.2.0)
-        use_qmd=False
+        use_qmd=False,
+        embedding_backend=None
     )
 
     result = await cmd.execute(args)
@@ -64,7 +68,31 @@ async def test_analyze_command_invalid_path():
     args = Namespace(
         repo_path="invalid_path",
         delta=False,
-        delta_base_ref="HEAD~1"
+        delta_base_ref="HEAD~1",
+        # Add all expected flags to avoid attribute errors during validation
+        orchestrate=False,
+        no_orchestrate=False,
+        use_qmd=False,
+        embedding_backend=None,
+        no_cache=True,
+        use_ai=False,
+        no_ai=True,
+        ai_provider=None,
+        ai_model=None,
+        dry_run=False,
+        verbose=False,
+        patch=False,
+        pyscn=False,
+        no_pyscn=True,
+        ai_codeindex=False,
+        no_ai_codeindex=True,
+        no_parallel=True,
+        concurrency_limit=None,
+        strict=False,
+        benchmark=False,
+        cache_dir=None,
+        cache_ttl=7,
+        cache_stats=False
     )
     with pytest.raises(SystemExit):
         await cmd.execute(args)
