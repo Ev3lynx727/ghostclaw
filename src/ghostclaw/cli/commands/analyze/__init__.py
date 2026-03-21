@@ -72,9 +72,9 @@ class AnalyzeCommand(Command):
         parser.add_argument("--no-ai-codeindex", action="store_true", help="Explicitly disable AI-CodeIndex integration")
 
         # Orchestrator
-        parser.add_argument("--orchestrate", action="store_true", help="Enable orchestrator routing")
-        parser.add_argument("--no-orchestrate", action="store_true", help="Disable orchestrator routing")
-
+        orchestrator_group = parser.add_mutually_exclusive_group()
+        orchestrator_group.add_argument("--orchestrate", action="store_true", help="Enable orchestrator routing")
+        orchestrator_group.add_argument("--no-orchestrate", action="store_true", help="Disable orchestrator routing")
         # Reliability
         parser.add_argument("--strict", action="store_true", help="Treat adapter errors as fatal")
 
