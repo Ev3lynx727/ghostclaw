@@ -200,8 +200,8 @@ class GhostclawConfig(BaseSettings):
     )
 
     # Orchestration (master switch)
-    orchestrate: bool = Field(
-        default=False,
+    orchestrate: Optional[bool] = Field(
+        default=None,
         description="Enable orchestrator routing via ghost-orchestrator plugin"
     )
 
