@@ -144,7 +144,7 @@ class AnalyzeCommand(Command):
 
         # Orchestrator flags
         if args.orchestrate or args.no_orchestrate:
-            overrides['orchestrator'] = {'enabled': args.orchestrate}
+            overrides['orchestrate'] = args.orchestrate
 
         if args.no_parallel: overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: overrides['concurrency_limit'] = args.concurrency_limit

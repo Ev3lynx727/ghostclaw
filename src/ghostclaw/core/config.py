@@ -199,6 +199,12 @@ class GhostclawConfig(BaseSettings):
         default=None, description="List of enabled plugin names. None means all enabled."
     )
 
+    # Orchestration (master switch)
+    orchestrate: bool = Field(
+        default=False,
+        description="Enable orchestrator routing via ghost-orchestrator plugin"
+    )
+
     # Orchestrator Configuration
     orchestrator: Optional[Dict] = Field(
         default=None,
