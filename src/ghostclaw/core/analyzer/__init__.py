@@ -129,7 +129,7 @@ class CodebaseAnalyzer:
 
         # Apply plugin filter
         # Orchestrator enforcement: if orchestrator is enabled (via CLI or config), force only orchestrator to run
-        orchestrator_enabled = config.orchestrate is True or (config.orchestrate is None and config.orchestrator and config.orchestrator.get('enabled', False))
+        orchestrator_enabled = config.orchestrate or (config.orchestrator and config.orchestrator.get('enabled', False))
         if orchestrator_enabled:
             registry.enabled_plugins = {'orchestrator'}
         elif config.plugins_enabled is not None:
