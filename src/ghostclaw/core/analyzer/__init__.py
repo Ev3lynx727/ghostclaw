@@ -210,31 +210,35 @@ class CodebaseAnalyzer:
         }
 
         # 4. Standardized Tool Ingestion via Adapters
-        from ghostclaw.core.adapters.registry import registry
+        from ghostclaw.core.adapters.registry import PluginRegistry
 
+        # Create a fresh registry for this analysis to avoid global state mutations and races
+        registry = PluginRegistry()
         registry.register_internal_plugins()
         if (root_path / ".ghostclaw" / "plugins").exists():
             registry.load_external_plugins(root_path / ".ghostclaw" / "plugins")
 
-        # Apply plugin filter
-        # Orchestrator enforcement: if orchestrator is enabled (via CLI or config), force only orchestrator to run
-        # Note: config loading normalizes top-level 'orchestrate' into orchestrator.enabled
+        # Compute enabled_plugins as a local variable (do not mutate global state)
+        enabled_plugins: Optional[Set[str]] = None
         if config.orchestrator.enabled:
-            registry.enabled_plugins = {"orchestrator"}
+            enabled_plugins = {"orchestrator"}
         elif config.plugins_enabled is not None:
-            registry.enabled_plugins = set(config.plugins_enabled)
+            enabled_plugins = set(config.plugins_enabled)
         elif config.use_qmd:
-            registry.enabled_plugins = None  # All plugins enabled including qmd
+            enabled_plugins = None  # All plugins enabled including qmd
         else:
             from ghostclaw.core.adapters.registry import INTERNAL_PLUGINS
 
-            registry.enabled_plugins = (
+            enabled_plugins = (
                 set(INTERNAL_PLUGINS) | set(registry.external_plugins)
             ) - {"qmd"}
 
-        if config.use_qmd and registry.enabled_plugins is not None:
-            registry.enabled_plugins.add("sqlite")
-            registry.enabled_plugins.add("qmd")
+        if config.use_qmd and enabled_plugins is not None:
+            enabled_plugins.add("sqlite")
+            enabled_plugins.add("qmd")
+
+        # Pass filter to registry via instance attribute (safe: this registry is local to this analysis)
+        registry.enabled_plugins = enabled_plugins
 
         if self.progress_cb:
             self.progress_cb("Running adapters")
