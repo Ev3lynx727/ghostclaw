@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 from typing import List, Dict, Any, Optional, Set, Tuple
 from ghostclaw.core.adapters.hooks import GhostclawPluginSpecs
 from ghostclaw.core.adapters.base import AdapterMetadata
+from ghostclaw.core.config import GhostclawConfig
 
 # Internal plugin names (for default enable/disable logic)
 INTERNAL_PLUGINS = ["pyscn", "ai-codeindex", "sqlite", "qmd", "json_target", "lizard"]
@@ -192,7 +193,9 @@ class PluginRegistry:
         except Exception as e:
             logger.debug(f"Error loading plugin module at {path}: {e}")
 
-    async def run_analysis(self, root: str, files: List[str]) -> List[Dict[str, Any]]:
+    async def run_analysis(
+        self, root: str, files: List[str], config: GhostclawConfig
+    ) -> List[Dict[str, Any]]:
         """Invoke all enabled metric adapters concurrently, collecting errors."""
         import asyncio
         from ghostclaw.core.cache import PerFileAnalysisCache
@@ -202,6 +205,20 @@ class PluginRegistry:
         # Initialize file cache if not already done
         if self._file_cache is None:
             self._file_cache = PerFileAnalysisCache()
+
+        # Prepare initialization context for plugins
+        context = {
+            "config": config,
+            "registry": self,
+        }
+        # Call ghost_initialize on plugins that implement it
+        for name, plugin in self.pm.list_name_plugin():
+            if hasattr(plugin, "ghost_initialize"):
+                try:
+                    # Hook is async
+                    await plugin.ghost_initialize(context)
+                except Exception as e:
+                    logger.warning(f"Plugin {name} ghost_initialize failed: {e}")
 
         tasks = []
         # Determine which plugins to run

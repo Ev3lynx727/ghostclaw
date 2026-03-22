@@ -214,7 +214,7 @@ class CodebaseAnalyzer:
 
         if self.progress_cb:
             self.progress_cb("Running adapters")
-        adapter_results = await registry.run_analysis(root, files)
+        adapter_results = await registry.run_analysis(root, files, config)
         errors = list(getattr(registry, "errors", []))
 
         issues, ghosts, flags, coupling_metrics, symbol_index = [], [], [], {}, ""
