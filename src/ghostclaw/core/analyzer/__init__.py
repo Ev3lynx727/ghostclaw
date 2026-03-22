@@ -147,7 +147,6 @@ class CodebaseAnalyzer:
                 )
                 # Cache it!
                 diff_cache.set(str(root_path), delta_base_ref, current_sha, diff_result)
-                diff_cache.set(str(root_path), delta_base_ref, current_sha, diff_result)
 
             changed_rel_paths = diff_result.files_changed
             files = [
