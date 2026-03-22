@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 class GhostIssue(BaseModel):
@@ -28,13 +28,14 @@ class AIInsights(BaseModel):
 class ArchitectureReport(BaseModel):
     repo_path: str
     vibe_score: int
+    vibe_detailed: Optional[Dict] = Field(default_factory=dict)
 
     stack: str
     files_analyzed: int
     total_lines: int
-    issues: List[str] = Field(default_factory=list)
-    architectural_ghosts: List[str] = Field(default_factory=list)
-    red_flags: List[str] = Field(default_factory=list)
+    issues: List[Any] = Field(default_factory=list)
+    architectural_ghosts: List[Any] = Field(default_factory=list)
+    red_flags: List[Any] = Field(default_factory=list)
     coupling_metrics: Dict = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)  # Adapter/engine errors
     ai_prompt: Optional[str] = None

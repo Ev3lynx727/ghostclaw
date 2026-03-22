@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import Optional, List, Dict, get_origin, get_args, Union
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Optional json5 support for comments and nicer formatting
@@ -12,19 +12,47 @@ except ImportError:
     HAS_JSON5 = False
 
 
+
 def _load_json_or_json5(path: Path) -> dict:
     """Load a JSON or JSON5 file (JSON5 if available, fallback to stdlib json)."""
-    try:
-        if HAS_JSON5:
-            with open(path, "r", encoding="utf-8") as f:
-                return json5.load(f)
-        else:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as e:
-        # Re-raise with a clearer message?
-        raise
+    if HAS_JSON5:
+        with open(path, "r", encoding="utf-8") as f:
+            return json5.load(f)
+    else:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
+
+
+
+
+
+class OrchestratorConfig(BaseModel):
+    """Configuration for the orchestrator plugin."""
+    
+    enabled: bool = False
+    use_llm: bool = False
+    llm_model: str = "openrouter/anthropic/claude-3-sonnet"
+    llm_temperature: float = 0.7
+    max_tokens: int = 4096
+    
+    vector_weight: float = 0.7
+    heuristics_weight: float = 0.3
+    max_plugins: int = 8
+    max_concurrent_plugins: int = 4
+    
+    plugin_history_lookback: int = 50
+    
+    enable_plan_cache: bool = False
+    plan_cache_ttl_hours: int = 24
+    plan_cache_file: Optional[str] = None
+    
+    plan_only: bool = False
+    report_plan_details: bool = True
+    
+    concurrency_limit: Optional[int] = None
+
+    model_config = {"extra": "allow"}
 
 
 class GhostclawConfig(BaseSettings):
@@ -206,8 +234,8 @@ class GhostclawConfig(BaseSettings):
     )
 
     # Orchestrator Configuration
-    orchestrator: Optional[Dict] = Field(
-        default=None,
+    orchestrator: OrchestratorConfig = Field(
+        default_factory=OrchestratorConfig,
         description="Orchestrator plugin configuration (routing, LLM, weights). See documentation for options."
     )
 
@@ -222,6 +250,7 @@ class GhostclawConfig(BaseSettings):
         default_factory=lambda: [
             "node_modules/",
             ".git/",
+            ".ghostclaw/",
             "__pycache__/",
             "*.pyc",
             "venv/",
@@ -317,8 +346,40 @@ class GhostclawConfig(BaseSettings):
 
         # 4. CLI overrides (highest precedence)
         for k, v in cli_overrides.items():
-            if v is not None:
+            if v is None:
+                continue
+            existing = resolved_config.get(k)
+            # If override is a dict and existing is a dict (or a Pydantic model), merge
+            if isinstance(v, dict):
+                if isinstance(existing, dict):
+                    merged = {**existing, **v}
+                    resolved_config[k] = merged
+                elif hasattr(existing, 'model_dump') and not isinstance(existing, type):
+                    # existing is a Pydantic model instance; convert to dict and merge
+                    merged = {**existing.model_dump(), **v}
+                    resolved_config[k] = merged
+                else:
+                    resolved_config[k] = v
+            else:
                 resolved_config[k] = v
         
+        # Normalize top-level orchestrate flag into orchestrator.enabled for single source of truth
+        if 'orchestrate' in resolved_config and resolved_config['orchestrate'] is not None:
+            orch_val = resolved_config['orchestrate']
+            orch_cfg = resolved_config.get('orchestrator')
+            if orch_cfg is None:
+                orch_cfg = {}
+            elif hasattr(orch_cfg, 'model_dump'):
+                orch_cfg = orch_cfg.model_dump()
+            elif not isinstance(orch_cfg, dict):
+                # Convert to dict if possible (e.g., from a model instance)
+                try:
+                    orch_cfg = dict(orch_cfg)
+                except Exception:
+                    orch_cfg = {}
+            # Override enabled
+            orch_cfg['enabled'] = orch_val
+            resolved_config['orchestrator'] = orch_cfg
+
         # print(f"DEBUG: GhostclawConfig.load - resolved_config['use_ai']={resolved_config.get('use_ai')}")
         return cls(**resolved_config)

@@ -32,3 +32,7 @@ class GhostclawPluginSpecs:
     @hookspec
     async def ghost_compute_vibe(self, context: Any) -> float:
         """Compute the architectural vibe score."""
+
+    @hookspec
+    async def ghost_initialize(self, context: Dict[str, Any]) -> None:
+        """Initialize plugin with runtime context (config, qmd_store, registry, etc.)."""
