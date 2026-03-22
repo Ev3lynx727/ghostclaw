@@ -31,17 +31,37 @@ class ScoringEngine:
         # In actual analysis, the orchestrator should call the new engine directly
         # with full context.
         try:
-            # We assume we are in an async environment or can run this sync
-            loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(engine.compute_score(
-                metrics=metrics,
-                issues=mock_issues,
-                ghosts=mock_ghosts,
-                flags=[],
-                stack=stack
-            ))
-            loop.close()
-            return result.overall
+            # Check if we're inside an async context
+            try:
+                loop = asyncio.get_running_loop()
+                # If we get here, there's a running loop in this thread
+                # Submit coroutine and wait for result synchronously
+                future = asyncio.run_coroutine_threadsafe(
+                    engine.compute_score(
+                        metrics=metrics,
+                        issues=mock_issues,
+                        ghosts=mock_ghosts,
+                        flags=[],
+                        stack=stack
+                    ),
+                    loop
+                )
+                result = future.result(timeout=30)  # 30s timeout
+                return result.overall
+            except RuntimeError:
+                # No running loop, create our own
+                loop = asyncio.new_event_loop()
+                try:
+                    result = loop.run_until_complete(engine.compute_score(
+                        metrics=metrics,
+                        issues=mock_issues,
+                        ghosts=mock_ghosts,
+                        flags=[],
+                        stack=stack
+                    ))
+                    return result.overall
+                finally:
+                    loop.close()
         except Exception:
             # Absolute fallback to the original simple formula if something fails
             score = 100
