@@ -25,14 +25,7 @@ def _load_json_or_json5(path: Path) -> dict:
             return json.load(f)
 
 
-def _load_json_or_json5(path: Path) -> dict:
-    """Load a JSON or JSON5 file (JSON5 if available, fallback to stdlib json)."""
-    if HAS_JSON5:
-        with open(path, "r", encoding="utf-8") as f:
-            return json5.load(f)
-    else:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+
 
 
 
