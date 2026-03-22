@@ -213,6 +213,10 @@ class PluginRegistry:
         }
         # Call ghost_initialize on plugins that implement it
         for name, plugin in self.pm.list_name_plugin():
+            # Only initialize enabled plugins
+            enabled = self.enabled_plugins
+            if enabled is not None and (name is None or name not in enabled):
+                continue
             if hasattr(plugin, "ghost_initialize"):
                 try:
                     # Hook is async
