@@ -397,6 +397,8 @@ class PluginRegistry:
                     merged[k] = v  # Last-writer wins for booleans
                 elif isinstance(v, bool):
                     merged[k] = v  # Last-writer wins for booleans
+                elif isinstance(v, bool):
+                    merged[k] = v  # Last-writer wins for booleans
                 elif isinstance(v, (int, float)):
                     merged[k] = merged.get(k, 0) + v
                 else:
