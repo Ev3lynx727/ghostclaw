@@ -222,6 +222,7 @@ class GhostclawConfig(BaseSettings):
         default_factory=lambda: [
             "node_modules/",
             ".git/",
+            ".ghostclaw/",
             "__pycache__/",
             "*.pyc",
             "venv/",

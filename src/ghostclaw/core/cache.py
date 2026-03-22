@@ -25,7 +25,12 @@ class LocalCache:
     }
     """
 
-    def __init__(self, cache_dir: Optional[Path] = None, ttl_days: int = 7, compression: bool = True):
+    def __init__(
+        self,
+        cache_dir: Optional[Path] = None,
+        ttl_days: int = 7,
+        compression: bool = True,
+    ):
         # Default to project-local cache: <repo>/.ghostclaw/storage/cache/
         if cache_dir is None:
             cache_dir = Path.cwd() / ".ghostclaw" / "storage" / "cache"
@@ -47,7 +52,7 @@ class LocalCache:
         key = self._compute_key(fingerprint)
         candidates = [
             (self.cache_dir / f"{key}.json.gz", True),
-            (self.cache_dir / f"{key}.json", False)
+            (self.cache_dir / f"{key}.json", False),
         ]
 
         for path, is_compressed in candidates:
@@ -96,13 +101,64 @@ class LocalCache:
     def info(self) -> Dict[str, Any]:
         """Return cache statistics (entry count, total size)."""
         # Consider both .json and .json.gz files
-        entries = list(self.cache_dir.glob("*.json")) + list(self.cache_dir.glob("*.json.gz"))
+        entries = list(self.cache_dir.glob("*.json")) + list(
+            self.cache_dir.glob("*.json.gz")
+        )
         total_size = sum(p.stat().st_size for p in entries if p.is_file())
         return {
             "entries": len(entries),
             "total_size_bytes": total_size,
             "cache_dir": str(self.cache_dir),
         }
+
+
+class PerFileAnalysisCache:
+    """
+    Caches analysis results on a per-file basis using content hashing.
+    Used to skip re-analyzing unchanged files.
+    """
+
+    def __init__(self, cache_dir: Optional[Path] = None):
+        if cache_dir is None:
+            cache_dir = Path.cwd() / ".ghostclaw" / "storage" / "cache" / "files"
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _compute_hash(self, file_path: Path) -> str:
+        """Compute SHA-256 hash of file content."""
+        with open(file_path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+
+    def get(self, file_path: Path, plugin_name: str) -> Optional[Dict[str, Any]]:
+        """Retrieve cached analysis for a file and plugin if content hash matches."""
+        try:
+            content_hash = self._compute_hash(file_path)
+            # Cache key incorporates plugin name to avoid cross-plugin collisions
+            key = hashlib.sha256(f"{plugin_name}:{content_hash}".encode()).hexdigest()
+            cache_file = self.cache_dir / f"{key}.json"
+            if cache_file.exists():
+                return json.loads(cache_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        return None
+
+    def set(self, file_path: Path, plugin_name: str, result: Dict[str, Any]) -> None:
+        """Cache analysis result for a file, plugin, and content hash."""
+        try:
+            content_hash = self._compute_hash(file_path)
+            key = hashlib.sha256(f"{plugin_name}:{content_hash}".encode()).hexdigest()
+            cache_file = self.cache_dir / f"{key}.json"
+            cache_file.write_text(json.dumps(result), encoding="utf-8")
+        except Exception:
+            pass
+    def clear(self) -> None:
+        """Clear all cached analysis files."""
+        for f in self.cache_dir.glob("*.json"):
+            try:
+                f.unlink()
+            except Exception:
+                pass
+
 
 
 def compute_fingerprint(
@@ -144,7 +200,7 @@ def compute_fingerprint(
         if result.returncode == 0:
             sha = result.stdout.strip()
             if sha:
-                return version_prefix + f"git:{sha}"
+                return version_prefix + f"git:{str(sha)}"
     except Exception:
         pass
 

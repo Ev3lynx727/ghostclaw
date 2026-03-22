@@ -15,6 +15,7 @@ from ghostclaw.core.adapters.base import AdapterMetadata
 # Internal plugin names (for default enable/disable logic)
 INTERNAL_PLUGINS = ["pyscn", "ai-codeindex", "sqlite", "qmd", "json_target", "lizard"]
 
+
 class PluginRegistry:
     """Manages the lifecycle and invocation of Ghostclaw plugins."""
 
@@ -24,12 +25,14 @@ class PluginRegistry:
         # Wrap pm.register to track all plugins (name, instance)
         self._registered_plugins: List[Tuple[str, Any]] = []
         _original_register = self.pm.register
+
         def _tracked_register(plugin, name=None):
             _original_register(plugin, name=name)
             self._registered_plugins.append((name, plugin))
+
         self.pm.register = _tracked_register
         self.project_root = project_root
-        
+
         # Track plugin names and their sources
         self.internal_plugins = set()
         self.external_plugins = set()
@@ -39,9 +42,10 @@ class PluginRegistry:
 
         # Plugin enable/disable filter (None = all enabled)
         self.enabled_plugins: Optional[Set[str]] = None
+        self._file_cache = None  # Lazy init
 
         # Internal registry of plugins for runtime filtering
-        
+
     def register_internal_plugins(self):
         """Register built-in adapters if not already registered."""
         from ghostclaw.core.adapters.metric.pyscn import PySCNAdapter
@@ -57,7 +61,7 @@ class PluginRegistry:
             "sqlite": SQLiteStorageAdapter,
             "qmd": QMDStorageAdapter,
             "json_target": JsonTargetAdapter,
-            "lizard": LizardScoringAdapter
+            "lizard": LizardScoringAdapter,
         }
 
         for name, adapter_cls in adapters.items():
@@ -65,42 +69,33 @@ class PluginRegistry:
                 self.pm.register(adapter_cls(), name=name)
                 self.internal_plugins.add(name)
 
-    def load_external_plugins(self, plugins_dir: Path):
-        """
-        Scan a directory for plugins and register them.
+        # Always discover entry-point plugins (like orchestrator, coderabbit, nomad)
+        self.discover_entry_points()
 
-        Also discovers plugins installed via setuptools entry points
-        (ghostclaw.plugins group), allowing pip-installed plugins to be
-        auto-discovered without manual copying to .ghostclaw/plugins/.
-        """
-        # Load from local plugins directory if it exists
-        if plugins_dir.exists():
-            for path in plugins_dir.iterdir():
-                if path.is_dir() and (path / "__init__.py").exists():
-                    self._load_module_plugin(path.name, path / "__init__.py")
-                elif path.suffix == ".py":
-                    self._load_module_plugin(path.stem, path)
-
-        # Discover pip-installed plugins via setuptools entry points
+    def discover_entry_points(self):
+        """Discover pip-installed plugins via setuptools entry points."""
         try:
             import importlib.metadata
+
             eps = importlib.metadata.entry_points()
-            group = eps.select(group='ghostclaw.plugins')
+            group = eps.select(group="ghostclaw.plugins")
             for ep in group:
-                # Skip if already registered (e.g., from local plugins dir)
+                # Skip if already registered
                 if self.pm.get_plugin(ep.name):
-                    logger.debug(f"Plugin {ep.name} already registered, skipping entry point")
+                    logger.debug(
+                        f"Plugin {ep.name} already registered, skipping entry point"
+                    )
                     continue
                 try:
                     obj = ep.load()
-                    # If it's a class, instantiate it
                     if inspect.isclass(obj):
                         try:
                             obj = obj()
                         except Exception as e:
-                            logger.error(f"Failed to instantiate plugin {ep.name} from {ep.value}: {e}")
+                            logger.error(
+                                f"Failed to instantiate plugin {ep.name} from {ep.value}: {e}"
+                            )
                             continue
-                    # Register the plugin (our _tracked_register will add to _registered_plugins)
                     self.pm.register(obj, name=ep.name)
                     logger.debug(f"Loaded plugin {ep.name} from entry point {ep.value}")
                 except Exception as e:
@@ -108,22 +103,37 @@ class PluginRegistry:
         except Exception as e:
             logger.debug(f"Error loading setuptools entry points: {e}")
 
-        # After loading all plugins, update external_plugins set with any
-        # non-internal plugin that's not already tracked
+        # Update external_plugins set
         for name, _ in self._registered_plugins:
             if name not in self.internal_plugins:
                 self.external_plugins.add(name)
 
+    def load_external_plugins(self, plugins_dir: Optional[Path] = None):
+        """
+        Scan a directory for plugins and register them.
+        Entry-point discovery is now handled by discover_entry_points().
+        """
+        # Load from local plugins directory if it exists
+        if plugins_dir and plugins_dir.exists():
+            for path in plugins_dir.iterdir():
+                if path.is_dir() and (path / "__init__.py").exists():
+                    self._load_module_plugin(path.name, path / "__init__.py")
+                elif path.suffix == ".py":
+                    self._load_module_plugin(path.stem, path)
+
+        # Entry point discovery is now handled in register_internal_plugins or discover_entry_points
+
     def _load_module_plugin(self, name: str, path: Path):
         """Dynamically load a python module and register its adapters."""
         try:
-            spec = importlib.util.spec_from_file_location(f"ghostclaw.plugins.{name}", str(path))
+            spec = importlib.util.spec_from_file_location(
+                f"ghostclaw.plugins.{name}", str(path)
+            )
             if spec and spec.loader:
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[f"ghostclaw.plugins.{name}"] = module
                 spec.loader.exec_module(module)
 
-                from ghostclaw.core.adapters.base import BaseAdapter
                 import inspect
 
                 for _, obj in inspect.getmembers(module, inspect.isclass):
@@ -139,55 +149,184 @@ class PluginRegistry:
                                 meta = None
 
                             # Check if plugin is enabled
-                            if self.enabled_plugins is not None and plugin_name not in self.enabled_plugins:
-                                logger.debug(f"Plugin '{plugin_name}' is disabled by config; skipping.")
+                            if (
+                                self.enabled_plugins is not None
+                                and plugin_name not in self.enabled_plugins
+                            ):
+                                logger.debug(
+                                    f"Plugin '{plugin_name}' is disabled by config; skipping."
+                                )
                                 continue
 
                             # Version compatibility check (only if we have metadata)
-                            if meta and (meta.min_ghostclaw_version or meta.max_ghostclaw_version):
+                            if meta and (
+                                meta.min_ghostclaw_version or meta.max_ghostclaw_version
+                            ):
                                 try:
                                     # Avoid circular import by fetching version via a central version module
-                                    from ghostclaw.version import __version__ as gc_version
-                                    if not self._check_version_compatible(gc_version, meta):
+                                    from ghostclaw.version import (
+                                        __version__ as gc_version,
+                                    )
+
+                                    if not self._check_version_compatible(
+                                        gc_version, meta
+                                    ):
                                         logger.warning(
                                             f"Plugin '{plugin_name}' incompatible with Ghostclaw {gc_version} "
                                             f"(requires {meta.min_ghostclaw_version or 'any'} - {meta.max_ghostclaw_version or 'any'}). Skipping."
                                         )
                                         continue
                                 except Exception as e:
-                                    logger.debug(f"Version check error for plugin {plugin_name}: {e}")
+                                    logger.debug(
+                                        f"Version check error for plugin {plugin_name}: {e}"
+                                    )
 
                             self.pm.register(instance, name=plugin_name)
 
                             self._registered_plugins.append((plugin_name, instance))
                             self.external_plugins.add(plugin_name)
                         except Exception as e:
-                            logger.error(f"Failed to load plugin class {obj.__name__}: {e}")
+                            logger.error(
+                                f"Failed to load plugin class {obj.__name__}: {e}"
+                            )
         except Exception as e:
             logger.debug(f"Error loading plugin module at {path}: {e}")
 
     async def run_analysis(self, root: str, files: List[str]) -> List[Dict[str, Any]]:
         """Invoke all enabled metric adapters concurrently, collecting errors."""
         import asyncio
+        from ghostclaw.core.cache import PerFileAnalysisCache
+
         self.errors = []  # reset
+
+        # Initialize file cache if not already done
+        if self._file_cache is None:
+            self._file_cache = PerFileAnalysisCache()
 
         tasks = []
         # Determine which plugins to run
         for name, plugin in self.pm.list_name_plugin():
             # Filter by enabled_plugins if set
-            if self.enabled_plugins is not None and name not in self.enabled_plugins:
+            enabled = self.enabled_plugins
+            if enabled is not None and (name is None or name not in enabled):
                 continue
             # Only consider adapters with ghost_analyze
-            if hasattr(plugin, 'ghost_analyze'):
-                tasks.append(self._run_adapter(name, plugin, root, files))
+            if hasattr(plugin, "ghost_analyze"):
+                tasks.append(self._run_adapter_with_cache(name, plugin, root, files))
 
         if not tasks:
             return []
 
         results = await asyncio.gather(*tasks)
-        return results
+        return list(results)
 
-    async def _run_adapter(self, name: str, plugin, root: str, files: List[str]) -> Dict[str, Any]:
+    async def _run_adapter_with_cache(
+        self, name: str, plugin, root: str, files: List[str]
+    ) -> Dict[str, Any]:
+        """Run a single adapter with per-file caching."""
+        if self._file_cache is None:
+            from ghostclaw.core.cache import PerFileAnalysisCache
+
+            self._file_cache = PerFileAnalysisCache()
+
+        root_path = Path(root)
+        to_analyze = []
+        cached_results = []
+
+        # 1. Check cache for each file
+        for f in files:
+            f_path = Path(f)
+            abs_f = f_path if f_path.is_absolute() else root_path / f
+            cached = self._file_cache.get(abs_f, name)
+            if cached:
+                cached_results.append(cached)
+            else:
+                to_analyze.append(f)
+
+        # 2. If all files cached, merge and return
+        if not to_analyze:
+            return self._merge_results(cached_results)
+
+        # 3. Run adapter on non-cached files
+        new_result = await self._run_adapter(name, plugin, root, to_analyze)
+
+        # 4. Split and cache new results
+        split_data = self._split_result_by_file(new_result, to_analyze)
+        for f_path_str, f_res in split_data.items():
+            abs_p = (
+                Path(f_path_str)
+                if Path(f_path_str).is_absolute()
+                else root_path / f_path_str
+            )
+            self._file_cache.set(abs_p, name, f_res)
+
+        # 5. Merge with cached results
+        if cached_results:
+            return self._merge_results([new_result] + cached_results)
+        return new_result
+
+    def _split_result_by_file(
+        self, result: Dict[str, Any], files: List[str]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Attempt to split adapter results into per-file dictionaries."""
+        split_map = {f: {} for f in files}
+
+        # Common keys in ArchitectureReport
+        for key in ["issues", "architectural_ghosts", "red_flags"]:
+            items = result.get(key, [])
+            if not isinstance(items, list):
+                continue
+
+            for item in items:
+                # Try to find filename in item (string or dict)
+                file_found = None
+                if isinstance(item, str):
+                    for f in files:
+                        if f in item:
+                            file_found = f
+                            break
+                elif isinstance(item, dict):
+                    # Check common fields: 'file', 'path', 'filename'
+                    for field in ["file", "path", "filename"]:
+                        if field in item and item[field] in files:
+                            file_found = item[field]
+                            break
+
+                if file_found:
+                    split_map[file_found].setdefault(key, []).append(item)
+
+        # Coupling metrics
+        coupling = result.get("coupling_metrics", {})
+        if isinstance(coupling, dict):
+            for f, metrics in coupling.items():
+                if f in split_map:
+                    split_map[f]["coupling_metrics"] = {f: metrics}
+
+        return split_map
+
+    def _merge_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Merge multiple adapter results into one."""
+        if not results:
+            return {}
+        if len(results) == 1:
+            return results[0]
+
+        merged = {}
+        for res in results:
+            for k, v in res.items():
+                if isinstance(v, list):
+                    merged.setdefault(k, []).extend(v)
+                elif isinstance(v, dict):
+                    merged.setdefault(k, {}).update(v)
+                elif isinstance(v, (int, float)):
+                    merged[k] = merged.get(k, 0) + v
+                else:
+                    merged[k] = v
+        return merged
+
+    async def _run_adapter(
+        self, name: str, plugin, root: str, files: List[str]
+    ) -> Dict[str, Any]:
         """Run a single adapter and capture errors."""
         try:
             return await plugin.ghost_analyze(root, files)
@@ -197,15 +336,16 @@ class PluginRegistry:
 
     def _check_version_compatible(self, current: str, meta: AdapterMetadata) -> bool:
         """Check if current Ghostclaw version is within plugin's required range using simple version comparison."""
+
         def parse(v: str):
-            parts = v.split('.')
+            parts = v.split(".")
             nums = []
             for p in parts[:3]:
                 try:
                     nums.append(int(p))
                 except ValueError:
                     # numeric prefix only
-                    num = ''
+                    num = ""
                     for ch in p:
                         if ch.isdigit():
                             num += ch
@@ -230,6 +370,7 @@ class PluginRegistry:
     async def emit_event(self, event_type: str, data: Any):
         """Broadcast events to all target adapters."""
         import asyncio
+
         coroutines = self.pm.hook.ghost_emit(event_type=event_type, data=data)
         if coroutines:
             await asyncio.gather(*coroutines)
@@ -237,13 +378,14 @@ class PluginRegistry:
     async def save_report(self, report: Any) -> List[str]:
         """Save report via all enabled storage adapters."""
         import asyncio
+
         tasks = []
         for name, plugin in self.pm.list_name_plugin():
             # Filter by enabled_plugins if set
             if self.enabled_plugins is not None and name not in self.enabled_plugins:
                 continue
             # Only call if plugin has ghost_save_report
-            if hasattr(plugin, 'ghost_save_report'):
+            if hasattr(plugin, "ghost_save_report"):
                 tasks.append(plugin.ghost_save_report(report=report))
         if not tasks:
             return []
@@ -257,6 +399,7 @@ class PluginRegistry:
     async def compute_custom_vibe(self, context: Any) -> Optional[float]:
         """Invoke the first available ScoringAdapter to compute the vibe score."""
         import asyncio
+
         coroutines = self.pm.hook.ghost_compute_vibe(context=context)
         if not coroutines:
             return None
@@ -272,7 +415,7 @@ class PluginRegistry:
         """Validate all registered plugins by calling is_available."""
         results = {}
         for name, plugin in self._registered_plugins:
-            if hasattr(plugin, 'is_available'):
+            if hasattr(plugin, "is_available"):
                 try:
                     results[name] = await plugin.is_available()
                 except Exception:
@@ -280,6 +423,7 @@ class PluginRegistry:
             else:
                 results[name] = True
         return results
+
 
 # Global registry instance
 registry = PluginRegistry()

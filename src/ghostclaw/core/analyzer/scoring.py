@@ -1,30 +1,41 @@
-"""
-Scoring logic for Ghostclaw analyzer.
-"""
-
-from typing import Dict, Any, Optional
-from ghostclaw.core.score import ScoringEngine
-
+from typing import Dict, Any, Union, Optional
+from ghostclaw.core.score import ScoringEngine, MultiDimensionalScore
 
 class VibeScorer:
     """Orchestrates vibe score calculation, potentially using custom scoring adapters."""
 
     @staticmethod
-    async def compute_score(context: Dict[str, Any]) -> int:
+    async def compute_score(context: Dict[str, Any]) -> MultiDimensionalScore:
         """
-        Compute the final vibe score.
+        Compute the final multi-dimensional vibe score.
         
         Attempts to use a custom ScoringAdapter from the registry first, 
-        otherwise falls back to ScoringEngine default.
+        otherwise falls back to the enhanced ScoringEngine.
         """
         from ghostclaw.core.adapters.registry import registry
         
-        custom_score = await registry.compute_custom_vibe(context=context)
-        if custom_score is not None:
-            return int(custom_score)
+        # 1. Try custom compute from registry (Scoring adapters)
+        custom_vibe = await registry.compute_custom_vibe(context=context)
+        if custom_vibe is not None:
+            # If a custom adapter provides a score, we wrap it in a minimal MultiDimensionalScore
+            val = int(custom_vibe)
+            return MultiDimensionalScore(
+                complexity=val,
+                coupling=val,
+                cohesion=val,
+                naming=val,
+                layering=val,
+                overall=val,
+                confidence=1.0
+            )
         
-        return ScoringEngine.compute_vibe_score(
-            context.get("metrics", {}), 
-            len(context.get("issues", [])), 
-            len(context.get("ghosts", []))
+        # 2. Use the enhanced internal engine
+        engine = ScoringEngine()
+        return await engine.compute_score(
+            metrics=context.get("metrics", {}),
+            issues=context.get("issues", []),
+            ghosts=context.get("ghosts", []),
+            flags=context.get("flags", []),
+            stack=context.get("stack", "unknown"),
+            coupling_metrics=context.get("coupling_metrics")
         )

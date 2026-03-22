@@ -10,7 +10,7 @@ EXCLUDE_DIRS: Set[str] = {
     '.venv', 'venv', '.env', '__pycache__', '.pytest_cache', '.coverage',
     '.git', '.hg', '.svn', 'node_modules', 'dist', 'build', 'target',
     'vendor', '.deps', 'tests', 'test', 'spec', 'specs', 'docs', 'doc',
-    'example', 'examples', 'scripts'
+    'example', 'examples', 'scripts', '.ghostclaw'
 }
 
 

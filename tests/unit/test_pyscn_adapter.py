@@ -40,8 +40,8 @@ async def test_pyscn_adapter_analyze_success(adapter):
             "stdout": json.dumps(mock_pyscn_output)
         }
         # Mock is_available to avoid redundant subprocess call
-        with patch.object(adapter, 'is_available', return_value=asyncio.Future()) as mock_avail:
-            mock_avail.return_value.set_result(True)
+        with patch.object(adapter, 'is_available', new_callable=AsyncMock) as mock_avail:
+            mock_avail.return_value = True
             
             result = await adapter.analyze("/tmp", ["test.py"])
             
@@ -52,7 +52,7 @@ async def test_pyscn_adapter_analyze_success(adapter):
 
 @pytest.mark.asyncio
 async def test_pyscn_adapter_analyze_unavailable(adapter):
-    with patch.object(adapter, 'is_available', return_value=asyncio.Future()) as mock_avail:
-        mock_avail.return_value.set_result(False)
+    with patch.object(adapter, 'is_available', new_callable=AsyncMock) as mock_avail:
+        mock_avail.return_value = False
         result = await adapter.analyze("/tmp", [])
         assert result == {}

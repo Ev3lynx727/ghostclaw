@@ -4,48 +4,52 @@
   // This file is optional and supports JSON5 format (comments, trailing commas).
   // Settings here apply to all repositories unless overridden locally.
   // ============================================
-
   // AI Configuration
-  use_ai: false,                    // Enable Ghost Engine AI synthesis (requires API key)
-  ai_provider: "openrouter",        // Provider: openrouter, openai, anthropic
-  ai_model: null,                   // Specific model (e.g. "anthropic/claude-3.5-sonnet")
-  ai_temperature: 0.7,              // Creativity: 0.0 (focused) to 1.0 (creative)
-  ai_max_tokens: 4096,              // Max tokens in AI response
-
+  use_ai: false, // Enable Ghost Engine AI synthesis (requires API key)
+  ai_provider: "openrouter", // Provider: openrouter, openai, anthropic
+  ai_model: null, // Specific model (e.g. "anthropic/claude-3.5-sonnet")
+  ai_temperature: 0.7, // Creativity: 0.0 (focused) to 1.0 (creative)
+  ai_max_tokens: 4096, // Max tokens in AI response
   // Engine Integration (optional)
-  use_pyscn: null,                  // Enable PySCN analysis (null = auto-detect)
-  use_ai_codeindex: null,           // Enable AI-CodeIndex integration
-
+  use_pyscn: null, // Enable PySCN analysis (null = auto-detect)
+  use_ai_codeindex: null, // Enable AI-CodeIndex integration
+  // Orchestrator Integration (v0.2.2a0)
+  orchestrate: false, // Enable adaptive plugin routing via ghost-orchestrator
+  orchestrator: {
+    model: "gpt-4o", // LLM to use for orchestration routing
+    use_caching: true, // Cache orchestration decisions
+    weights: {
+      nesting: 0.5,
+      complexity: 0.3,
+      loc: 0.2
+    }
+  },
   // Delta-Context Mode (PR reviews)
-  delta_mode: false,                // Analyze only changed files (git diff)
-  delta_base_ref: "HEAD~1",         // Git reference for base (branch, tag, commit)
-
+  delta_mode: false, // Analyze only changed files (git diff)
+  delta_base_ref: "HEAD~1", // Git reference for base (branch, tag, commit)
   // QMD Backend (experimental high-performance memory)
-  use_qmd: false,                   // Use QMD instead of SQLite for memory storage
-  embedding_backend: "fastembed",   // Embedding library: fastembed, sentence-transformers, openai
-  embedding_cache_size: 1000,       // Max cached query embeddings (LRU)
-  embedding_cache_ttl: 3600,        // Embedding cache TTL in seconds (default 1 hour)
+  use_qmd: false, // Use QMD instead of SQLite for memory storage
+  embedding_backend: "fastembed", // Embedding library: fastembed, sentence-transformers, openai
+  embedding_cache_size: 1000, // Max cached query embeddings (LRU)
+  embedding_cache_ttl: 3600, // Embedding cache TTL in seconds (default 1 hour)
   // AI-Buff settings (Phase 3, not yet released)
-  search_cache_size: 500,           // Max cached search results
-  search_cache_ttl: 300,            // Search cache TTL in seconds (5 minutes)
-  ai_buff_enabled: false,           // Enable pre-fetching, query planning (beta)
-
+  search_cache_size: 500, // Max cached search results
+  search_cache_ttl: 300, // Search cache TTL in seconds (5 minutes)
+  ai_buff_enabled: false, // Enable pre-fetching, query planning (beta)
   // Analysis Behavior
-  dry_run: false,                   // Print prompt without calling AI
-  verbose: false,                   // Save raw API requests to debug.log
-  patch: false,                     // Generate refactor suggestions from AI
-  show_progress: true,              // Display progress during analysis
-
+  dry_run: false, // Print prompt without calling AI
+  verbose: false, // Save raw API requests to debug.log
+  patch: false, // Generate refactor suggestions from AI
+  show_progress: true, // Display progress during analysis
   // Performance Tuning
-  cache_enabled: true,              // Enable result caching
-  cache_ttl_hours: 168,             // Cache TTL (7 days)
-  cache_compression: true,          // Compress cached files
-  parallel_enabled: true,           // Process files in parallel
-  concurrency_limit: 32,            // Max concurrent tasks (adjust for your machine)
-  batch_size: 50,                   // Files per batch when parallel
-  large_file_threshold: 300,        // Lines to consider "large"
-  max_files_to_analyze: 10000,      // Hard limit on files processed
-
+  cache_enabled: true, // Enable result caching
+  cache_ttl_hours: 168, // Cache TTL (7 days)
+  cache_compression: true, // Compress cached files
+  parallel_enabled: true, // Process files in parallel
+  concurrency_limit: 32, // Max concurrent tasks (adjust for your machine)
+  batch_size: 50, // Files per batch when parallel
+  large_file_threshold: 300, // Lines to consider "large"
+  max_files_to_analyze: 10000, // Hard limit on files processed
   // Filtering
   exclude_patterns: [
     "node_modules/",
@@ -58,10 +62,9 @@
     "build/",
     "*.egg-info/"
   ],
-  include_extensions: null,         // If set, only these extensions (e.g. [".py", ".js"])
-
+  include_extensions: null, // If set, only these extensions (e.g. [".py", ".js"])
   // Output
-  output_format: "json",            // "json", "markdown", or "html"
-  report_timestamp: true,           // Include timestamp in report filenames
-  store_reports: true               // Store reports under .ghostclaw/storage/reports/
+  output_format: "json", // "json", "markdown", or "html"
+  report_timestamp: true, // Include timestamp in report filenames
+  store_reports: true // Store reports under .ghostclaw/storage/reports/
 }

@@ -2,6 +2,35 @@
 
 All notable changes to Ghostclaw will be documented here.
 
+## [v0.2.2a0] - Upcoming
+
+### Added
+- **Orchestrator Integration** — Introduced `--orchestrate` / `--no-orchestrate` CLI flags to enable adaptive plugin routing via the `ghost-orchestrator` plugin.
+- **Orchestrator Config** — Added top-level `orchestrate` boolean (env: `GHOSTCLAW_ORCHESTRATE`) and `orchestrator` dict for fine-grained control (LLM, weights).
+- **Multi-Dimensional Scoring (Vibe Engine)** — Introduced a stack-aware scoring model that breaks down the 0-100 score into Complexity, Coupling, Cohesion, Naming, and Layering dimensions.
+- **Stack-Specific Profiles** — Handlers for Python, Go, JS/TS, and Rust logic thresholds ensure language-appropriate scoring metrics.
+- **Orchestrator-Only Mode** — When enabled, only the orchestrator plugin runs (plus storage plugins if QMD is active), reducing analysis time by ~50% on real-world codebases.
+- **Optional Dependency** — `ghostclaw[orchestrator]` installs `ghost-orchestrator>=0.1.1a1`.
+- **40 New Unit Tests** — Comprehensive coverage for config, enforcement, and CLI behavior.
+
+### Improved
+- **Performance Foundation (Phase 1)** — Implemented a multi-layered optimization strategy:
+  - **Async Git Layer**: Optimized `AsyncGitExecutor` and `DiffCache` (LRU) to reduce Git overhead.
+  - **Intelligent Caching**: Added `PerFileAnalysisCache` using SHA-256 content hashing to skip analysis for unchanged files.
+  - **O(1) Discovery**: Replaced linear scans with `BaseReportIndex` for instant report lookup by commit SHA.
+  - **Near-Instant Diffing**: Introduced `FingerprintedRun` with pre-computed hashes for O(1) run comparisons.
+  - **Pre-commit Analysis**: Added support for analyzing staged/unstaged changes via `AsyncGitExecutor.staged_diff()`.
+- **Selective Plugin Execution**: Significantly lowers analysis time by executing only relevant adapters.
+- **Backward Compatibility**: Maintained legacy `vibe_score` while adding granular `vibe_detailed` metrics to the `ArchitectureReport`.
+- **Plugin Discovery**: Decoupled entry-point discovery from directory scanning, ensuring plugins are always found even when analyzing subdirectories.
+- **Schema Flexibility**: Updated `ArchitectureReport.issues` to `List[Any]` to support structured plugin data (e.g., Coderabbit) without validation errors.
+
+### Fixed
+- **Bandit Plugin Timeout**: Added `timeout` support to the `AsyncProcessMetricAdapter` base class and fixed the Bandit plugin's handling of asynchronous timeouts.
+- **Plugin Discovery Regression**: Fixed an issue where entry-point plugins (like `orchestrator`) were not discovered unless a local `.ghostclaw/plugins` directory existed.
+
+---
+
 ## [v0.2.1-beta] - 2026-03-17
 
 ### Added
