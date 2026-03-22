@@ -214,6 +214,7 @@ class CodebaseAnalyzer:
 
         # Create a fresh registry for this analysis to avoid global state mutations and races
         registry = PluginRegistry()
+        self.registry = registry  # expose for later use (e.g., save_report)
         registry.register_internal_plugins()
         if (root_path / ".ghostclaw" / "plugins").exists():
             registry.load_external_plugins(root_path / ".ghostclaw" / "plugins")

@@ -88,8 +88,10 @@ class GhostAgent:
                 await self._emit(AgentEvent.POST_SYNTHESIS, report)
             
             # Persistence & Final Broadcast
-            from ghostclaw.core.adapters.registry import registry  # type: ignore
-            await registry.save_report(report)
+            # Use the same registry that was used for analysis (respects enabled_plugins filter)
+            if not hasattr(self.analyzer, 'registry') or self.analyzer.registry is None:
+                raise RuntimeError("Analyzer registry not available for save_report")
+            await self.analyzer.registry.save_report(report)
 
             self.timings['total'] = time.perf_counter() - self._start_time
             return report
