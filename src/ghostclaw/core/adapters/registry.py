@@ -306,17 +306,19 @@ class PluginRegistry:
         if global_data:
             self._file_cache.set(Path("<global>"), name, global_data)
 
-        # 5. Merge with cached results (including global)
-        if cached_results:
-            # Retrieve global data from cache if present
+        # 5. Merge results without duplication
+        # Collect per-file parts: new split results + any cached per-file results
+        all_parts = list(split_map.values()) + cached_results
+
+        # Global data: prefer current run's global_data; if absent, try cached global
+        if global_data:
+            all_parts.append(global_data)
+        else:
             global_cached = self._file_cache.get(Path("<global>"), name)
             if global_cached is not None:
-                cached_results.append(global_cached)
-            return self._merge_results([new_result] + cached_results)
-        else:
-            # No cached per-file results, but we still need to include global from cache?
-            # Since to_analyze was all files, global_data is already in new_result; no extra step needed.
-            return new_result
+                all_parts.append(global_cached)
+
+        return self._merge_results(all_parts)
 
     def _split_result_by_file(
         self, result: Dict[str, Any], files: List[str]
