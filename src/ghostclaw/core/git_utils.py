@@ -75,7 +75,9 @@ async def get_git_diff_async(
 async def get_current_sha_async(cwd: Optional[Path] = None) -> str:
     """Async version of get_current_sha."""
     executor = AsyncGitExecutor(cwd)
-    returncode, stdout, _ = await executor.run_git(["rev-parse", "HEAD"])
+    returncode, stdout, stderr = await executor.run_git(["rev-parse", "HEAD"])
+    if returncode != 0:
+        raise RuntimeError(f"git rev-parse HEAD failed: {stderr.strip()}")
     return stdout.strip()
 
 
