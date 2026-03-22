@@ -32,8 +32,12 @@ class AsyncProcessMetricAdapter(MetricAdapter):
             except asyncio.TimeoutError:
                 try:
                     process.terminate()
+                    await asyncio.wait_for(process.wait(), timeout=5)
                 except ProcessLookupError:
                     pass
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
                 return {"error": f"Tool timed out after {timeout}s", "returncode": -1, "timeout": True}
             
             return {
