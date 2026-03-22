@@ -5,14 +5,20 @@ class VibeScorer:
     """Orchestrates vibe score calculation, potentially using custom scoring adapters."""
 
     @staticmethod
-    async def compute_score(context: Dict[str, Any]) -> MultiDimensionalScore:
+    async def compute_score(context: Dict[str, Any], registry=None) -> MultiDimensionalScore:
         """
         Compute the final multi-dimensional vibe score.
         
-        Attempts to use a custom ScoringAdapter from the registry first, 
+        Attempts to use a custom ScoringAdapter from the registry first,
         otherwise falls back to the enhanced ScoringEngine.
+
+        Args:
+            context: Analysis context with metrics, issues, etc.
+            registry: Optional PluginRegistry instance. If None, uses the global registry.
         """
-        from ghostclaw.core.adapters.registry import registry
+        if registry is None:
+            from ghostclaw.core.adapters.registry import registry as global_registry
+            registry = global_registry
         
         # 1. Try custom compute from registry (Scoring adapters)
         custom_vibe = await registry.compute_custom_vibe(context=context)

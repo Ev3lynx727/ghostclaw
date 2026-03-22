@@ -300,7 +300,7 @@ class CodebaseAnalyzer:
             "files": files,
             "coupling_metrics": coupling_metrics,
         }
-        multi_score = await VibeScorer.compute_score(context_data)
+        multi_score = await VibeScorer.compute_score(context_data, registry=registry)
         vibe_score = multi_score.overall
 
         # 7. Metadata and AI Prompt
