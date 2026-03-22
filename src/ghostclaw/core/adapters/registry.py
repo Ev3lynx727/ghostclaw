@@ -391,6 +391,8 @@ class PluginRegistry:
                     merged.setdefault(k, []).extend(v)
                 elif isinstance(v, dict):
                     merged.setdefault(k, {}).update(v)
+                elif isinstance(v, bool):
+                    merged[k] = v  # Last-writer wins for booleans
                 elif isinstance(v, (int, float)):
                     merged[k] = merged.get(k, 0) + v
                 else:
