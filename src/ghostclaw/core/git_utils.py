@@ -132,6 +132,7 @@ def _parse_changed_files(diff_text: str) -> List[str]:
     """Extract file paths from a unified diff.
     Optimized: Only parse '+++ b/' lines as they represent the destination path.
     """
+    files = []
     for line in diff_text.splitlines():
         if line.startswith("+++ b/"):
             path = line[len("+++ b/"):]  # Type-safe slice
