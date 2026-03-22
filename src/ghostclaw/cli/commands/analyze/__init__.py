@@ -75,6 +75,19 @@ class AnalyzeCommand(Command):
         orchestrator_group = parser.add_mutually_exclusive_group()
         orchestrator_group.add_argument("--orchestrate", action="store_true", help="Enable orchestrator routing")
         orchestrator_group.add_argument("--no-orchestrate", action="store_true", help="Disable orchestrator routing")
+
+        # Orchestrator options
+        parser.add_argument("--orchestrate-llm", action="store_true", help="Enable LLM-based planning in orchestrator")
+        parser.add_argument("--orchestrate-plan-only", action="store_true", help="Generate plan but do not execute plugins (debug/validation)")
+        parser.add_argument("--orchestrate-max", type=int, help="Maximum number of plugins to run (overrides config)")
+        parser.add_argument("--orchestrate-llm-model", type=str, help="LLM model to use for orchestrator planning (overrides config)")
+        parser.add_argument("--orchestrate-concurrency", type=int, help="Concurrency limit for orchestrator plugin execution (overrides config)")
+
+        # Orchestrator caching (mutually exclusive)
+        orchestrate_cache_group = parser.add_mutually_exclusive_group()
+        orchestrate_cache_group.add_argument("--orchestrate-cache", action="store_true", help="Enable plan caching in orchestrator")
+        orchestrate_cache_group.add_argument("--no-orchestrate-cache", action="store_true", help="Disable plan caching in orchestrator")
+
         # Reliability
         parser.add_argument("--strict", action="store_true", help="Treat adapter errors as fatal")
 
@@ -145,6 +158,60 @@ class AnalyzeCommand(Command):
         # Orchestrator flags
         if args.orchestrate or args.no_orchestrate:
             overrides['orchestrate'] = args.orchestrate
+
+        # Orchestrator options
+        if args.orchestrate_llm:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['use_llm'] = True
+        if args.orchestrate_plan_only:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['plan_only'] = True
+        if args.orchestrate_max is not None:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['max_plugins'] = args.orchestrate_max
+        if args.orchestrate_llm_model:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['llm_model'] = args.orchestrate_llm_model
+        if args.orchestrate_concurrency is not None:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['max_concurrent_plugins'] = args.orchestrate_concurrency
+            overrides['orchestrator']['concurrency_limit'] = args.orchestrate_concurrency
+        if args.orchestrate_cache:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['enable_plan_cache'] = True
+        if args.no_orchestrate_cache:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['enable_plan_cache'] = False
+
+        # Build orchestrator config overrides from detailed flags
+        orch_overrides: Dict[str, Any] = {}
+        if getattr(args, 'orchestrate_llm', False):
+            orch_overrides['use_llm'] = True
+        if getattr(args, 'orchestrate_plan_only', False):
+            orch_overrides['plan_only'] = True
+        if getattr(args, 'orchestrate_max', None) is not None:
+            orch_overrides['max_plugins'] = args.orchestrate_max
+        if getattr(args, 'orchestrate_llm_model', None):
+            orch_overrides['llm_model'] = args.orchestrate_llm_model
+        if getattr(args, 'orchestrate_concurrency', None) is not None:
+            orch_overrides['max_concurrent_plugins'] = args.orchestrate_concurrency
+        if getattr(args, 'orchestrate_cache', False):
+            orch_overrides['enable_plan_cache'] = True
+        if getattr(args, 'orchestrate_no_cache', False):
+            orch_overrides['enable_plan_cache'] = False
+
+        if orch_overrides:
+            # Merge with any existing orchestrator overrides
+            existing = overrides.get('orchestrator')
+            if existing is not None:
+                if isinstance(existing, dict):
+                    merged = {**existing, **orch_overrides}
+                    overrides['orchestrator'] = merged
+                # If existing is not dict (unlikely), replace
+                else:
+                    overrides['orchestrator'] = orch_overrides
+            else:
+                overrides['orchestrator'] = orch_overrides
 
         if args.no_parallel: overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: overrides['concurrency_limit'] = args.concurrency_limit

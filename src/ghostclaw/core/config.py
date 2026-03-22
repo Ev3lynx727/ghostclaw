@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import Optional, List, Dict, get_origin, get_args, Union
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Optional json5 support for comments and nicer formatting
@@ -11,20 +11,38 @@ try:
 except ImportError:
     HAS_JSON5 = False
 
+from typing import Optional, List, Dict, get_origin, get_args, Union
+from pathlib import Path
 
-def _load_json_or_json5(path: Path) -> dict:
-    """Load a JSON or JSON5 file (JSON5 if available, fallback to stdlib json)."""
-    try:
-        if HAS_JSON5:
-            with open(path, "r", encoding="utf-8") as f:
-                return json5.load(f)
-        else:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as e:
-        # Re-raise with a clearer message?
-        raise
 
+
+class OrchestratorConfig(BaseModel):
+    """Configuration for the orchestrator plugin."""
+    
+    enabled: bool = False
+    use_llm: bool = False
+    llm_model: str = "openrouter/anthropic/claude-3-sonnet"
+    llm_temperature: float = 0.7
+    max_tokens: int = 4096
+    
+    vector_weight: float = 0.7
+    heuristics_weight: float = 0.3
+    max_plugins: int = 8
+    max_concurrent_plugins: int = 4
+    
+    plugin_history_lookback: int = 50
+    
+    enable_plan_cache: bool = False
+    plan_cache_ttl_hours: int = 24
+    plan_cache_file: Optional[str] = None
+    
+    plan_only: bool = False
+    report_plan_details: bool = True
+    
+    concurrency_limit: Optional[int] = None
+    
+    class Config:
+        extra = "allow"
 
 
 class GhostclawConfig(BaseSettings):
@@ -206,8 +224,8 @@ class GhostclawConfig(BaseSettings):
     )
 
     # Orchestrator Configuration
-    orchestrator: Optional[Dict] = Field(
-        default=None,
+    orchestrator: OrchestratorConfig = Field(
+        default_factory=OrchestratorConfig,
         description="Orchestrator plugin configuration (routing, LLM, weights). See documentation for options."
     )
 
