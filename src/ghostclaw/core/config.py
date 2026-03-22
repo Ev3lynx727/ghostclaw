@@ -11,8 +11,6 @@ try:
 except ImportError:
     HAS_JSON5 = False
 
-from typing import Optional, List, Dict, get_origin, get_args, Union
-from pathlib import Path
 
 
 def _load_json_or_json5(path: Path) -> dict:
