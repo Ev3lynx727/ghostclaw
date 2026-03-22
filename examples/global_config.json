@@ -16,13 +16,19 @@
   // Orchestrator Integration (v0.2.2a0)
   orchestrate: false, // Enable adaptive plugin routing via ghost-orchestrator
   orchestrator: {
-    model: "gpt-4o", // LLM to use for orchestration routing
-    use_caching: true, // Cache orchestration decisions
-    weights: {
-      nesting: 0.5,
-      complexity: 0.3,
-      loc: 0.2
-    }
+    enabled: false, // Master switch for orchestrator plugin (usually set by --orchestrate)
+    use_llm: false, // Enable LLM-based planning (requires API key)
+    llm_model: "openrouter/anthropic/claude-3-sonnet", // LLM model for planning
+    vector_weight: 0.7, // Weight for vector-based plugin selection (0-1)
+    heuristics_weight: 0.3, // Weight for heuristic-based selection (0-1)
+    max_plugins: 8, // Maximum number of plugins to execute
+    max_concurrent_plugins: 4, // Max concurrent plugin executions
+    plugin_history_lookback: 50, // How many past runs to consider for vector scoring
+    enable_plan_cache: false, // Cache orchestration plans to disk
+    plan_cache_ttl_hours: 24, // Plan cache TTL in hours
+    plan_cache_file: null, // Custom cache file path (null = default)
+    plan_only: false, // For debugging: generate plan but don't execute plugins
+    report_plan_details: true // Include plan details in report metadata
   },
   // Delta-Context Mode (PR reviews)
   delta_mode: false, // Analyze only changed files (git diff)
