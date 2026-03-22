@@ -194,11 +194,16 @@ class PluginRegistry:
             logger.debug(f"Error loading plugin module at {path}: {e}")
 
     async def run_analysis(
-        self, root: str, files: List[str], config: GhostclawConfig
+        self, root: str, files: List[str], config: Optional[GhostclawConfig] = None
     ) -> List[Dict[str, Any]]:
         """Invoke all enabled metric adapters concurrently, collecting errors."""
         import asyncio
         from ghostclaw.core.cache import PerFileAnalysisCache
+        from ghostclaw.core.config import GhostclawConfig
+
+        # Backward compatibility: if no config provided, create a default
+        if config is None:
+            config = GhostclawConfig()
 
         self.errors = []  # reset
 
@@ -278,42 +283,63 @@ class PluginRegistry:
             else:
                 to_analyze.append(f)
 
-        # 2. If all files cached, merge and return
+        # 2. If all files cached, merge and return (include global data if present)
         if not to_analyze:
+            global_cached = self._file_cache.get(Path("<global>"), name)
+            if global_cached is not None:
+                cached_results.append(global_cached)
             return self._merge_results(cached_results)
 
         # 3. Run adapter on non-cached files
         new_result = await self._run_adapter(name, plugin, root, to_analyze)
 
-        # 4. Split and cache new results
-        split_data = self._split_result_by_file(new_result, to_analyze)
-        for f_path_str, f_res in split_data.items():
+        # 4. Split and cache new results (per-file + global)
+        split_map, global_data = self._split_result_by_file(new_result, to_analyze)
+        for f_path_str, f_res in split_map.items():
             abs_p = (
                 Path(f_path_str)
                 if Path(f_path_str).is_absolute()
                 else root_path / f_path_str
             )
             self._file_cache.set(abs_p, name, f_res)
+        # Also cache global data under a special key
+        if global_data:
+            self._file_cache.set(Path("<global>"), name, global_data)
 
-        # 5. Merge with cached results
+        # 5. Merge with cached results (including global)
         if cached_results:
+            # Retrieve global data from cache if present
+            global_cached = self._file_cache.get(Path("<global>"), name)
+            if global_cached is not None:
+                cached_results.append(global_cached)
             return self._merge_results([new_result] + cached_results)
-        return new_result
+        else:
+            # No cached per-file results, but we still need to include global from cache?
+            # Since to_analyze was all files, global_data is already in new_result; no extra step needed.
+            return new_result
 
     def _split_result_by_file(
         self, result: Dict[str, Any], files: List[str]
-    ) -> Dict[str, Dict[str, Any]]:
-        """Attempt to split adapter results into per-file dictionaries."""
+    ) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
+        """Split adapter results into per-file dictionaries and global unmatched data.
+
+        Returns:
+            (split_map, global_data)
+            - split_map: {file_path: {key: items}}
+            - global_data: {key: items} for results not attributable to any file
+        """
         split_map = {f: {} for f in files}
+        global_data: Dict[str, Any] = {}
 
         # Common keys in ArchitectureReport
         for key in ["issues", "architectural_ghosts", "red_flags"]:
             items = result.get(key, [])
             if not isinstance(items, list):
+                # Non-list values are global
+                global_data[key] = items
                 continue
 
             for item in items:
-                # Try to find filename in item (string or dict)
                 file_found = None
                 if isinstance(item, str):
                     for f in files:
@@ -321,7 +347,6 @@ class PluginRegistry:
                             file_found = f
                             break
                 elif isinstance(item, dict):
-                    # Check common fields: 'file', 'path', 'filename'
                     for field in ["file", "path", "filename"]:
                         if field in item and item[field] in files:
                             file_found = item[field]
@@ -329,15 +354,28 @@ class PluginRegistry:
 
                 if file_found:
                     split_map[file_found].setdefault(key, []).append(item)
+                else:
+                    # Could not attribute to a specific file → global
+                    global_data.setdefault(key, []).append(item)
 
-        # Coupling metrics
+        # Coupling metrics: per-file or global if not matching any file
         coupling = result.get("coupling_metrics", {})
         if isinstance(coupling, dict):
             for f, metrics in coupling.items():
                 if f in split_map:
                     split_map[f]["coupling_metrics"] = {f: metrics}
+                else:
+                    global_data.setdefault("coupling_metrics", {})[f] = metrics
 
-        return split_map
+        # Preserve any other top-level keys that we didn't split (e.g., symbol_index, metadata, etc.)
+        for key in ["symbol_index", "metadata", "coupling_metrics", "architecture"]:
+            if key == "coupling_metrics":
+                continue  # already handled above
+            if key in result and key not in ["issues", "architectural_ghosts", "red_flags"]:
+                # These are global by nature
+                global_data.setdefault(key, result[key])
+
+        return split_map, global_data
 
     def _merge_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Merge multiple adapter results into one."""

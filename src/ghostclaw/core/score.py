@@ -31,25 +31,13 @@ class ScoringEngine:
         # In actual analysis, the orchestrator should call the new engine directly
         # with full context.
         try:
-            # Check if we're inside an async context
+            # Check if we're inside an async context: cannot safely run coroutine synchronously
             try:
-                loop = asyncio.get_running_loop()
-                # If we get here, there's a running loop in this thread
-                # Submit coroutine and wait for result synchronously
-                future = asyncio.run_coroutine_threadsafe(
-                    engine.compute_score(
-                        metrics=metrics,
-                        issues=mock_issues,
-                        ghosts=mock_ghosts,
-                        flags=[],
-                        stack=stack
-                    ),
-                    loop
-                )
-                result = future.result(timeout=30)  # 30s timeout
-                return result.overall
+                asyncio.get_running_loop()
+                # We are inside an async context: use the synchronous fallback formula to avoid deadlock
+                raise RuntimeError("Running in async context; using fallback formula")
             except RuntimeError:
-                # No running loop, create our own
+                # No running loop: create a temporary event loop and run the async engine
                 loop = asyncio.new_event_loop()
                 try:
                     result = loop.run_until_complete(engine.compute_score(
