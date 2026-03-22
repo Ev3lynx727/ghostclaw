@@ -363,5 +363,23 @@ class GhostclawConfig(BaseSettings):
             else:
                 resolved_config[k] = v
         
+        # Normalize top-level orchestrate flag into orchestrator.enabled for single source of truth
+        if 'orchestrate' in resolved_config and resolved_config['orchestrate'] is not None:
+            orch_val = resolved_config['orchestrate']
+            orch_cfg = resolved_config.get('orchestrator')
+            if orch_cfg is None:
+                orch_cfg = {}
+            elif hasattr(orch_cfg, 'model_dump'):
+                orch_cfg = orch_cfg.model_dump()
+            elif not isinstance(orch_cfg, dict):
+                # Convert to dict if possible (e.g., from a model instance)
+                try:
+                    orch_cfg = dict(orch_cfg)
+                except Exception:
+                    orch_cfg = {}
+            # Override enabled
+            orch_cfg['enabled'] = orch_val
+            resolved_config['orchestrator'] = orch_cfg
+
         # print(f"DEBUG: GhostclawConfig.load - resolved_config['use_ai']={resolved_config.get('use_ai')}")
         return cls(**resolved_config)
