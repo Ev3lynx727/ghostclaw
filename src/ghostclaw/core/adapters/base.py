@@ -13,6 +13,7 @@ class AdapterMetadata(BaseModel):
     dependencies: List[str] = []  # External binaries required
     min_ghostclaw_version: Optional[str] = None
     max_ghostclaw_version: Optional[str] = None
+    supports_per_file_cache: bool = False  # Whether adapter outputs can be split per file safely
 
 class BaseAdapter(abc.ABC):
     """Abstract base class for all Ghostclaw adapters."""

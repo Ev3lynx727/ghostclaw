@@ -229,7 +229,21 @@ class PluginRegistry:
                 continue
             # Only consider adapters with ghost_analyze
             if hasattr(plugin, "ghost_analyze"):
-                tasks.append(self._run_adapter_with_cache(name, plugin, root, files))
+                # Determine per-file caching strategy
+                use_per_file = False
+                try:
+                    meta = plugin.get_metadata()
+                    # Support both AdapterMetadata objects and plain dicts
+                    if hasattr(meta, 'supports_per_file_cache'):
+                        use_per_file = bool(meta.supports_per_file_cache)
+                    elif isinstance(meta, dict) and 'supports_per_file_cache' in meta:
+                        use_per_file = bool(meta['supports_per_file_cache'])
+                except Exception:
+                    use_per_file = False
+                if use_per_file:
+                    tasks.append(self._run_adapter_with_cache(name, plugin, root, files))
+                else:
+                    tasks.append(self._run_adapter(name, plugin, root, files))
 
         if not tasks:
             return []
