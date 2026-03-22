@@ -255,7 +255,7 @@ class PluginRegistry:
             f_path = Path(f)
             abs_f = f_path if f_path.is_absolute() else root_path / f
             cached = self._file_cache.get(abs_f, name)
-            if cached:
+            if cached is not None:
                 cached_results.append(cached)
             else:
                 to_analyze.append(f)
