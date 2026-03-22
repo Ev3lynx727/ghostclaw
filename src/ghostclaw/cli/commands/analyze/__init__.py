@@ -183,36 +183,6 @@ class AnalyzeCommand(Command):
             overrides['orchestrator'] = overrides.get('orchestrator', {})
             overrides['orchestrator']['enable_plan_cache'] = False
 
-        # Build orchestrator config overrides from detailed flags
-        orch_overrides: Dict[str, Any] = {}
-        if getattr(args, 'orchestrate_llm', False):
-            orch_overrides['use_llm'] = True
-        if getattr(args, 'orchestrate_plan_only', False):
-            orch_overrides['plan_only'] = True
-        if getattr(args, 'orchestrate_max', None) is not None:
-            orch_overrides['max_plugins'] = args.orchestrate_max
-        if getattr(args, 'orchestrate_llm_model', None):
-            orch_overrides['llm_model'] = args.orchestrate_llm_model
-        if getattr(args, 'orchestrate_concurrency', None) is not None:
-            orch_overrides['max_concurrent_plugins'] = args.orchestrate_concurrency
-        if getattr(args, 'orchestrate_cache', False):
-            orch_overrides['enable_plan_cache'] = True
-        if getattr(args, 'orchestrate_no_cache', False):
-            orch_overrides['enable_plan_cache'] = False
-
-        if orch_overrides:
-            # Merge with any existing orchestrator overrides
-            existing = overrides.get('orchestrator')
-            if existing is not None:
-                if isinstance(existing, dict):
-                    merged = {**existing, **orch_overrides}
-                    overrides['orchestrator'] = merged
-                # If existing is not dict (unlikely), replace
-                else:
-                    overrides['orchestrator'] = orch_overrides
-            else:
-                overrides['orchestrator'] = orch_overrides
-
         if args.no_parallel: overrides['parallel_enabled'] = False
         if args.concurrency_limit is not None: overrides['concurrency_limit'] = args.concurrency_limit
         return overrides
