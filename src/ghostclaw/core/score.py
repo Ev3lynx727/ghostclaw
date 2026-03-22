@@ -30,34 +30,38 @@ class ScoringEngine:
         
         # In actual analysis, the orchestrator should call the new engine directly
         # with full context.
+        # Determine if there is a running event loop in this thread.
+        has_running_loop = False
         try:
-            # Check if we're inside an async context: cannot safely run coroutine synchronously
+            asyncio.get_running_loop()
+            has_running_loop = True
+        except RuntimeError:
+            has_running_loop = False
+
+        if not has_running_loop:
+            loop = asyncio.new_event_loop()
             try:
-                asyncio.get_running_loop()
-                # We are inside an async context: use the synchronous fallback formula to avoid deadlock
-                raise RuntimeError("Running in async context; using fallback formula")
-            except RuntimeError:
-                # No running loop: create a temporary event loop and run the async engine
-                loop = asyncio.new_event_loop()
-                try:
-                    result = loop.run_until_complete(engine.compute_score(
-                        metrics=metrics,
-                        issues=mock_issues,
-                        ghosts=mock_ghosts,
-                        flags=[],
-                        stack=stack
-                    ))
-                    return result.overall
-                finally:
-                    loop.close()
-        except Exception:
-            # Absolute fallback to the original simple formula if something fails
-            score = 100
-            large_file_penalty = min(30, metrics.get('large_file_count', 0) * 5)
-            score -= large_file_penalty
-            avg = metrics.get('average_lines', 0)
-            if avg > 200:
-                score -= 10
-            score -= min(20, issue_count * 3)
-            score -= min(15, ghost_count * 5)
-            return max(0, min(100, score))
+                result = loop.run_until_complete(engine.compute_score(
+                    metrics=metrics,
+                    issues=mock_issues,
+                    ghosts=mock_ghosts,
+                    flags=[],
+                    stack=stack
+                ))
+                return result.overall
+            except Exception:
+                # Async engine failed; will use fallback below
+                pass
+            finally:
+                loop.close()
+
+        # Fallback synchronous formula (used if async engine fails or we're inside an async context)
+        score = 100
+        large_file_penalty = min(30, metrics.get('large_file_count', 0) * 5)
+        score -= large_file_penalty
+        avg = metrics.get('average_lines', 0)
+        if avg > 200:
+            score -= 10
+        score -= min(20, issue_count * 3)
+        score -= min(15, ghost_count * 5)
+        return max(0, min(100, score))
