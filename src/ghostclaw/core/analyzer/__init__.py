@@ -115,6 +115,31 @@ class CodebaseAnalyzer:
                 f":delta={delta_mode}:base={delta_base_ref}" if delta_mode else ""
             )
             config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}{delta_suffix}"
+
+            # Include orchestrator/routing settings in fingerprint
+            # Determine effective orchestrator enabled state
+            orch_enabled = False
+            if getattr(config, 'orchestrate', None) is not None:
+                orch_enabled = config.orchestrate
+            elif getattr(config, 'orchestrator', None) is not None:
+                orch_enabled = config.orchestrator.enabled
+            config_suffix += f":orch_enabled={orch_enabled}"
+
+            if orch_enabled:
+                orch_cfg = config.orchestrator
+                # Include key orchestrator parameters that affect plugin selection/planning
+                config_suffix += f":orch_llm={orch_cfg.use_llm}"
+                config_suffix += f":orch_max_plugins={orch_cfg.max_plugins}"
+                config_suffix += f":orch_vec_w={orch_cfg.vector_weight}"
+                config_suffix += f":orch_heur_w={orch_cfg.heuristics_weight}"
+                config_suffix += f":orch_hist={orch_cfg.plugin_history_lookback}"
+                config_suffix += f":orch_cache={orch_cfg.enable_plan_cache}"
+
+            # Include plugin filter (if any)
+            if getattr(config, 'plugins_enabled', None):
+                sorted_plugins = sorted(config.plugins_enabled)
+                config_suffix += f":plugins={','.join(sorted_plugins)}"
+
             fingerprint = base_fingerprint + config_suffix
 
             cached_data = await asyncio.to_thread(self.cache.get, fingerprint)
