@@ -138,6 +138,10 @@ def _parse_changed_files(diff_text: str) -> List[str]:
             path = line[len("+++ b/"):]  # Type-safe slice
             if path != "/dev/null" and path not in files:
                 files.append(path)
+        elif line.startswith("--- a/"):
+            path = line[len("--- a/"):]  # Capture deleted files
+            if path != "/dev/null" and path not in files:
+                files.append(path)
     return files
 
 
