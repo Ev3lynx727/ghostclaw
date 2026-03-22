@@ -36,10 +36,10 @@ class ConfigService:
             "delta_mode": False,
             "delta_base_ref": "HEAD~1",
             # Orchestrator (v0.2.2a)
-            "orchestrate": True,
+            "orchestrate": False,
             "orchestrator": {
-                "enabled": True,
-                "use_ai": True,
+                "enabled": False,
+                "use_llm": False,
                 "weights": {
                     "complexity": 0.4,
                     "coupling": 0.3,
@@ -47,7 +47,7 @@ class ConfigService:
                 }
             },
             # QMD Backend (v0.2.0)
-            "use_qmd": True
+            "use_qmd": False
         }
 
         # Write JSON5 if available for nicer formatting with comments/trailing commas
