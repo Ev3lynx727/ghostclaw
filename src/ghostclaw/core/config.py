@@ -53,8 +53,8 @@ class OrchestratorConfig(BaseModel):
     concurrency_limit: Optional[int] = None
 
     model_config = {"extra": "allow"}
-
     model_config = {"extra": "allow"}
+
 
 
 class GhostclawConfig(BaseSettings):
