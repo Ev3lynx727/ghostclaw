@@ -25,7 +25,7 @@ class AsyncProcessMetricAdapter(MetricAdapter):
             )
             
             try:
-                if timeout:
+                if timeout is not None:
                     stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
                 else:
                     stdout, stderr = await process.communicate()
