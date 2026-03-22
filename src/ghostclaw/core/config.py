@@ -346,7 +346,21 @@ class GhostclawConfig(BaseSettings):
 
         # 4. CLI overrides (highest precedence)
         for k, v in cli_overrides.items():
-            if v is not None:
+            if v is None:
+                continue
+            existing = resolved_config.get(k)
+            # If override is a dict and existing is a dict (or a Pydantic model), merge
+            if isinstance(v, dict):
+                if isinstance(existing, dict):
+                    merged = {**existing, **v}
+                    resolved_config[k] = merged
+                elif hasattr(existing, 'model_dump') and not isinstance(existing, type):
+                    # existing is a Pydantic model instance; convert to dict and merge
+                    merged = {**existing.model_dump(), **v}
+                    resolved_config[k] = merged
+                else:
+                    resolved_config[k] = v
+            else:
                 resolved_config[k] = v
         
         # print(f"DEBUG: GhostclawConfig.load - resolved_config['use_ai']={resolved_config.get('use_ai')}")
