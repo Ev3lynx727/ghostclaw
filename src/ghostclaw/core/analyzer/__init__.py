@@ -223,7 +223,15 @@ class CodebaseAnalyzer:
 
         # Compute enabled_plugins as a local variable (do not mutate global state)
         enabled_plugins: Optional[Set[str]] = None
-        if config.orchestrator.enabled:
+
+        # Determine effective orchestrator enablement: orchestrate flag takes precedence over orchestrator.enabled
+        orch_enabled = False
+        if config.orchestrate is not None:
+            orch_enabled = config.orchestrate
+        elif getattr(config, "orchestrator", None) is not None:
+            orch_enabled = config.orchestrator.enabled
+
+        if orch_enabled:
             enabled_plugins = {"orchestrator"}
         elif config.plugins_enabled is not None:
             enabled_plugins = set(config.plugins_enabled)
@@ -234,7 +242,7 @@ class CodebaseAnalyzer:
 
             enabled_plugins = (
                 set(INTERNAL_PLUGINS) | set(registry.external_plugins)
-            ) - {"qmd"}
+            ) - {"qmd", "orchestrator"}
 
         if config.use_qmd and enabled_plugins is not None:
             enabled_plugins.add("sqlite")

@@ -45,8 +45,8 @@ class TestOrchestrateConfigField:
             ".", orchestrate=True, orchestrator={"enabled": False, "use_llm": True}
         )
         assert config.orchestrate is True
-        assert config.orchestrator["enabled"] is False
-        assert config.orchestrator["use_llm"] is True
+        assert config.orchestrator.enabled is False
+        assert config.orchestrator.use_llm is True
 
 
 class TestOrchestratorEnforcement:
@@ -74,8 +74,8 @@ class TestOrchestratorEnforcement:
         analyzer = CodebaseAnalyzer()
         # Disable cache to avoid interference
         await analyzer.analyze(str(repo), use_cache=False, config=config)
-        # After analyze, the registry.enabled_plugins reflects what was used
-        return registry.enabled_plugins
+        # After analyze, the analyzer's registry.enabled_plugins reflects what was used
+        return analyzer.registry.enabled_plugins
 
     def test_orchestrate_flag_enables_only_orchestrator_no_qmd(self, tmp_path):
         """With orchestrate=True and use_qmd=False, only orchestrator should be enabled."""
@@ -241,16 +241,16 @@ class TestOrchestrateConfigFieldExtra:
         (gc_dir / "ghostclaw.json").write_text(json.dumps({"orchestrator": orch_cfg}))
         config = GhostclawConfig.load(str(tmp_path))
         assert config.orchestrator is not None
-        assert config.orchestrator["enabled"] is True
-        assert config.orchestrator["use_llm"] is False
-        assert config.orchestrator["weight"] == 0.8
+        assert config.orchestrator.enabled is True
+        assert config.orchestrator.use_llm is False
+        assert config.orchestrator.weight == 0.8
 
     def test_orchestrator_none_does_not_trigger_orchestrate(self):
         """orchestrator=None (default) with orchestrate=False should not enable enforcement."""
         config = GhostclawConfig.load(".", orchestrate=False)
         assert config.orchestrator is None
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get("enabled", False)
+            config.orchestrator and (config.orchestrator.enabled if config.orchestrator else False)
         )
         # Python short-circuit: `False or None` evaluates to None (falsy), not strict False
         assert not orchestrator_enabled
@@ -259,7 +259,7 @@ class TestOrchestrateConfigFieldExtra:
         """orchestrator={} (no 'enabled' key) with orchestrate=False should not enable enforcement."""
         config = GhostclawConfig.load(".", orchestrate=False, orchestrator={})
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get("enabled", False)
+            config.orchestrator and (config.orchestrator.enabled if config.orchestrator else False)
         )
         # Python short-circuit: `False or {}` evaluates to {} (falsy empty dict), not strict False
         assert not orchestrator_enabled
@@ -270,7 +270,7 @@ class TestOrchestrateConfigFieldExtra:
             ".", orchestrate=False, orchestrator={"use_llm": True, "weight": 0.5}
         )
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get("enabled", False)
+            config.orchestrator and (config.orchestrator.enabled if config.orchestrator else False)
         )
         assert orchestrator_enabled is False
 
@@ -280,7 +280,7 @@ class TestOrchestrateConfigFieldExtra:
             ".", orchestrate=False, orchestrator={"enabled": True}
         )
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get("enabled", False)
+            config.orchestrator and (config.orchestrator.enabled if config.orchestrator else False)
         )
         assert orchestrator_enabled is True
 
@@ -290,9 +290,9 @@ class TestOrchestrateConfigFieldExtra:
             ".", orchestrate=True, orchestrator={"enabled": True}
         )
         assert config.orchestrate is True
-        assert config.orchestrator["enabled"] is True
+        assert config.orchestrator.enabled is True
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get("enabled", False)
+            config.orchestrator and (config.orchestrator.enabled if config.orchestrator else False)
         )
         assert orchestrator_enabled is True
 
@@ -322,7 +322,7 @@ class TestOrchestratorEnforcementExtra:
         registry.internal_plugins = set(INTERNAL_PLUGINS)
 
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get("enabled", False)
+            config.orchestrator is not None and config.orchestrator.enabled
         )
         if orchestrator_enabled:
             registry.enabled_plugins = {"orchestrator"}

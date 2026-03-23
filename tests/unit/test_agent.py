@@ -42,6 +42,8 @@ async def test_agent_lifecycle_hooks(config):
     with patch("ghostclaw.core.adapters.registry.registry") as mock_registry:
         mock_registry.save_report = AsyncMock()
         mock_registry.emit_event = AsyncMock()
+        # The analyzer's registry is set during real analyze(); since we mock analyze, we must set it manually
+        agent.analyzer.registry = mock_registry
 
         await agent.run()
 

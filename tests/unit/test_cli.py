@@ -183,6 +183,19 @@ def test_cli_json_mode_streaming_to_stderr(tmp_path, capsys, monkeypatch):
         "ghostclaw.core.analyzer.CodebaseAnalyzer.analyze", mock_analyze, raising=True
     )
 
+    # Ensure analyzer has a registry since we mock analyze (which normally sets it)
+    from ghostclaw.core.analyzer import CodebaseAnalyzer as _CAA
+
+    _original_init = _CAA.__init__
+
+    def _patched_init(self, *args, **kwargs):
+        _original_init(self, *args, **kwargs)
+        self.registry = MagicMock()
+
+    monkeypatch.setattr(
+        "ghostclaw.core.analyzer.CodebaseAnalyzer.__init__", _patched_init, raising=True
+    )
+
     # Mock LLMClient.stream_analysis to yield chunks
     async def fake_stream(self, prompt):
         yield {"type": "content", "content": "STREAMED_CHUNK_1"}
