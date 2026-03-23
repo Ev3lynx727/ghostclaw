@@ -200,7 +200,7 @@ class AnalyzeCommand(Command):
         try:
             return await self._execute_impl(args)
         except Exception as e:
-            if args.pdb:
+            if getattr(args, "pdb", False):
                 print(
                     "\n\x1b[31m⚠️  Debugger enabled. Entering pdb post-mortem session.\x1b[0m",
                     file=sys.stderr,
@@ -272,24 +272,26 @@ class AnalyzeCommand(Command):
         elif args.no_ai_codeindex:
             overrides["use_ai_codeindex"] = False
 
-        # Orchestrator flags
-        if args.orchestrate or args.no_orchestrate:
-            overrides["orchestrate"] = args.orchestrate
+        # Orchestrator flags: only set override if user explicitly provided either flag
+        if args.orchestrate:
+            overrides["orchestrate"] = True
+        elif args.no_orchestrate:
+            overrides["orchestrate"] = False
 
-        # Orchestrator options
-        if args.orchestrate_llm:
+        # Orchestrator options (safe attribute access)
+        if getattr(args, "orchestrate_llm", False):
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["use_llm"] = True
-        if args.orchestrate_plan_only:
+        if getattr(args, "orchestrate_plan_only", False):
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["plan_only"] = True
-        if args.orchestrate_max is not None:
+        if getattr(args, "orchestrate_max", None) is not None:
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["max_plugins"] = args.orchestrate_max
-        if args.orchestrate_llm_model:
+        if getattr(args, "orchestrate_llm_model", None):
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["llm_model"] = args.orchestrate_llm_model
-        if args.orchestrate_concurrency is not None:
+        if getattr(args, "orchestrate_concurrency", None) is not None:
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["max_concurrent_plugins"] = (
                 args.orchestrate_concurrency
@@ -297,10 +299,10 @@ class AnalyzeCommand(Command):
             overrides["orchestrator"]["concurrency_limit"] = (
                 args.orchestrate_concurrency
             )
-        if args.orchestrate_cache:
+        if getattr(args, "orchestrate_cache", False):
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["enable_plan_cache"] = True
-        if args.no_orchestrate_cache:
+        if getattr(args, "no_orchestrate_cache", False):
             overrides["orchestrator"] = overrides.get("orchestrator", {})
             overrides["orchestrator"]["enable_plan_cache"] = False
 

@@ -110,44 +110,50 @@ class CodebaseAnalyzer:
 
         fingerprint = None
         if use_cache and self.cache is not None:
-            # Use async version of get_current_sha to avoid blocking
-            current_sha = await git_utils.get_current_sha_async(root_path)
-            base_fingerprint = compute_fingerprint(root_path, git_sha=current_sha)
-            delta_suffix = (
-                f":delta={delta_mode}:base={delta_base_ref}" if delta_mode else ""
-            )
-            config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}{delta_suffix}"
+            try:
+                # Use async version of get_current_sha to avoid blocking
+                current_sha = await git_utils.get_current_sha_async(root_path)
+                base_fingerprint = compute_fingerprint(root_path, git_sha=current_sha)
+            except Exception as e:
+                # Not a git repo or git failed; skip caching for this run
+                logger.debug("Cache setup failed (likely not a git repo): %s", e)
+                base_fingerprint = None
+            if base_fingerprint is not None:
+                delta_suffix = (
+                    f":delta={delta_mode}:base={delta_base_ref}" if delta_mode else ""
+                )
+                config_suffix = f":ai={config.use_ai}:pyscn={config.use_pyscn}:codeindex={config.use_ai_codeindex}{delta_suffix}"
 
-            # Include orchestrator/routing settings in fingerprint
-            # Determine effective orchestrator enabled state
-            orch_enabled = False
-            if getattr(config, "orchestrate", None) is not None:
-                orch_enabled = config.orchestrate
-            elif getattr(config, "orchestrator", None) is not None:
-                orch_enabled = config.orchestrator.enabled
-            config_suffix += f":orch_enabled={orch_enabled}"
+                # Include orchestrator/routing settings that affect plugin selection/planning
+                # Determine effective orchestrator enabled state
+                orch_enabled = False
+                if getattr(config, "orchestrate", None) is not None:
+                    orch_enabled = config.orchestrate
+                elif getattr(config, "orchestrator", None) is not None:
+                    orch_enabled = config.orchestrator.enabled
+                config_suffix += f":orch_enabled={orch_enabled}"
 
-            if orch_enabled:
-                orch_cfg = config.orchestrator
-                # Include key orchestrator parameters that affect plugin selection/planning
-                config_suffix += f":orch_llm={orch_cfg.use_llm}"
-                config_suffix += f":orch_max_plugins={orch_cfg.max_plugins}"
-                config_suffix += f":orch_vec_w={orch_cfg.vector_weight}"
-                config_suffix += f":orch_heur_w={orch_cfg.heuristics_weight}"
-                config_suffix += f":orch_hist={orch_cfg.plugin_history_lookback}"
-                config_suffix += f":orch_cache={orch_cfg.enable_plan_cache}"
+                if orch_enabled:
+                    orch_cfg = config.orchestrator
+                    # Include key orchestrator parameters that affect plugin selection/planning
+                    config_suffix += f":orch_llm={orch_cfg.use_llm}"
+                    config_suffix += f":orch_max_plugins={orch_cfg.max_plugins}"
+                    config_suffix += f":orch_vec_w={orch_cfg.vector_weight}"
+                    config_suffix += f":orch_heur_w={orch_cfg.heuristics_weight}"
+                    config_suffix += f":orch_hist={orch_cfg.plugin_history_lookback}"
+                    config_suffix += f":orch_cache={orch_cfg.enable_plan_cache}"
 
-            # Include plugin filter (if any)
-            if getattr(config, "plugins_enabled", None):
-                sorted_plugins = sorted(config.plugins_enabled)
-                config_suffix += f":plugins={','.join(sorted_plugins)}"
+                # Include plugin filter (if any)
+                if getattr(config, "plugins_enabled", None):
+                    sorted_plugins = sorted(config.plugins_enabled)
+                    config_suffix += f":plugins={','.join(sorted_plugins)}"
 
-            fingerprint = base_fingerprint + config_suffix
+                fingerprint = base_fingerprint + config_suffix
 
-            cached_data = await asyncio.to_thread(self.cache.get, fingerprint)
-            if cached_data is not None:
-                cached_data.setdefault("metadata", {})["cache_hit"] = True
-                return ArchitectureReport(**cached_data)
+                cached_data = await asyncio.to_thread(self.cache.get, fingerprint)
+                if cached_data is not None:
+                    cached_data.setdefault("metadata", {})["cache_hit"] = True
+                    return ArchitectureReport(**cached_data)
 
         # 1. Detect stack
         stack = await StackAnalyzer.detect(root)
