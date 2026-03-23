@@ -7,10 +7,21 @@ from pathlib import Path
 
 from ghostclaw.core.memory import MemoryStore
 
+from ghostclaw_mcp.server import (
+    ghostclaw_memory_search,
+    ghostclaw_memory_get_run,
+    ghostclaw_memory_list_runs,
+    ghostclaw_memory_diff_runs,
+    ghostclaw_knowledge_graph,
+    ghostclaw_memory_get_previous_run,
+)
+from unittest.mock import patch
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _seed_db(db_path: Path, reports: list):
     """Insert test reports into a fresh SQLite database."""
@@ -64,6 +75,7 @@ def _make_report(**overrides):
 # MemoryStore.list_runs
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_list_runs_empty(tmp_path):
     store = MemoryStore(db_path=tmp_path / "empty.db")
@@ -74,10 +86,13 @@ async def test_list_runs_empty(tmp_path):
 @pytest.mark.asyncio
 async def test_list_runs_returns_summaries(tmp_path):
     db_path = tmp_path / ".ghostclaw" / "storage" / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"vibe_score": 80, "stack": "python", "repo_path": "/repo/a"},
-        {"vibe_score": 60, "stack": "node", "repo_path": "/repo/b"},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {"vibe_score": 80, "stack": "python", "repo_path": "/repo/a"},
+            {"vibe_score": 60, "stack": "node", "repo_path": "/repo/b"},
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     runs = await store.list_runs()
     assert len(runs) == 2
@@ -88,11 +103,14 @@ async def test_list_runs_returns_summaries(tmp_path):
 @pytest.mark.asyncio
 async def test_list_runs_filter_by_repo(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"vibe_score": 80, "repo_path": "/repo/a"},
-        {"vibe_score": 60, "repo_path": "/repo/b"},
-        {"vibe_score": 90, "repo_path": "/repo/a"},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {"vibe_score": 80, "repo_path": "/repo/a"},
+            {"vibe_score": 60, "repo_path": "/repo/b"},
+            {"vibe_score": 90, "repo_path": "/repo/a"},
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     runs = await store.list_runs(repo_path="/repo/a")
     assert len(runs) == 2
@@ -111,6 +129,7 @@ async def test_list_runs_respects_limit(tmp_path):
 # ---------------------------------------------------------------------------
 # MemoryStore.get_run
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_run_not_found(tmp_path):
@@ -134,6 +153,7 @@ async def test_get_run_returns_full_report(tmp_path):
 # MemoryStore.get_previous_run
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_previous_run_empty(tmp_path):
     store = MemoryStore(db_path=tmp_path / "empty.db")
@@ -143,10 +163,21 @@ async def test_get_previous_run_empty(tmp_path):
 @pytest.mark.asyncio
 async def test_get_previous_run_returns_latest(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"timestamp": "2025-01-01T00:00:00", "vibe_score": 50, "report": _make_report(vibe_score=50)},
-        {"timestamp": "2025-06-01T00:00:00", "vibe_score": 90, "report": _make_report(vibe_score=90)},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {
+                "timestamp": "2025-01-01T00:00:00",
+                "vibe_score": 50,
+                "report": _make_report(vibe_score=50),
+            },
+            {
+                "timestamp": "2025-06-01T00:00:00",
+                "vibe_score": 90,
+                "report": _make_report(vibe_score=90),
+            },
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     run = await store.get_previous_run()
     assert run is not None
@@ -156,10 +187,23 @@ async def test_get_previous_run_returns_latest(tmp_path):
 @pytest.mark.asyncio
 async def test_get_previous_run_filter_by_repo(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"timestamp": "2025-01-01T00:00:00", "vibe_score": 50, "repo_path": "/repo/a", "report": _make_report()},
-        {"timestamp": "2025-06-01T00:00:00", "vibe_score": 90, "repo_path": "/repo/b", "report": _make_report()},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {
+                "timestamp": "2025-01-01T00:00:00",
+                "vibe_score": 50,
+                "repo_path": "/repo/a",
+                "report": _make_report(),
+            },
+            {
+                "timestamp": "2025-06-01T00:00:00",
+                "vibe_score": 90,
+                "repo_path": "/repo/b",
+                "report": _make_report(),
+            },
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     run = await store.get_previous_run(repo_path="/repo/a")
     assert run is not None
@@ -169,6 +213,7 @@ async def test_get_previous_run_filter_by_repo(tmp_path):
 # ---------------------------------------------------------------------------
 # MemoryStore.search
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_search_empty_db(tmp_path):
@@ -191,10 +236,21 @@ async def test_search_finds_matching_issues(tmp_path):
 @pytest.mark.asyncio
 async def test_search_filters_by_stack(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"vibe_score": 70, "stack": "python", "report": _make_report(issues=["issue A"])},
-        {"vibe_score": 80, "stack": "node", "report": _make_report(issues=["issue A"])},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {
+                "vibe_score": 70,
+                "stack": "python",
+                "report": _make_report(issues=["issue A"]),
+            },
+            {
+                "vibe_score": 80,
+                "stack": "node",
+                "report": _make_report(issues=["issue A"]),
+            },
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     results = await store.search("issue A", stack="python")
     assert len(results) == 1
@@ -204,11 +260,14 @@ async def test_search_filters_by_stack(tmp_path):
 @pytest.mark.asyncio
 async def test_search_filters_by_score_range(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"vibe_score": 30, "report": _make_report(issues=["problem"])},
-        {"vibe_score": 70, "report": _make_report(issues=["problem"])},
-        {"vibe_score": 90, "report": _make_report(issues=["problem"])},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {"vibe_score": 30, "report": _make_report(issues=["problem"])},
+            {"vibe_score": 70, "report": _make_report(issues=["problem"])},
+            {"vibe_score": 90, "report": _make_report(issues=["problem"])},
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     results = await store.search("problem", min_score=50, max_score=80)
     assert len(results) == 1
@@ -218,6 +277,7 @@ async def test_search_filters_by_score_range(tmp_path):
 # ---------------------------------------------------------------------------
 # MemoryStore.diff_runs
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_diff_runs_not_found(tmp_path):
@@ -238,10 +298,13 @@ async def test_diff_runs_shows_changes(tmp_path):
         issues=["issue B", "issue C"],
         architectural_ghosts=["ghost X", "ghost Y"],
     )
-    await _seed_db(db_path, [
-        {"vibe_score": 60, "report": report_a},
-        {"vibe_score": 80, "report": report_b},
-    ])
+    await _seed_db(
+        db_path,
+        [
+            {"vibe_score": 60, "report": report_a},
+            {"vibe_score": 80, "report": report_b},
+        ],
+    )
     store = MemoryStore(db_path=db_path)
     diff = await store.diff_runs(1, 2)
     assert diff is not None
@@ -254,6 +317,7 @@ async def test_diff_runs_shows_changes(tmp_path):
 # ---------------------------------------------------------------------------
 # MemoryStore.get_knowledge_graph
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_knowledge_graph_empty(tmp_path):
@@ -327,26 +391,14 @@ async def test_knowledge_graph_aggregates_data(tmp_path):
     assert "auth" in hotspot_modules
 
 
-# ---------------------------------------------------------------------------
-# MCP tool wrappers (integration-style via the actual functions)
-# ---------------------------------------------------------------------------
-
-from ghostclaw_mcp.server import (
-    ghostclaw_memory_search,
-    ghostclaw_memory_get_run,
-    ghostclaw_memory_list_runs,
-    ghostclaw_memory_diff_runs,
-    ghostclaw_knowledge_graph,
-    ghostclaw_memory_get_previous_run,
-)
-from unittest.mock import patch
-
-
 @pytest.mark.asyncio
 async def test_mcp_memory_list_runs(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
     await _seed_db(db_path, [{"vibe_score": 77}])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_list_runs())
         assert result["count"] == 1
         assert result["runs"][0]["vibe_score"] == 77
@@ -357,7 +409,10 @@ async def test_mcp_memory_get_run(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
     report = _make_report(vibe_score=65)
     await _seed_db(db_path, [{"vibe_score": 65, "report": report}])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_get_run(run_id=1))
         assert result["report"]["vibe_score"] == 65
 
@@ -366,7 +421,10 @@ async def test_mcp_memory_get_run(tmp_path):
 async def test_mcp_memory_get_run_not_found(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
     await _seed_db(db_path, [])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_get_run(run_id=999))
         assert "error" in result
 
@@ -376,7 +434,10 @@ async def test_mcp_memory_search(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
     report = _make_report(issues=["circular dependency found"])
     await _seed_db(db_path, [{"vibe_score": 55, "report": report}])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_search(query="circular"))
         assert result["count"] == 1
 
@@ -384,11 +445,17 @@ async def test_mcp_memory_search(tmp_path):
 @pytest.mark.asyncio
 async def test_mcp_memory_diff_runs(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"vibe_score": 50, "report": _make_report(vibe_score=50, issues=["A"])},
-        {"vibe_score": 80, "report": _make_report(vibe_score=80, issues=["B"])},
-    ])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    await _seed_db(
+        db_path,
+        [
+            {"vibe_score": 50, "report": _make_report(vibe_score=50, issues=["A"])},
+            {"vibe_score": 80, "report": _make_report(vibe_score=80, issues=["B"])},
+        ],
+    )
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_diff_runs(run_id_a=1, run_id_b=2))
         assert result["vibe_score_delta"] == 30
 
@@ -396,11 +463,17 @@ async def test_mcp_memory_diff_runs(tmp_path):
 @pytest.mark.asyncio
 async def test_mcp_knowledge_graph(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"vibe_score": 60, "report": _make_report(issues=["issue X"])},
-        {"vibe_score": 70, "report": _make_report(issues=["issue X"])},
-    ])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    await _seed_db(
+        db_path,
+        [
+            {"vibe_score": 60, "report": _make_report(issues=["issue X"])},
+            {"vibe_score": 70, "report": _make_report(issues=["issue X"])},
+        ],
+    )
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_knowledge_graph())
         assert result["total_runs"] == 2
         issue_items = {i["item"]: i["count"] for i in result["recurring_issues"]}
@@ -410,11 +483,25 @@ async def test_mcp_knowledge_graph(tmp_path):
 @pytest.mark.asyncio
 async def test_mcp_memory_get_previous_run(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
-    await _seed_db(db_path, [
-        {"timestamp": "2025-01-01T00:00:00", "vibe_score": 40, "report": _make_report(vibe_score=40)},
-        {"timestamp": "2025-06-01T00:00:00", "vibe_score": 88, "report": _make_report(vibe_score=88)},
-    ])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    await _seed_db(
+        db_path,
+        [
+            {
+                "timestamp": "2025-01-01T00:00:00",
+                "vibe_score": 40,
+                "report": _make_report(vibe_score=40),
+            },
+            {
+                "timestamp": "2025-06-01T00:00:00",
+                "vibe_score": 88,
+                "report": _make_report(vibe_score=88),
+            },
+        ],
+    )
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_get_previous_run())
         assert result["vibe_score"] == 88
 
@@ -423,6 +510,9 @@ async def test_mcp_memory_get_previous_run(tmp_path):
 async def test_mcp_memory_get_previous_run_empty(tmp_path):
     db_path = tmp_path / "ghostclaw.db"
     await _seed_db(db_path, [])
-    with patch("ghostclaw_mcp.server.get_memory_store", return_value=MemoryStore(db_path=db_path)):
+    with patch(
+        "ghostclaw_mcp.server.get_memory_store",
+        return_value=MemoryStore(db_path=db_path),
+    ):
         result = json.loads(await ghostclaw_memory_get_previous_run())
         assert "error" in result

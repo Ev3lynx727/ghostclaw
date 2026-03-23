@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from ghostclaw.core.adapters.base import TargetAdapter, AdapterMetadata
 from ghostclaw.core.adapters.hooks import hookimpl
 

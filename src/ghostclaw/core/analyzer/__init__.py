@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 from ghostclaw.core.detector import find_files, find_files_parallel
 from ghostclaw.core.validator import RuleValidator
@@ -76,7 +76,9 @@ class CodebaseAnalyzer:
         except Exception:
             return None
 
-    async def _find_base_report_async(self, repo_path: Path, base_ref: str = "HEAD~1") -> Optional[dict]:
+    async def _find_base_report_async(
+        self, repo_path: Path, base_ref: str = "HEAD~1"
+    ) -> Optional[dict]:
         """Find the base report for delta context using indexed discovery."""
         try:
             # 1. Resolve base_ref to SHA
@@ -119,9 +121,9 @@ class CodebaseAnalyzer:
             # Include orchestrator/routing settings in fingerprint
             # Determine effective orchestrator enabled state
             orch_enabled = False
-            if getattr(config, 'orchestrate', None) is not None:
+            if getattr(config, "orchestrate", None) is not None:
                 orch_enabled = config.orchestrate
-            elif getattr(config, 'orchestrator', None) is not None:
+            elif getattr(config, "orchestrator", None) is not None:
                 orch_enabled = config.orchestrator.enabled
             config_suffix += f":orch_enabled={orch_enabled}"
 
@@ -136,7 +138,7 @@ class CodebaseAnalyzer:
                 config_suffix += f":orch_cache={orch_cfg.enable_plan_cache}"
 
             # Include plugin filter (if any)
-            if getattr(config, 'plugins_enabled', None):
+            if getattr(config, "plugins_enabled", None):
                 sorted_plugins = sorted(config.plugins_enabled)
                 config_suffix += f":plugins={','.join(sorted_plugins)}"
 
@@ -319,7 +321,8 @@ class CodebaseAnalyzer:
             "version": __version__,
             "adapters_active": [m["name"] for m in registry.get_plugin_metadata()],
             "pyscn_integrated": registry.pm.get_plugin("pyscn") is not None,
-            "ai_codeindex_integrated": registry.pm.get_plugin("ai-codeindex") is not None,
+            "ai_codeindex_integrated": registry.pm.get_plugin("ai-codeindex")
+            is not None,
         }
 
         # Add VCS info
@@ -362,7 +365,9 @@ class CodebaseAnalyzer:
 
             context_builder = ContextBuilder()
             if delta_mode:
-                base_report = await self._find_base_report_async(root_path, base_ref=delta_base_ref)
+                base_report = await self._find_base_report_async(
+                    root_path, base_ref=delta_base_ref
+                )
                 report_data["ai_prompt"] = context_builder.build_delta_prompt(
                     base_metrics,
                     issues,
@@ -386,7 +391,7 @@ class CodebaseAnalyzer:
         if fingerprint and use_cache and self.cache:
             # Create a fingerprinted run for fast comparison in storage layer
             fp_run = FingerprintedRun.from_report(report_data)
-            
+
             # Use explicit dict to satisfy type checkers
             meta_dict = report_data.get("metadata", {})
             if isinstance(meta_dict, dict):

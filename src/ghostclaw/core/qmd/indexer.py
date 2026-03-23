@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 from .fts import BM25Search
 from .embeddings import EmbeddingManager
@@ -16,17 +16,25 @@ logger = logging.getLogger("ghostclaw.qmd.indexer")
 class ReportIndexer:
     """Handles report persistence: save, update, delete with FTS and embeddings."""
 
-    def __init__(self, db_path: Path, fts: BM25Search, embedding_mgr: Optional[EmbeddingManager]):
+    def __init__(
+        self, db_path: Path, fts: BM25Search, embedding_mgr: Optional[EmbeddingManager]
+    ):
         self.db_path = db_path
         self.fts = fts
         self.embedding_mgr = embedding_mgr
 
-    async def save(self, report: Dict[str, Any], repo_path: str, timestamp: Optional[str] = None) -> int:
+    async def save(
+        self, report: Dict[str, Any], repo_path: str, timestamp: Optional[str] = None
+    ) -> int:
         """Save a new report and return its run_id."""
         await self._ensure_db()
         await self.fts.ensure_initialized()
 
-        timestamp = timestamp or report.get("metadata", {}).get("timestamp") or datetime.now().isoformat()
+        timestamp = (
+            timestamp
+            or report.get("metadata", {}).get("timestamp")
+            or datetime.now().isoformat()
+        )
         vcs = report.get("metadata", {}).get("vcs", {})
 
         async with aiosqlite.connect(self.db_path) as db:
@@ -59,10 +67,16 @@ class ReportIndexer:
                         "vibe_score": report.get("vibe_score"),
                         "stack": report.get("stack"),
                     }
-                    await self.embedding_mgr.vector_store.add_chunks(run_id, chunks, base_metadata)
-                    logger.debug("Stored %d embeddings for run_id=%d", len(chunks), run_id)
+                    await self.embedding_mgr.vector_store.add_chunks(
+                        run_id, chunks, base_metadata
+                    )
+                    logger.debug(
+                        "Stored %d embeddings for run_id=%d", len(chunks), run_id
+                    )
                 except Exception as e:
-                    logger.error("Failed to store embeddings for run_id=%d: %s", run_id, e)
+                    logger.error(
+                        "Failed to store embeddings for run_id=%d: %s", run_id, e
+                    )
 
             return run_id
 
@@ -102,9 +116,11 @@ class ReportIndexer:
                 rows = await cursor.fetchall()
                 column_names = [row[1] for row in rows]  # row[1] is name
 
-            if 'files_analyzed' not in column_names:
-                await db.execute("ALTER TABLE reports ADD COLUMN files_analyzed INTEGER")
-            if 'total_lines' not in column_names:
+            if "files_analyzed" not in column_names:
+                await db.execute(
+                    "ALTER TABLE reports ADD COLUMN files_analyzed INTEGER"
+                )
+            if "total_lines" not in column_names:
                 await db.execute("ALTER TABLE reports ADD COLUMN total_lines INTEGER")
 
             await db.commit()

@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any
 
 
 class ConfigService:
@@ -24,7 +23,9 @@ class ConfigService:
         config_file = gc_dir / "ghostclaw.json"
 
         if config_file.exists():
-            raise FileExistsError(f"⚠️ {config_file} already exists. Skipping initialization.")
+            raise FileExistsError(
+                f"⚠️ {config_file} already exists. Skipping initialization."
+            )
 
         template = {
             "use_ai": True,
@@ -40,19 +41,16 @@ class ConfigService:
             "orchestrator": {
                 "enabled": False,
                 "use_llm": False,
-                "weights": {
-                    "complexity": 0.4,
-                    "coupling": 0.3,
-                    "cohesion": 0.3
-                }
+                "weights": {"complexity": 0.4, "coupling": 0.3, "cohesion": 0.3},
             },
             # QMD Backend (v0.2.0)
-            "use_qmd": False
+            "use_qmd": False,
         }
 
         # Write JSON5 if available for nicer formatting with comments/trailing commas
         try:
             import json5
+
             with open(config_file, "w", encoding="utf-8") as f:
                 json5.dump(template, f, indent=2)
         except ImportError:
@@ -60,4 +58,6 @@ class ConfigService:
                 json.dump(template, f, indent=2)
 
         print(f"✅ Created template config at {config_file}")
-        print("💡 Remember: Do NOT save your GHOSTCLAW_API_KEY in this file. Use an environment variable or ~/.ghostclaw/ghostclaw.json.")
+        print(
+            "💡 Remember: Do NOT save your GHOSTCLAW_API_KEY in this file. Use an environment variable or ~/.ghostclaw/ghostclaw.json."
+        )

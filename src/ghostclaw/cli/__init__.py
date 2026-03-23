@@ -5,8 +5,10 @@ except ImportError:
     try:
         from importlib_metadata import version as get_version
     except ImportError:
+
         def get_version(_):
             return "0.1.6"
+
 
 try:
     __version__ = get_version("ghostclaw")

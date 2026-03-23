@@ -2,6 +2,7 @@ import pytest
 from argparse import ArgumentParser, Namespace
 from ghostclaw.cli.commander import Command
 
+
 class DummyCommand(Command):
     @property
     def name(self) -> str:
@@ -21,10 +22,12 @@ class DummyCommand(Command):
         if args.foo == "invalid":
             raise ValueError("Invalid foo")
 
+
 def test_command_properties():
     cmd = DummyCommand()
     assert cmd.name == "dummy"
     assert cmd.description == "A dummy command"
+
 
 def test_command_configure_parser():
     cmd = DummyCommand()
@@ -33,12 +36,14 @@ def test_command_configure_parser():
     args = parser.parse_args(["--foo", "bar"])
     assert args.foo == "bar"
 
+
 @pytest.mark.asyncio
 async def test_command_execute():
     cmd = DummyCommand()
     args = Namespace(foo="bar")
     result = await cmd.execute(args)
     assert result == 0
+
 
 def test_command_validate():
     cmd = DummyCommand()

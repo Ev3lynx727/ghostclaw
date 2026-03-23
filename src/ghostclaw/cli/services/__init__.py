@@ -18,16 +18,6 @@ from ghostclaw.core.cache import LocalCache
 from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.core.agent import GhostAgent, AgentEvent
 
-# Rich availability flag
-try:
-    from rich.console import Console
-    from rich.markdown import Markdown
-    from rich.status import Status
-    from rich.text import Text
-    HAS_RICH = True
-except ImportError:
-    HAS_RICH = False
-
 # Adapter registry (used by PluginService tests)
 from ghostclaw.core.adapters.registry import registry
 
@@ -42,12 +32,29 @@ from .config import ConfigService
 
 __all__ = [
     # Services
-    'AnalyzerService', 'PRService', 'PluginService', 'ConfigService',
+    "AnalyzerService",
+    "PRService",
+    "PluginService",
+    "ConfigService",
     # Core classes
-    'GhostAgent', 'AgentEvent', 'CodebaseAnalyzer', 'LocalCache', 'GhostclawConfig',
+    "GhostAgent",
+    "AgentEvent",
+    "CodebaseAnalyzer",
+    "LocalCache",
+    "GhostclawConfig",
     # Utilities
-    'asyncio', 'subprocess', 'datetime', 'sys', 'json', 'shutil', 'Path',
-    'HAS_RICH', 'registry', 'migrate_legacy_storage',
+    "asyncio",
+    "subprocess",
+    "datetime",
+    "sys",
+    "json",
+    "shutil",
+    "Path",
+    "registry",
+    "migrate_legacy_storage",
     # Types
-    'Dict', 'Any', 'List', 'Optional',
+    "Dict",
+    "Any",
+    "List",
+    "Optional",
 ]

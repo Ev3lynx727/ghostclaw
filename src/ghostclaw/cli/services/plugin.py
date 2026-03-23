@@ -20,6 +20,7 @@ class PluginService:
         """Register built-in plugins and any available external ones."""
         # Import registry lazily to allow patching via ghostclaw.cli.services.registry
         from ghostclaw.cli.services import registry
+
         registry.register_internal_plugins()
         # Always attempt to load external plugins (directory may not exist yet)
         registry.load_external_plugins(self.plugins_dir)
@@ -27,11 +28,13 @@ class PluginService:
     def list_plugins(self) -> List[Dict[str, Any]]:
         self.initialize_registry()
         from ghostclaw.cli.services import registry
+
         return registry.get_plugin_metadata()
 
     def get_plugin_info(self, name: str) -> Optional[Dict[str, Any]]:
         self.initialize_registry()
         from ghostclaw.cli.services import registry
+
         metadata = registry.get_plugin_metadata()
         for meta in metadata:
             if meta.get("name") == name:
@@ -47,7 +50,9 @@ class PluginService:
         target = self.plugins_dir / source.name
 
         if target.exists():
-            print(f"⚠️ Plugin '{source.name}' already installed at {target}. Overwriting...")
+            print(
+                f"⚠️ Plugin '{source.name}' already installed at {target}. Overwriting..."
+            )
             if target.is_dir():
                 shutil.rmtree(target)
             else:
@@ -65,6 +70,7 @@ class PluginService:
     def remove_plugin(self, name: str) -> Path:
         self.initialize_registry()
         from ghostclaw.cli.services import registry
+
         name = name.lower()
 
         if name in registry.internal_plugins:
@@ -87,14 +93,19 @@ class PluginService:
             except Exception as e:
                 raise Exception(f"Failed to remove plugin: {e}")
         else:
-            raise FileNotFoundError(f"External plugin '{name}' not found in {self.plugins_dir}.")
+            raise FileNotFoundError(
+                f"External plugin '{name}' not found in {self.plugins_dir}."
+            )
 
     def enable_plugin(self, name: str) -> None:
         self.initialize_registry()
         from ghostclaw.cli.services import registry
+
         all_names = [m.get("name") for m in registry.get_plugin_metadata()]
         if name not in all_names:
-            raise ValueError(f"Plugin '{name}' not found. Available: {', '.join(all_names)}")
+            raise ValueError(
+                f"Plugin '{name}' not found. Available: {', '.join(all_names)}"
+            )
 
         config_data = {}
         if self.config_path.exists():
@@ -105,7 +116,9 @@ class PluginService:
 
         enabled = config_data.get("plugins_enabled")
         if enabled is None:
-            print(f"ℹ️ Plugin '{name}' is already enabled (all plugins enabled by default).")
+            print(
+                f"ℹ️ Plugin '{name}' is already enabled (all plugins enabled by default)."
+            )
             return
 
         if name in enabled:
@@ -123,9 +136,12 @@ class PluginService:
     def disable_plugin(self, name: str) -> None:
         self.initialize_registry()
         from ghostclaw.cli.services import registry
+
         all_names = [m.get("name") for m in registry.get_plugin_metadata()]
         if name not in all_names:
-            raise ValueError(f"Plugin '{name}' not found. Available: {', '.join(all_names)}")
+            raise ValueError(
+                f"Plugin '{name}' not found. Available: {', '.join(all_names)}"
+            )
 
         config_data = {}
         if self.config_path.exists():
@@ -140,7 +156,9 @@ class PluginService:
             config_data["plugins_enabled"] = enabled
             try:
                 self.config_path.write_text(json.dumps(config_data, indent=2))
-                print(f"✅ Disabled plugin '{name}'. {len(enabled)} plugins remain enabled.")
+                print(
+                    f"✅ Disabled plugin '{name}'. {len(enabled)} plugins remain enabled."
+                )
                 return
             except Exception as e:
                 raise Exception(f"Failed to write config: {e}")
@@ -159,6 +177,7 @@ class PluginService:
     def test_plugin(self, name: str) -> bool:
         self.initialize_registry()
         from ghostclaw.cli.services import registry
+
         metadata = registry.get_plugin_metadata()
         return any(m.get("name") == name for m in metadata)
 

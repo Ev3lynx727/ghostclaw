@@ -2,12 +2,13 @@ import asyncio
 import logging
 import time
 from enum import Enum, auto
-from typing import Dict, List, Callable, Any, Optional, Union
+from typing import Dict, List, Callable, Any, Optional
 from ghostclaw.core.config import GhostclawConfig  # type: ignore
 from ghostclaw.core.analyzer import CodebaseAnalyzer  # type: ignore
 from ghostclaw.core.llm_client import LLMClient  # type: ignore
 
 logger = logging.getLogger("ghostclaw.agent")
+
 
 class AgentEvent(Enum):
     INIT = auto()
@@ -19,13 +20,20 @@ class AgentEvent(Enum):
     POST_SYNTHESIS = auto()
     ERROR = auto()
 
+
 class GhostAgent:
     """
     Orchestrator for the analysis lifecycle.
     Encapsulates metrics collection and LLM synthesis with hooks for monitoring.
     """
 
-    def __init__(self, config: GhostclawConfig, repo_path: str, analyzer: Optional[CodebaseAnalyzer] = None, bridge=None):
+    def __init__(
+        self,
+        config: GhostclawConfig,
+        repo_path: str,
+        analyzer: Optional[CodebaseAnalyzer] = None,
+        bridge=None,
+    ):
         self.config = config
         self.repo_path = repo_path
         self.analyzer = analyzer or CodebaseAnalyzer()
@@ -50,7 +58,13 @@ class GhostAgent:
 
         # Map internal events to formal schema
         formal_event = "events.log"
-        if event in (AgentEvent.INIT, AgentEvent.PRE_ANALYZE, AgentEvent.POST_METRICS, AgentEvent.PRE_SYNTHESIS, AgentEvent.POST_SYNTHESIS):
+        if event in (
+            AgentEvent.INIT,
+            AgentEvent.PRE_ANALYZE,
+            AgentEvent.POST_METRICS,
+            AgentEvent.PRE_SYNTHESIS,
+            AgentEvent.POST_SYNTHESIS,
+        ):
             formal_event = "events.progress"
         elif event in (AgentEvent.SYNTHESIS_CHUNK, AgentEvent.REASONING_CHUNK):
             formal_event = "events.stream"
@@ -69,10 +83,11 @@ class GhostAgent:
 
         # 2. Trigger TargetAdapters
         from ghostclaw.core.adapters.registry import registry  # type: ignore
+
         await registry.emit_event(event.name, event_data)
 
         # 3. Emit to bridge if present
-        if hasattr(self, 'bridge') and self.bridge:
+        if hasattr(self, "bridge") and self.bridge:
             self.bridge.emit_event(formal_event, event_data)
 
     async def run(self) -> Dict:
@@ -81,21 +96,20 @@ class GhostAgent:
         try:
             # Phase 1: Diagnostics
             report = await self._collect_diagnostics()
-            
+
             # Phase 2: Synthesis (Enhanced Intelligence)
             if self.config.use_ai:
                 report = await self._perform_synthesis(report)
                 await self._emit(AgentEvent.POST_SYNTHESIS, report)
-            
+
             # Persistence & Final Broadcast
             # Use the same registry that was used for analysis (respects enabled_plugins filter)
-            if not hasattr(self.analyzer, 'registry') or self.analyzer.registry is None:
+            if not hasattr(self.analyzer, "registry") or self.analyzer.registry is None:
                 raise RuntimeError("Analyzer registry not available for save_report")
             await self.analyzer.registry.save_report(report)
 
-            self.timings['total'] = time.perf_counter() - self._start_time
+            self.timings["total"] = time.perf_counter() - self._start_time
             return report
-
 
         except Exception as e:
             await self._emit(AgentEvent.ERROR, {"error": str(e)})
@@ -104,17 +118,20 @@ class GhostAgent:
     async def _collect_diagnostics(self) -> Dict:
         """Run core analysis and collection phase."""
         from ghostclaw.core.adapters.registry import registry  # type: ignore
+
         registry.register_internal_plugins()
-        
+
         logger.info("Phase 1: Starting Core Diagnostics...")
         await self._emit(AgentEvent.INIT)
         await self._emit(AgentEvent.PRE_ANALYZE)
-        
+
         report_model = await self.analyzer.analyze(self.repo_path, config=self.config)
         report = report_model.model_dump()
-        
+
         await self._emit(AgentEvent.POST_METRICS, report)
-        logger.info(f"Diagnostics complete. Analyzed {report.get('files_analyzed', 0)} files.")
+        logger.info(
+            f"Diagnostics complete. Analyzed {report.get('files_analyzed', 0)} files."
+        )
         return report
 
     async def _perform_synthesis(self, report: Dict) -> Dict:
@@ -140,12 +157,14 @@ class GhostAgent:
                 "3. **Verify stack detection**: If this is a supported stack, ensure standard indicators "
                 "(like `requirements.txt` or `package.json`) are present.\n"
             )
-            report["ai_reasoning"] = "Skipped LLM synthesis for empty codebase to provide a more accurate static summary."
-        
+            report["ai_reasoning"] = (
+                "Skipped LLM synthesis for empty codebase to provide a more accurate static summary."
+            )
+
         # Case 2: Standard AI Synthesis
         else:
             await self._emit(AgentEvent.PRE_SYNTHESIS, report)
-            
+
             content = []
             reasoning = []
             client = self.llm_client
@@ -163,7 +182,7 @@ class GhostAgent:
                 else:
                     content.append(chunk)
                     await self._emit(AgentEvent.SYNTHESIS_CHUNK, {"chunk": chunk})
-            
+
             report["ai_synthesis"] = "".join(content)
             report["ai_reasoning"] = "".join(reasoning)
             report["synthesis_performed"] = True

@@ -1,8 +1,8 @@
 """JSON output format and schema validation tests."""
+
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -10,14 +10,22 @@ import pytest
 
 def run_ghostclaw_json(repo_path: Path, args: list = None) -> dict:
     """Run ghostclaw analyze with --json and return parsed output."""
-    cmd = [sys.executable, "-m", "ghostclaw.cli.ghostclaw", "analyze", str(repo_path), "--json", "--no-write-report"]
+    cmd = [
+        sys.executable,
+        "-m",
+        "ghostclaw.cli.ghostclaw",
+        "analyze",
+        str(repo_path),
+        "--json",
+        "--no-write-report",
+    ]
     if args:
         cmd.extend(args)
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, f"Command failed: {result.stderr}"
     output = result.stdout
-    start = output.find('{')
-    end = output.rfind('}') + 1
+    start = output.find("{")
+    end = output.rfind("}") + 1
     if start == -1 or end == 0:
         raise ValueError(f"No JSON found in output. stdout[:500]: {output[:500]}")
     json_str = output[start:end]
@@ -36,7 +44,9 @@ def test_json_output_schema_full_scan(tmp_path):
     assert "files_analyzed" in data and isinstance(data["files_analyzed"], int)
     assert "total_lines" in data and isinstance(data["total_lines"], int)
     assert "issues" in data and isinstance(data["issues"], list)
-    assert "architectural_ghosts" in data and isinstance(data["architectural_ghosts"], list)
+    assert "architectural_ghosts" in data and isinstance(
+        data["architectural_ghosts"], list
+    )
     assert "red_flags" in data and isinstance(data["red_flags"], list)
     assert "coupling_metrics" in data and isinstance(data["coupling_metrics"], dict)
     assert "errors" in data and isinstance(data["errors"], list)
@@ -54,10 +64,11 @@ def test_json_output_schema_full_scan(tmp_path):
 
 def test_json_output_contains_delta_fields(tmp_path):
     """Validate that delta mode adds the required delta metadata fields."""
-    import os
 
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
 
     (tmp_path / "file1.py").write_text("print('v1')\n")
@@ -88,7 +99,9 @@ def test_json_output_delta_base_report_loaded(tmp_path):
     import os
 
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
 
     (tmp_path / "a.py").write_text("print('a')\n")
@@ -97,8 +110,21 @@ def test_json_output_delta_base_report_loaded(tmp_path):
 
     env = {"GHOSTCLAW_API_KEY": "dummy", **os.environ}
     subprocess.run(
-        [sys.executable, "-m", "ghostclaw.cli.ghostclaw", "analyze", ".", "--no-write-report", "--json", "--no-ai"],
-        cwd=tmp_path, capture_output=True, text=True, env=env, check=True
+        [
+            sys.executable,
+            "-m",
+            "ghostclaw.cli.ghostclaw",
+            "analyze",
+            ".",
+            "--no-write-report",
+            "--json",
+            "--no-ai",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
     )
 
     reports_dir = tmp_path / ".ghostclaw" / "storage" / "reports"
@@ -113,14 +139,31 @@ def test_json_output_delta_base_report_loaded(tmp_path):
     subprocess.run(["git", "commit", "-m", "modify a"], cwd=tmp_path, check=True)
 
     result = subprocess.run(
-        [sys.executable, "-m", "ghostclaw.cli.ghostclaw", "analyze", ".", "--delta", "--base", "HEAD~1", "--use-ai", "--dry-run", "--json", "--no-write-report"],
-        cwd=tmp_path, capture_output=True, text=True, env=env, timeout=60
+        [
+            sys.executable,
+            "-m",
+            "ghostclaw.cli.ghostclaw",
+            "analyze",
+            ".",
+            "--delta",
+            "--base",
+            "HEAD~1",
+            "--use-ai",
+            "--dry-run",
+            "--json",
+            "--no-write-report",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
     )
     assert result.returncode == 0, f"Delta run failed: {result.stderr}"
 
     output = result.stdout
-    start = output.find('{')
-    end = output.rfind('}') + 1
+    start = output.find("{")
+    end = output.rfind("}") + 1
     if start == -1 or end == 0:
         raise ValueError(f"No JSON in output. stderr: {result.stderr[:500]}")
     data = json_mod.loads(output[start:end])
@@ -136,4 +179,6 @@ def test_json_output_delta_base_report_loaded(tmp_path):
 
 def test_json_output_validates_with_demjson(tmp_path):
     """Removed demjson3 dependency; this test is no longer needed."""
-    pytest.skip("demjson3 dependency removed; JSON validation covered by other tests using built-in json module")
+    pytest.skip(
+        "demjson3 dependency removed; JSON validation covered by other tests using built-in json module"
+    )

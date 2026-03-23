@@ -1,16 +1,28 @@
 import json
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Optional
+
 
 class ContextBuilder:
     """Builds the context prompt for the AI engine."""
 
-    def build_prompt(self, metrics: dict, issues: list, ghosts: list, flags: list, coupling_metrics: dict, import_edges: list, patch: bool = False, symbol_index: str = "") -> str:
+    def build_prompt(
+        self,
+        metrics: dict,
+        issues: list,
+        ghosts: list,
+        flags: list,
+        coupling_metrics: dict,
+        import_edges: list,
+        patch: bool = False,
+        symbol_index: str = "",
+    ) -> str:
         """
         Formats analysis data into an XML-tagged prompt for LLMs.
         """
         prompt = "Analyze the following codebase architecture and provide a 'Vibe Synthesis' report. "
-        prompt += "Focus on system-level flow, cohesion, and tech stack best practices.\n\n"
+        prompt += (
+            "Focus on system-level flow, cohesion, and tech stack best practices.\n\n"
+        )
 
         if patch:
             prompt += "IMPORTANT: The user has requested a REFACTOR PLAN. "
@@ -59,7 +71,15 @@ class ContextBuilder:
         prompt += "Return your synthesis as a structured Markdown document."
         return prompt
 
-    def build_delta_prompt(self, current_metrics: dict, current_issues: list, current_ghosts: list, current_flags: list, diff_text: str, base_report: Optional[dict] = None) -> str:
+    def build_delta_prompt(
+        self,
+        current_metrics: dict,
+        current_issues: list,
+        current_ghosts: list,
+        current_flags: list,
+        diff_text: str,
+        base_report: Optional[dict] = None,
+    ) -> str:
         """
         Build a delta-context prompt for PR-style analysis.
         Compares current changes against a base architectural state.
@@ -83,8 +103,8 @@ class ContextBuilder:
         if base_report:
             prompt += "<base_context>\n"
             prompt += f"Base Vibe Score: {base_report.get('vibe_score', 'N/A')}/100\n"
-            base_issues = base_report.get('issues', [])
-            base_ghosts = base_report.get('architectural_ghosts', [])
+            base_issues = base_report.get("issues", [])
+            base_ghosts = base_report.get("architectural_ghosts", [])
             if base_issues:
                 prompt += "Prior Issues:\n"
                 for issue in base_issues[:10]:  # limit to avoid token bloat

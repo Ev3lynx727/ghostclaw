@@ -72,7 +72,11 @@ class SQLiteStorageAdapter(StorageAdapter):
             data = report
 
         async with aiosqlite.connect(self.db_path) as db:
-            repo_path = data.get("repo_path") or data.get("metadata", {}).get("repo_path") or str(Path.cwd())
+            repo_path = (
+                data.get("repo_path")
+                or data.get("metadata", {}).get("repo_path")
+                or str(Path.cwd())
+            )
             vcs = data.get("metadata", {}).get("vcs", {})
             cursor = await db.execute(
                 "INSERT INTO reports (vibe_score, stack, files_analyzed, total_lines, repo_path, vcs_commit, vcs_branch, vcs_dirty, report_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",

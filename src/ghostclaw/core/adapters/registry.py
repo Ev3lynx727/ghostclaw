@@ -6,12 +6,13 @@ import inspect
 import sys
 import logging
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
 from typing import List, Dict, Any, Optional, Set, Tuple
+
 from ghostclaw.core.adapters.hooks import GhostclawPluginSpecs
 from ghostclaw.core.adapters.base import AdapterMetadata
 from ghostclaw.core.config import GhostclawConfig
+
+logger = logging.getLogger(__name__)
 
 # Internal plugin names (for default enable/disable logic)
 INTERNAL_PLUGINS = ["pyscn", "ai-codeindex", "sqlite", "qmd", "json_target", "lizard"]
@@ -243,14 +244,16 @@ class PluginRegistry:
                 try:
                     meta = plugin.get_metadata()
                     # Support both AdapterMetadata objects and plain dicts
-                    if hasattr(meta, 'supports_per_file_cache'):
+                    if hasattr(meta, "supports_per_file_cache"):
                         use_per_file = bool(meta.supports_per_file_cache)
-                    elif isinstance(meta, dict) and 'supports_per_file_cache' in meta:
-                        use_per_file = bool(meta['supports_per_file_cache'])
+                    elif isinstance(meta, dict) and "supports_per_file_cache" in meta:
+                        use_per_file = bool(meta["supports_per_file_cache"])
                 except Exception:
                     use_per_file = False
                 if use_per_file:
-                    tasks.append(self._run_adapter_with_cache(name, plugin, root, files))
+                    tasks.append(
+                        self._run_adapter_with_cache(name, plugin, root, files)
+                    )
                 else:
                     tasks.append(self._run_adapter(name, plugin, root, files))
 
@@ -373,7 +376,11 @@ class PluginRegistry:
         for key in ["symbol_index", "metadata", "coupling_metrics", "architecture"]:
             if key == "coupling_metrics":
                 continue  # already handled above
-            if key in result and key not in ["issues", "architectural_ghosts", "red_flags"]:
+            if key in result and key not in [
+                "issues",
+                "architectural_ghosts",
+                "red_flags",
+            ]:
                 # These are global by nature
                 global_data.setdefault(key, result[key])
 

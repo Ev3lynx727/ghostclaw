@@ -1,9 +1,9 @@
 """Test that QMDStorageAdapter is filtered by use_qmd config."""
+
 import pytest
-from pathlib import Path
-from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.core.adapters.registry import registry, INTERNAL_PLUGINS
+
 
 @pytest.fixture(autouse=True)
 def reset_registry():
@@ -17,6 +17,7 @@ def reset_registry():
     registry._registered_plugins = []
     registry.internal_plugins = set()
     registry.external_plugins = set()
+
 
 def _setup_analyzer_plugin_logic(config):
     """Replicate the plugin initialization logic from Analyzer.analyze()."""
@@ -40,6 +41,7 @@ def _setup_analyzer_plugin_logic(config):
         registry.enabled_plugins.add("sqlite")
         registry.enabled_plugins.add("qmd")
 
+
 def test_qmd_excluded_when_use_qmd_false(tmp_path):
     """When use_qmd=False, qmd should not be in enabled_plugins by default."""
     repo = tmp_path / "repo"
@@ -56,6 +58,7 @@ def test_qmd_excluded_when_use_qmd_false(tmp_path):
     assert "qmd" not in registry.enabled_plugins
     assert "sqlite" in registry.enabled_plugins
 
+
 def test_qmd_included_when_use_qmd_true(tmp_path):
     """When use_qmd=True, qmd should be enabled (enabled_plugins = None for all)."""
     repo = tmp_path / "repo"
@@ -69,6 +72,7 @@ def test_qmd_included_when_use_qmd_true(tmp_path):
 
     # With use_qmd=True and no plugins_enabled, all plugins are enabled (None means no filter)
     assert registry.enabled_plugins is None
+
 
 def test_external_plugins_preserved_when_use_qmd_false(tmp_path):
     """External plugins should remain enabled when use_qmd=False."""
@@ -89,6 +93,7 @@ def test_external_plugins_preserved_when_use_qmd_false(tmp_path):
     assert registry.enabled_plugins is not None
     assert "qmd" not in registry.enabled_plugins
     assert "myplugin" in registry.enabled_plugins
+
 
 def test_external_plugins_allowed_when_use_qmd_true(tmp_path):
     """When use_qmd=True, external plugins should also be allowed (enabled_plugins=None)."""

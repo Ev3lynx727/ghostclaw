@@ -35,7 +35,9 @@ async def search_memory(
 
     if query:
         conditions.append("report_json LIKE ? ESCAPE '\\'")
-        escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped_query = (
+            query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
         params.append(f"%{escaped_query}%")
 
     if repo_path:
@@ -143,11 +145,17 @@ async def diff_analysis_runs(
     resolved_flag_keys = set(flags_a_map.keys()) - set(flags_b_map.keys())
 
     new_issues = sorted([issues_b_map[k] for k in new_issue_keys], key=lambda x: str(x))
-    resolved_issues = sorted([issues_a_map[k] for k in resolved_issue_keys], key=lambda x: str(x))
+    resolved_issues = sorted(
+        [issues_a_map[k] for k in resolved_issue_keys], key=lambda x: str(x)
+    )
     new_ghosts = sorted([ghosts_b_map[k] for k in new_ghost_keys], key=lambda x: str(x))
-    resolved_ghosts = sorted([ghosts_a_map[k] for k in resolved_ghost_keys], key=lambda x: str(x))
+    resolved_ghosts = sorted(
+        [ghosts_a_map[k] for k in resolved_ghost_keys], key=lambda x: str(x)
+    )
     new_flags = sorted([flags_b_map[k] for k in new_flag_keys], key=lambda x: str(x))
-    resolved_flags = sorted([flags_a_map[k] for k in resolved_flag_keys], key=lambda x: str(x))
+    resolved_flags = sorted(
+        [flags_a_map[k] for k in resolved_flag_keys], key=lambda x: str(x)
+    )
 
     return {
         "run_a": {"id": run_id_a, "timestamp": run_a.get("timestamp")},
@@ -218,10 +226,12 @@ async def generate_knowledge_graph(
 
     for row in rows:
         row_dict = dict(row)
-        score_trend.append({
-            "timestamp": row_dict["timestamp"],
-            "vibe_score": row_dict["vibe_score"],
-        })
+        score_trend.append(
+            {
+                "timestamp": row_dict["timestamp"],
+                "vibe_score": row_dict["vibe_score"],
+            }
+        )
         if row_dict.get("stack"):
             stacks_seen.add(row_dict["stack"])
 
@@ -260,11 +270,13 @@ async def generate_knowledge_graph(
     for module, instabilities in coupling_instability.items():
         avg = sum(instabilities) / len(instabilities)
         if avg > 0.7:
-            coupling_hotspots.append({
-                "module": module,
-                "avg_instability": round(avg, 3),
-                "occurrences": len(instabilities),
-            })
+            coupling_hotspots.append(
+                {
+                    "module": module,
+                    "avg_instability": round(avg, 3),
+                    "occurrences": len(instabilities),
+                }
+            )
     coupling_hotspots.sort(key=lambda x: x["avg_instability"], reverse=True)
 
     return {
@@ -280,10 +292,7 @@ async def generate_knowledge_graph(
 
 def _top_items(counts: Dict[str, int], top_n: int = 20) -> List[Dict[str, Any]]:
     sorted_items = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-    return [
-        {"item": item, "count": count}
-        for item, count in sorted_items[:top_n]
-    ]
+    return [{"item": item, "count": count} for item, count in sorted_items[:top_n]]
 
 
 def _empty_knowledge_graph() -> Dict[str, Any]:

@@ -5,6 +5,7 @@ from pathlib import Path
 
 try:
     from complexipy import file_complexity, ComplexityResult
+
     HAS_COMPLEXIPY = True
 except ImportError:
     HAS_COMPLEXIPY = False
@@ -23,11 +24,10 @@ def get_cognitive_complexity(file_path: str) -> Optional[Dict]:
     try:
         result: ComplexityResult = file_complexity(file_path)
         return {
-            'complexity': result.complexity,
-            'functions': [
-                {'name': f.name, 'complexity': f.complexity}
-                for f in result.functions
-            ]
+            "complexity": result.complexity,
+            "functions": [
+                {"name": f.name, "complexity": f.complexity} for f in result.functions
+            ],
         }
     except Exception:
         return None
@@ -59,33 +59,34 @@ def analyze_files_cognitive(files: List[str]) -> Dict:
             if result.complexity > max_complex:
                 max_complex = result.complexity
             if result.complexity > 10:  # threshold for "complex file"
-                complex_files.append({
-                    "file": str(Path(f).name),
-                    "cognitive": result.complexity
-                })
+                complex_files.append(
+                    {"file": str(Path(f).name), "cognitive": result.complexity}
+                )
 
             # Collect top functions
             for func in result.functions:
-                per_function.append({
-                    "file": str(Path(f).name),
-                    "function": func.name,
-                    "complexity": func.complexity
-                })
+                per_function.append(
+                    {
+                        "file": str(Path(f).name),
+                        "function": func.name,
+                        "complexity": func.complexity,
+                    }
+                )
         except Exception:
             continue
 
     # Sort and limit
-    complex_files.sort(key=lambda x: x['cognitive'], reverse=True)
+    complex_files.sort(key=lambda x: x["cognitive"], reverse=True)
     complex_files = complex_files[:5]
 
-    per_function.sort(key=lambda x: x['complexity'], reverse=True)
+    per_function.sort(key=lambda x: x["complexity"], reverse=True)
     per_function = per_function[:10]
 
     avg = sum(scores) / len(scores) if scores else 0.0
 
     return {
-        'avg_cognitive': round(avg, 2),
-        'max_cognitive': max_complex,
-        'complex_files': complex_files,
-        'top_functions': per_function
+        "avg_cognitive": round(avg, 2),
+        "max_cognitive": max_complex,
+        "complex_files": complex_files,
+        "top_functions": per_function,
     }

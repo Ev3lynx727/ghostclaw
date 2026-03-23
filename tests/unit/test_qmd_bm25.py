@@ -1,11 +1,11 @@
 """Tests for BM25 search via SQLite FTS5."""
+
 import pytest
-import asyncio
-from pathlib import Path
 from ghostclaw.core.qmd_store import QMDMemoryStore
 
 # Check if SQLite has FTS5
 import sqlite3
+
 try:
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE VIRTUAL TABLE test_fts USING fts5(content)")
@@ -29,10 +29,12 @@ async def test_bm25_basic(tmp_path):
         "stack": "python",
         "files_analyzed": 5,
         "total_lines": 200,
-        "issues": [{"message": "Authentication bypass vulnerability", "file": "auth.py"}],
+        "issues": [
+            {"message": "Authentication bypass vulnerability", "file": "auth.py"}
+        ],
         "architectural_ghosts": [],
         "ai_synthesis": "Critical security issue found.",
-        "metadata": {"timestamp": "2026-03-14T10:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:00:00Z"},
     }
     report2 = {
         "vibe_score": 80,
@@ -42,7 +44,7 @@ async def test_bm25_basic(tmp_path):
         "issues": [{"message": "Memory leak in event loop"}],
         "architectural_ghosts": [{"message": "Callback hell"}],
         "ai_synthesis": "Performance issues due to memory leaks.",
-        "metadata": {"timestamp": "2026-03-14T10:01:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:01:00Z"},
     }
 
     rid1 = await store.save_run(report1, repo_path=str(tmp_path))
@@ -78,7 +80,7 @@ async def test_bm25_stemming(tmp_path):
         "total_lines": 200,
         "issues": [{"message": "The function is running too slowly"}],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T10:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:00:00Z"},
     }
     rid = await store.save_run(report, repo_path=str(tmp_path))
 
@@ -100,7 +102,7 @@ async def test_bm25_phrase_search(tmp_path):
         "total_lines": 500,
         "issues": [{"message": "Null pointer exception risk"}],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T10:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:00:00Z"},
     }
     rid = await store.save_run(report, repo_path=str(tmp_path))
 
@@ -126,7 +128,7 @@ async def test_bm25_filters(tmp_path):
         "total_lines": 200,
         "issues": ["Filter test issue"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T10:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:00:00Z"},
     }
     report2 = {
         "vibe_score": 70,
@@ -135,7 +137,7 @@ async def test_bm25_filters(tmp_path):
         "total_lines": 300,
         "issues": ["Another filter test"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T10:01:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:01:00Z"},
     }
     rid1 = await store.save_run(report1, repo_path=str(tmp_path / "repo1"))
     rid2 = await store.save_run(report2, repo_path=str(tmp_path / "repo2"))
@@ -175,7 +177,7 @@ async def test_bm25_ranking(tmp_path):
         "total_lines": 200,
         "issues": [{"message": "security security security security"}],  # high TF
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T10:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:00:00Z"},
     }
     report2 = {
         "vibe_score": 70,
@@ -184,7 +186,7 @@ async def test_bm25_ranking(tmp_path):
         "total_lines": 200,
         "issues": [{"message": "security issue"}],  # lower TF
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T10:01:00Z"}
+        "metadata": {"timestamp": "2026-03-14T10:01:00Z"},
     }
     rid1 = await store.save_run(report1, repo_path=str(tmp_path))
     rid2 = await store.save_run(report2, repo_path=str(tmp_path))

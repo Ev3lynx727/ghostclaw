@@ -14,11 +14,23 @@ class TestOrchestrateCLI:
         args = Namespace(
             orchestrate=True,
             no_orchestrate=False,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert overrides.get("orchestrate") is True
@@ -29,11 +41,23 @@ class TestOrchestrateCLI:
         args = Namespace(
             orchestrate=False,
             no_orchestrate=True,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert overrides.get("orchestrate") is False
@@ -44,11 +68,23 @@ class TestOrchestrateCLI:
         args = Namespace(
             orchestrate=False,
             no_orchestrate=False,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert "orchestrate" not in overrides
@@ -59,11 +95,23 @@ class TestOrchestrateCLI:
         args = Namespace(
             orchestrate=True,
             no_orchestrate=False,
-            use_ai=True, no_ai=False, ai_provider=None, ai_model=None,
-            dry_run=False, verbose=True, patch=False, delta=False, delta_base_ref=None,
-            use_qmd=True, embedding_backend=None,
-            pyscn=False, no_pyscn=False, ai_codeindex=None, no_ai_codeindex=False,
-            no_parallel=False, concurrency_limit=16
+            use_ai=True,
+            no_ai=False,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=False,
+            verbose=True,
+            patch=False,
+            delta=False,
+            delta_base_ref=None,
+            use_qmd=True,
+            embedding_backend=None,
+            pyscn=False,
+            no_pyscn=False,
+            ai_codeindex=None,
+            no_ai_codeindex=False,
+            no_parallel=False,
+            concurrency_limit=16,
         )
         overrides = cmd._build_cli_overrides(args)
         assert overrides["orchestrate"] is True
@@ -113,12 +161,25 @@ class TestOrchestrateCLIParser:
         """The override value stored must be exactly True (bool), not just truthy."""
         cmd = AnalyzeCommand()
         args = Namespace(
-            orchestrate=True, no_orchestrate=False,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            orchestrate=True,
+            no_orchestrate=False,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert type(overrides["orchestrate"]) is bool
@@ -128,12 +189,25 @@ class TestOrchestrateCLIParser:
         """The override value stored when using --no-orchestrate must be exactly False (bool)."""
         cmd = AnalyzeCommand()
         args = Namespace(
-            orchestrate=False, no_orchestrate=True,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            orchestrate=False,
+            no_orchestrate=True,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert type(overrides["orchestrate"]) is bool
@@ -143,12 +217,25 @@ class TestOrchestrateCLIParser:
         """Using --orchestrate should not inject any unexpected keys beyond 'orchestrate'."""
         cmd = AnalyzeCommand()
         args = Namespace(
-            orchestrate=True, no_orchestrate=False,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            orchestrate=True,
+            no_orchestrate=False,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert overrides == {"orchestrate": True}
@@ -157,12 +244,25 @@ class TestOrchestrateCLIParser:
         """Using --no-orchestrate should not inject any unexpected keys beyond 'orchestrate'."""
         cmd = AnalyzeCommand()
         args = Namespace(
-            orchestrate=False, no_orchestrate=True,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            orchestrate=False,
+            no_orchestrate=True,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert overrides == {"orchestrate": False}
@@ -171,12 +271,25 @@ class TestOrchestrateCLIParser:
         """Setting --orchestrate should not alter parallel_enabled or concurrency_limit."""
         cmd = AnalyzeCommand()
         args = Namespace(
-            orchestrate=True, no_orchestrate=False,
-            use_ai=None, no_ai=None, ai_provider=None, ai_model=None,
-            dry_run=None, verbose=None, patch=None, delta=None, delta_base_ref=None,
-            use_qmd=None, embedding_backend=None,
-            pyscn=None, no_pyscn=None, ai_codeindex=None, no_ai_codeindex=None,
-            no_parallel=None, concurrency_limit=None
+            orchestrate=True,
+            no_orchestrate=False,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
         )
         overrides = cmd._build_cli_overrides(args)
         assert "parallel_enabled" not in overrides

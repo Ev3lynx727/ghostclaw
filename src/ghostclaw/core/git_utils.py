@@ -51,9 +51,7 @@ class AsyncGitExecutor:
         """Get diff of staged changes."""
         _, stdout, _ = await self.run_git(["diff", "--cached"])
         files = _parse_changed_files(stdout)
-        return DiffResult(
-            files_changed=files, raw_diff=stdout, against="HEAD (staged)"
-        )
+        return DiffResult(files_changed=files, raw_diff=stdout, against="HEAD (staged)")
 
     async def unstaged_diff(self) -> DiffResult:
         """Get diff of unstaged changes."""
@@ -135,11 +133,11 @@ def _parse_changed_files(diff_text: str) -> List[str]:
     files = []
     for line in diff_text.splitlines():
         if line.startswith("+++ b/"):
-            path = line[len("+++ b/"):]  # Type-safe slice
+            path = line[len("+++ b/") :]  # Type-safe slice
             if path != "/dev/null" and path not in files:
                 files.append(path)
         elif line.startswith("--- a/"):
-            path = line[len("--- a/"):]  # Capture deleted files
+            path = line[len("--- a/") :]  # Capture deleted files
             if path != "/dev/null" and path not in files:
                 files.append(path)
     return files

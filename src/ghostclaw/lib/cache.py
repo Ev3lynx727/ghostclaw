@@ -25,7 +25,7 @@ class VibeCache:
         """Load the cache dictionary."""
         if self.cache_file.exists():
             try:
-                with open(self.cache_file, 'r', encoding='utf-8') as f:
+                with open(self.cache_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except Exception:
                 return {}
@@ -33,7 +33,7 @@ class VibeCache:
 
     def save(self, data: Dict):
         """Save the cache dictionary."""
-        with open(self.cache_file, 'w', encoding='utf-8') as f:
+        with open(self.cache_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
     def get_history(self, repo_url: str) -> List[Dict]:
@@ -48,12 +48,12 @@ class VibeCache:
             data[repo_url] = []
 
         # Standardized UTC ISO format with Z suffix
-        timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + 'Z'
+        timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z"
 
         entry = {
             "timestamp": timestamp,
             "vibe_score": vibe_score,
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
         data[repo_url].append(entry)
 

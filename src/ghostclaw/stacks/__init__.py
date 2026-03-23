@@ -9,23 +9,23 @@ from .typescript import TypeScriptAnalyzer
 from .docker import DockerAnalyzer
 
 __all__ = [
-    'StackAnalyzer',
-    'NodeAnalyzer',
-    'PythonAnalyzer',
-    'GoAnalyzer',
-    'ShellAnalyzer',
-    'TypeScriptAnalyzer',
-    'DockerAnalyzer'
+    "StackAnalyzer",
+    "NodeAnalyzer",
+    "PythonAnalyzer",
+    "GoAnalyzer",
+    "ShellAnalyzer",
+    "TypeScriptAnalyzer",
+    "DockerAnalyzer",
 ]
 
 # Registry mapping stack names to their analyzers
 STACK_REGISTRY = {
-    'node': NodeAnalyzer(),
-    'python': PythonAnalyzer(),
-    'go': GoAnalyzer(),
-    'shell': ShellAnalyzer(),
-    'typescript': TypeScriptAnalyzer(),
-    'docker': DockerAnalyzer()
+    "node": NodeAnalyzer(),
+    "python": PythonAnalyzer(),
+    "go": GoAnalyzer(),
+    "shell": ShellAnalyzer(),
+    "typescript": TypeScriptAnalyzer(),
+    "docker": DockerAnalyzer(),
 }
 
 

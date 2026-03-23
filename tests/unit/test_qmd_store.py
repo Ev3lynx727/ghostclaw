@@ -1,9 +1,8 @@
 """Tests for QMDMemoryStore."""
+
 import json
 import aiosqlite
 import pytest
-import asyncio
-from pathlib import Path
 from ghostclaw.core.qmd_store import QMDMemoryStore
 
 
@@ -24,7 +23,7 @@ async def test_qmd_memory_store_init_and_save(tmp_path):
         "total_lines": 500,
         "issues": ["Test issue"],
         "architectural_ghosts": ["Test ghost"],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
 
     run_id = await store.save_run(report, repo_path=str(tmp_path))
@@ -56,7 +55,7 @@ async def test_qmd_memory_store_list_runs(tmp_path):
             "total_lines": 500,
             "issues": [],
             "architectural_ghosts": [],
-            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"}
+            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"},
         }
         await store.save_run(report, repo_path=str(tmp_path))
 
@@ -81,7 +80,7 @@ async def test_qmd_memory_store_search_basic(tmp_path):
         "total_lines": 200,
         "issues": ["Authentication bypass vulnerability"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     report2 = {
         "vibe_score": 80,
@@ -90,7 +89,7 @@ async def test_qmd_memory_store_search_basic(tmp_path):
         "total_lines": 300,
         "issues": ["Memory leak in event loop"],
         "architectural_ghosts": ["Callback hell anti-pattern"],
-        "metadata": {"timestamp": "2026-03-12T12:01:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:01:00Z"},
     }
     await store.save_run(report1, repo_path=str(tmp_path))
     await store.save_run(report2, repo_path=str(tmp_path))
@@ -123,7 +122,7 @@ async def test_qmd_memory_store_diff_runs(tmp_path):
         "total_lines": 500,
         "issues": ["Issue A"],
         "architectural_ghosts": ["Ghost A"],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     report_b = {
         "vibe_score": 80,
@@ -132,7 +131,7 @@ async def test_qmd_memory_store_diff_runs(tmp_path):
         "total_lines": 600,
         "issues": ["Issue B", "Issue A"],  # Issue A persists, Issue B new
         "architectural_ghosts": [],  # Ghost A resolved
-        "metadata": {"timestamp": "2026-03-12T12:10:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:10:00Z"},
     }
 
     id_a = await store.save_run(report_a, repo_path=str(tmp_path))
@@ -166,7 +165,7 @@ async def test_qmd_memory_store_knowledge_graph(tmp_path):
             "total_lines": 500,
             "issues": ["Recurring issue"],
             "architectural_ghosts": ["Recurring ghost"],
-            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"}
+            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"},
         }
         await store.save_run(report, repo_path=str(tmp_path))
 
@@ -192,7 +191,6 @@ async def test_qmd_memory_store_knowledge_graph(tmp_path):
 @pytest.mark.asyncio
 async def test_prefetch_manager_sequential(tmp_path):
     """Test sequential prefetch strategy identifies adjacent runs."""
-    from ghostclaw.core.prefetch import PrefetchManager
 
     db_path = tmp_path / "qmd.db"
     store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
@@ -207,7 +205,7 @@ async def test_prefetch_manager_sequential(tmp_path):
             "total_lines": 10,
             "issues": [f"Issue {i}"],
             "architectural_ghosts": [],
-            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"}
+            "metadata": {"timestamp": f"2026-03-12T12:00:{i:02d}Z"},
         }
         run_id = await store.save_run(report, repo_path=str(tmp_path))
         run_ids.append(run_id)
@@ -240,7 +238,6 @@ async def test_prefetch_manager_sequential(tmp_path):
 @pytest.mark.asyncio
 async def test_prefetch_manager_time_window(tmp_path):
     """Test time window prefetch."""
-    from ghostclaw.core.prefetch import PrefetchManager
     from datetime import datetime, timedelta
 
     db_path = tmp_path / "qmd.db"
@@ -249,16 +246,18 @@ async def test_prefetch_manager_time_window(tmp_path):
     base = datetime(2026, 3, 12, 12, 0, 0)
     reports = []
     for i in range(-2, 3):  # 5 runs: -60min, -30min, 0, +30min, +60min relative to base
-        ts = (base + timedelta(minutes=i*30)).isoformat() + "Z"
-        reports.append({
-            "vibe_score": 50,
-            "stack": "python",
-            "files_analyzed": 1,
-            "total_lines": 10,
-            "issues": [],
-            "architectural_ghosts": [],
-            "metadata": {"timestamp": ts}
-        })
+        ts = (base + timedelta(minutes=i * 30)).isoformat() + "Z"
+        reports.append(
+            {
+                "vibe_score": 50,
+                "stack": "python",
+                "files_analyzed": 1,
+                "total_lines": 10,
+                "issues": [],
+                "architectural_ghosts": [],
+                "metadata": {"timestamp": ts},
+            }
+        )
     run_ids = []
     for r in reports:
         run_id = await store.save_run(r, repo_path=str(tmp_path))
@@ -282,7 +281,6 @@ async def test_prefetch_manager_time_window(tmp_path):
 @pytest.mark.asyncio
 async def test_prefetch_vibe_proximity(tmp_path):
     """Test vibe score proximity prefetch."""
-    from ghostclaw.core.prefetch import PrefetchManager
 
     db_path = tmp_path / "qmd.db"
     store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
@@ -298,7 +296,7 @@ async def test_prefetch_vibe_proximity(tmp_path):
             "total_lines": 10,
             "issues": [],
             "architectural_ghosts": [],
-            "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+            "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
         }
         run_id = await store.save_run(report, repo_path=str(tmp_path))
         run_ids.append(run_id)
@@ -320,7 +318,6 @@ async def test_prefetch_vibe_proximity(tmp_path):
 @pytest.mark.asyncio
 async def test_prefetch_same_stack(tmp_path):
     """Test stack correlation prefetch."""
-    from ghostclaw.core.prefetch import PrefetchManager
 
     db_path = tmp_path / "qmd.db"
     store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
@@ -336,7 +333,7 @@ async def test_prefetch_same_stack(tmp_path):
             "total_lines": 10,
             "issues": [],
             "architectural_ghosts": [],
-            "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+            "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
         }
         run_id = await store.save_run(report, repo_path=str(tmp_path))
         run_ids.append(run_id)
@@ -360,14 +357,12 @@ async def test_prefetch_same_stack(tmp_path):
 @pytest.mark.asyncio
 async def test_prefetch_manager_shutdown(tmp_path):
     """Test that prefetch manager shuts down cleanly."""
-    from ghostclaw.core.prefetch import PrefetchManager
 
     db_path = tmp_path / "qmd.db"
     store = QMDMemoryStore(db_path=db_path, ai_buff_enabled=True)
     # No special action needed; just ensure shutdown exists
     pm = store.prefetch_manager
     pm.shutdown()  # should not raise
-
 
 
 @pytest.mark.asyncio
@@ -385,7 +380,7 @@ async def test_search_cache_integration(tmp_path):
         "total_lines": 200,
         "issues": ["Authentication bypass"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     report2 = {
         "vibe_score": 80,
@@ -394,7 +389,7 @@ async def test_search_cache_integration(tmp_path):
         "total_lines": 300,
         "issues": ["Memory leak"],
         "architectural_ghosts": ["Callback hell"],
-        "metadata": {"timestamp": "2026-03-12T12:01:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:01:00Z"},
     }
     await store.save_run(report1, repo_path=str(tmp_path))
     await store.save_run(report2, repo_path=str(tmp_path))
@@ -429,7 +424,7 @@ async def test_query_planning_alpha_selection(tmp_path):
         "total_lines": 10,
         "issues": [],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     await store.save_run(report, repo_path=str(tmp_path))
 
@@ -469,7 +464,7 @@ async def test_search_cache_ttl_expiry(tmp_path):
         "total_lines": 10,
         "issues": ["Test issue"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     await store.save_run(report, repo_path=str(tmp_path))
 
@@ -492,6 +487,7 @@ async def test_search_cache_ttl_expiry(tmp_path):
 
 # --- Migration Manager Tests ---
 
+
 @pytest.mark.asyncio
 async def test_migration_needs_migration(tmp_path):
     """Test that needs_migration correctly detects missing embeddings."""
@@ -500,11 +496,14 @@ async def test_migration_needs_migration(tmp_path):
         db_path=db_path,
         use_enhanced=True,
         ai_buff_enabled=True,
-        auto_migrate=False  # we'll manually manage
+        auto_migrate=False,  # we'll manually manage
     )
     # Manually create backfill manager
     from ghostclaw.core.migration import EmbeddingBackfillManager
-    store.backfill_manager = EmbeddingBackfillManager(store, batch_size=10, throttle_ms=0)
+
+    store.backfill_manager = EmbeddingBackfillManager(
+        store, batch_size=10, throttle_ms=0
+    )
 
     # Save a report (this will embed automatically)
     report = {
@@ -514,7 +513,7 @@ async def test_migration_needs_migration(tmp_path):
         "total_lines": 10,
         "issues": ["Test issue"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     await store.save_run(report, repo_path=str(tmp_path))
 
@@ -527,13 +526,13 @@ async def test_migration_process_report(tmp_path):
     """Test that backfill embeds a legacy report correctly."""
     db_path = tmp_path / "qmd.db"
     store = QMDMemoryStore(
-        db_path=db_path,
-        use_enhanced=True,
-        ai_buff_enabled=True,
-        auto_migrate=False
+        db_path=db_path, use_enhanced=True, ai_buff_enabled=True, auto_migrate=False
     )
     from ghostclaw.core.migration import EmbeddingBackfillManager
-    store.backfill_manager = EmbeddingBackfillManager(store, batch_size=1, throttle_ms=0)
+
+    store.backfill_manager = EmbeddingBackfillManager(
+        store, batch_size=1, throttle_ms=0
+    )
 
     # Manually insert a legacy report (no embeddings)
     report_data = {
@@ -543,7 +542,7 @@ async def test_migration_process_report(tmp_path):
         "total_lines": 100,
         "issues": ["Memory leak"],
         "architectural_ghosts": ["Callback hell"],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z", "repo_path": str(tmp_path)}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z", "repo_path": str(tmp_path)},
     }
     async with aiosqlite.connect(db_path) as db:
         # Ensure reports table exists (indexer would normally create)
@@ -570,8 +569,8 @@ async def test_migration_process_report(tmp_path):
                 report_data["files_analyzed"],
                 report_data["total_lines"],
                 json.dumps(report_data),
-                report_data["metadata"]["repo_path"]
-            )
+                report_data["metadata"]["repo_path"],
+            ),
         )
         await db.commit()
         cursor = await db.execute("SELECT last_insert_rowid()")
@@ -601,13 +600,13 @@ async def test_migration_stats_output(tmp_path):
     """Test that get_stats() includes migration info."""
     db_path = tmp_path / "qmd.db"
     store = QMDMemoryStore(
-        db_path=db_path,
-        use_enhanced=True,
-        ai_buff_enabled=True,
-        auto_migrate=False
+        db_path=db_path, use_enhanced=True, ai_buff_enabled=True, auto_migrate=False
     )
     from ghostclaw.core.migration import EmbeddingBackfillManager
-    store.backfill_manager = EmbeddingBackfillManager(store, batch_size=50, throttle_ms=100)
+
+    store.backfill_manager = EmbeddingBackfillManager(
+        store, batch_size=50, throttle_ms=100
+    )
 
     stats = store.get_stats()
     assert "migration" in stats
@@ -627,6 +626,7 @@ async def test_migration_stats_output(tmp_path):
 def test_query_classifier_alpha_ranges():
     """Test that QueryClassifier returns appropriate alpha values."""
     from ghostclaw.core.qmd.query_classifier import QueryClassifier
+
     clf = QueryClassifier()
 
     # Short keyword query (1 token) → BM25 heavy → alpha = 0.9
@@ -659,7 +659,7 @@ async def test_hybrid_diversity_limit(tmp_path):
         db_path=db_path,
         use_enhanced=True,
         ai_buff_enabled=True,
-        max_chunks_per_report=1  # only 1 chunk per report allowed
+        max_chunks_per_report=1,  # only 1 chunk per report allowed
     )
     # Save two reports; they will be embedded
     report1 = {
@@ -669,7 +669,7 @@ async def test_hybrid_diversity_limit(tmp_path):
         "total_lines": 10,
         "issues": ["Issue A1", "Issue A2"],  # Two issues will create two chunks
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:00:00Z"},
     }
     report2 = {
         "vibe_score": 60,
@@ -678,7 +678,7 @@ async def test_hybrid_diversity_limit(tmp_path):
         "total_lines": 10,
         "issues": ["Issue B1"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-12T12:01:00Z"}
+        "metadata": {"timestamp": "2026-03-12T12:01:00Z"},
     }
     await store.save_run(report1, repo_path=str(tmp_path))
     await store.save_run(report2, repo_path=str(tmp_path))
@@ -688,7 +688,7 @@ async def test_hybrid_diversity_limit(tmp_path):
     # Count how many chunks come from each report
     counts = {}
     for r in results:
-        rid = r.get('id') or r.get('report_id')
+        rid = r.get("id") or r.get("report_id")
         if rid is None:
             # try to get run id from metadata? fallback to report.id?
             # Actually the result dict from hybrid search includes 'id' field which is report_id

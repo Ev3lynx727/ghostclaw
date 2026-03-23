@@ -40,7 +40,7 @@ class MemoryStatsCommand(Command):
         except Exception:
             cfg = None
 
-        if not cfg or not getattr(cfg, 'use_qmd', False):
+        if not cfg or not getattr(cfg, "use_qmd", False):
             print("⚠️  QMD is not enabled in configuration (use_qmd=false)")
             print("Enable with: ghostclaw config set use_qmd true")
             return 0
@@ -54,14 +54,14 @@ class MemoryStatsCommand(Command):
         store = QMDMemoryStore(
             db_path=db_path,
             use_enhanced=True,
-            embedding_backend=getattr(cfg, 'embedding_backend', 'fastembed'),
-            ai_buff_enabled=getattr(cfg, 'ai_buff_enabled', False),
-            prefetch_enabled=getattr(cfg, 'prefetch_enabled', True),
-            prefetch_workers=getattr(cfg, 'prefetch_workers', 2),
-            prefetch_window=getattr(cfg, 'prefetch_window', 2),
-            prefetch_hours=getattr(cfg, 'prefetch_hours', 24),
-            prefetch_vibe_delta=getattr(cfg, 'prefetch_vibe_delta', 10),
-            prefetch_stack_count=getattr(cfg, 'prefetch_stack_count', 5),
+            embedding_backend=getattr(cfg, "embedding_backend", "fastembed"),
+            ai_buff_enabled=getattr(cfg, "ai_buff_enabled", False),
+            prefetch_enabled=getattr(cfg, "prefetch_enabled", True),
+            prefetch_workers=getattr(cfg, "prefetch_workers", 2),
+            prefetch_window=getattr(cfg, "prefetch_window", 2),
+            prefetch_hours=getattr(cfg, "prefetch_hours", 24),
+            prefetch_vibe_delta=getattr(cfg, "prefetch_vibe_delta", 10),
+            prefetch_stack_count=getattr(cfg, "prefetch_stack_count", 5),
         )
         stats = store.get_stats()
 
@@ -73,25 +73,29 @@ class MemoryStatsCommand(Command):
 
     def _print_human(self, stats: dict):
         print("=== QMD Memory Store Statistics ===")
-        if 'embedding_cache' in stats and stats['embedding_cache']:
-            ec = stats['embedding_cache']
-            print(f"\nEmbedding Cache:")
+        if "embedding_cache" in stats and stats["embedding_cache"]:
+            ec = stats["embedding_cache"]
+            print("\nEmbedding Cache:")
             print(f"  Size: {ec['size']}/{ec['maxsize']}")
-            print(f"  Hit rate: {ec['hit_rate']*100:.1f}% ({ec['hits']} hits, {ec['misses']} misses)")
+            print(
+                f"  Hit rate: {ec['hit_rate'] * 100:.1f}% ({ec['hits']} hits, {ec['misses']} misses)"
+            )
         else:
             print("\nEmbedding Cache: disabled")
 
-        if 'search_cache' in stats and stats['search_cache']:
-            sc = stats['search_cache']
-            print(f"\nSearch Result Cache:")
+        if "search_cache" in stats and stats["search_cache"]:
+            sc = stats["search_cache"]
+            print("\nSearch Result Cache:")
             print(f"  Size: {sc['size']}/{sc['maxsize']}")
-            print(f"  Hit rate: {sc['hit_rate']*100:.1f}% ({sc['hits']} hits, {sc['misses']} misses)")
+            print(
+                f"  Hit rate: {sc['hit_rate'] * 100:.1f}% ({sc['hits']} hits, {sc['misses']} misses)"
+            )
         else:
             print("\nSearch Result Cache: disabled")
 
-        if 'prefetch' in stats and stats['prefetch']:
-            pf = stats['prefetch']
-            print(f"\nPrefetch Manager (AI-Buff):")
+        if "prefetch" in stats and stats["prefetch"]:
+            pf = stats["prefetch"]
+            print("\nPrefetch Manager (AI-Buff):")
             print(f"  Status: {'enabled' if pf.get('enabled') else 'disabled'}")
             print(f"  Workers: {pf.get('workers')}")
             print(f"  Pending: {pf.get('pending')}")

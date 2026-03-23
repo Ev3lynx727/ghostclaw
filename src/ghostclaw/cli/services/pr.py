@@ -3,7 +3,6 @@
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 import datetime
 
 
@@ -29,21 +28,47 @@ class PRService:
 
         try:
             # Create branch
-            subprocess.run(["git", "checkout", "-b", branch_name], cwd=self.repo_path, check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "checkout", "-b", branch_name],
+                cwd=self.repo_path,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
             # Add report with force (to bypass gitignore if needed)
             rel_report_path = report_file.relative_to(Path(self.repo_path))
-            subprocess.run(["git", "add", "-f", str(rel_report_path)], cwd=self.repo_path, check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "add", "-f", str(rel_report_path)],
+                cwd=self.repo_path,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
             # Commit
-            subprocess.run(["git", "commit", "-m", f"Add architecture report: {report_file.name}"], cwd=self.repo_path, check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "commit", "-m", f"Add architecture report: {report_file.name}"],
+                cwd=self.repo_path,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
             # Push
-            subprocess.run(["git", "push", "-u", "origin", branch_name], cwd=self.repo_path, check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "push", "-u", "origin", branch_name],
+                cwd=self.repo_path,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
             # Create PR
             pr_cmd = ["gh", "pr", "create", "--title", title, "--body", body]
-            result = subprocess.run(pr_cmd, cwd=self.repo_path, capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                pr_cmd, cwd=self.repo_path, capture_output=True, text=True, check=True
+            )
             print(f"🔗 PR created: {result.stdout.strip()}")
 
         except subprocess.CalledProcessError as e:

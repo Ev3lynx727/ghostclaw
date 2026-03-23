@@ -98,7 +98,9 @@ class BM25Search:
 
     async def _register_searchable_function(self, db) -> None:
         """Register the extract_searchable_text SQL function."""
-        await db.create_function("extract_searchable_text", 1, _extract_searchable_text_impl)
+        await db.create_function(
+            "extract_searchable_text", 1, _extract_searchable_text_impl
+        )
 
     async def search(
         self,
@@ -141,14 +143,16 @@ class BM25Search:
                 rows = await cursor.fetchall()
                 for row in rows:
                     report = json.loads(row["report_json"])
-                    results.append({
-                        "id": row["id"],
-                        "timestamp": row["timestamp"],
-                        "vibe_score": row["vibe_score"],
-                        "stack": row["stack"],
-                        "repo_path": row["repo_path"],
-                        "report": report,
-                        "score": -row["bm25_score"],  # invert so higher = better
-                        "matched_snippets": [],  # to be filled by caller
-                    })
+                    results.append(
+                        {
+                            "id": row["id"],
+                            "timestamp": row["timestamp"],
+                            "vibe_score": row["vibe_score"],
+                            "stack": row["stack"],
+                            "repo_path": row["repo_path"],
+                            "report": report,
+                            "score": -row["bm25_score"],  # invert so higher = better
+                            "matched_snippets": [],  # to be filled by caller
+                        }
+                    )
         return results

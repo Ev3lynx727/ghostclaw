@@ -12,7 +12,11 @@ class QueryClassifier:
     Alpha range: 0.3 (vector heavy) to 0.9 (BM25 heavy).
     """
 
-    def __init__(self, config: Optional[GhostclawConfig] = None, custom_weights: Optional[Dict] = None):
+    def __init__(
+        self,
+        config: Optional[GhostclawConfig] = None,
+        custom_weights: Optional[Dict] = None,
+    ):
         """
         Initialize classifier.
 
@@ -22,18 +26,18 @@ class QueryClassifier:
         """
         # Default weights for feature adjustments
         self.weights = {
-            'exact_quotes': 0.3,
-            'code_symbols': 0.2,
-            'filters': 0.1,
+            "exact_quotes": 0.3,
+            "code_symbols": 0.2,
+            "filters": 0.1,
         }
         if custom_weights:
             self.weights.update(custom_weights)
         elif config:
             # Try to load from config under qmd.query_classifier.feature_weights
-            qmd_cfg = getattr(config, 'qmd', {}) if hasattr(config, 'qmd') else {}
-            classifier_cfg = qmd_cfg.get('query_classifier', {})
-            if 'feature_weights' in classifier_cfg:
-                self.weights.update(classifier_cfg['feature_weights'])
+            qmd_cfg = getattr(config, "qmd", {}) if hasattr(config, "qmd") else {}
+            classifier_cfg = qmd_cfg.get("query_classifier", {})
+            if "feature_weights" in classifier_cfg:
+                self.weights.update(classifier_cfg["feature_weights"])
 
     def classify(self, query: str, filters: Optional[Dict] = None) -> float:
         """
@@ -61,15 +65,17 @@ class QueryClassifier:
 
         # Exact quotes strongly favor BM25
         if '"' in query or "'" in query:
-            alpha += self.weights['exact_quotes']
+            alpha += self.weights["exact_quotes"]
 
         # Code-like symbols (camelCase, snake_case, dots) → BM25 good
-        if any(char in query for char in ['.', '_']) or re.search(r'[a-z]+[A-Z]', query):
-            alpha += self.weights['code_symbols']
+        if any(char in query for char in [".", "_"]) or re.search(
+            r"[a-z]+[A-Z]", query
+        ):
+            alpha += self.weights["code_symbols"]
 
         # Filters present (repo_path, stack) → narrower search, BM25 OK
-        if filters and (filters.get('repo_path') or filters.get('stack')):
-            alpha += self.weights['filters']
+        if filters and (filters.get("repo_path") or filters.get("stack")):
+            alpha += self.weights["filters"]
 
         # Clamp to valid range
         alpha = max(0.3, min(0.9, alpha))

@@ -3,7 +3,10 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, Set
+
+if TYPE_CHECKING:
+    from .qmd_store import QMDMemoryStore
 
 logger = logging.getLogger("ghostclaw.qmd.prefetch")
 
@@ -16,7 +19,7 @@ class PrefetchManager:
     Tracks pending prefetch tasks and completion stats.
     """
 
-    def __init__(self, store: 'QMDMemoryStore'):
+    def __init__(self, store: "QMDMemoryStore"):
         """
         Initialize prefetch manager.
 
@@ -68,7 +71,9 @@ class PrefetchManager:
             self._pending.add(rid)
             asyncio.create_task(self._prefetch_run(rid))
 
-        logger.debug("Prefetch queued %d new runs (pending=%d)", len(new_ids), len(self._pending))
+        logger.debug(
+            "Prefetch queued %d new runs (pending=%d)", len(new_ids), len(self._pending)
+        )
 
     async def _prefetch_run(self, run_id: int) -> None:
         """Background coroutine: fetch a run to warm caches."""

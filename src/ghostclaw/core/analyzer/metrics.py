@@ -10,7 +10,9 @@ class MetricCollector:
     """Handles line counting and file size metrics."""
 
     @staticmethod
-    def collect_metrics(file_list: List[str], threshold: int) -> Tuple[int, List[int], List[str]]:
+    def collect_metrics(
+        file_list: List[str], threshold: int
+    ) -> Tuple[int, List[int], List[str]]:
         """
         Compute base metrics for a list of files.
 
@@ -22,13 +24,13 @@ class MetricCollector:
         line_counts = []
         for f in file_list:
             try:
-                with open(f, 'rb') as file:
+                with open(f, "rb") as file:
                     count = 0
                     while True:
                         chunk = file.read(65536)
                         if not chunk:
                             break
-                        count += chunk.count(b'\n')
+                        count += chunk.count(b"\n")
                     if count > 0 or Path(f).stat().st_size > 0:
                         count += 1
                     total_lines += count

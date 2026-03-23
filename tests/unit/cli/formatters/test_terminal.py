@@ -3,6 +3,7 @@ from ghostclaw.cli.formatters import TerminalFormatter
 from typing import Dict, Any
 import re
 
+
 @pytest.fixture
 def mock_report() -> Dict[str, Any]:
     return {
@@ -15,12 +16,14 @@ def mock_report() -> Dict[str, Any]:
         "red_flags": ["Flag 1"],
         "errors": ["Error 1"],
         "ai_synthesis": "Overall looks fine.",
-        "coupling_metrics": {"avg_ccn": 2.5, "avg_nd": 1.5}
+        "coupling_metrics": {"avg_ccn": 2.5, "avg_nd": 1.5},
     }
+
 
 def _strip_ansi(s: str) -> str:
     """Remove ANSI escape codes from a string."""
-    return re.sub(r'\x1b\[[0-9;]*m', '', s)
+    return re.sub(r"\x1b\[[0-9;]*m", "", s)
+
 
 def test_terminal_formatter(mock_report):
     formatter = TerminalFormatter()
@@ -37,6 +40,7 @@ def test_terminal_formatter(mock_report):
     assert "Error 1" in stripped
     assert "Overall looks fine." in stripped
     assert "💡 Tip: Run with '--patch' to generate refactor suggestions" in stripped
+
 
 def test_terminal_print(mock_report, capsys):
     formatter = TerminalFormatter()

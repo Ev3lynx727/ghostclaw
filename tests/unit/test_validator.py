@@ -6,7 +6,6 @@ from pathlib import Path
 # Add repo root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-import pytest
 from ghostclaw.core.validator import RuleValidator
 
 
@@ -16,7 +15,7 @@ def test_node_average_file_size_rule():
         "stack": "node",
         "average_lines": 500,
         "large_file_count": 2,
-        "coupling_metrics": {}
+        "coupling_metrics": {},
     }
     result = validator.validate("node", report)
     # Should add issues for average_lines > 200
@@ -32,7 +31,7 @@ def test_python_average_file_size_rule():
         "stack": "python",
         "average_lines": 250,
         "large_file_count": 1,
-        "coupling_metrics": {}
+        "coupling_metrics": {},
     }
     result = validator.validate("python", report)
     issues = result["issues"]
@@ -46,12 +45,7 @@ def test_instability_rule():
         "stack": "node",
         "average_lines": 100,
         "large_file_count": 0,
-        "coupling_metrics": {
-            "unstableModule": {
-                "instability": 0.95,
-                "efferent": 10
-            }
-        }
+        "coupling_metrics": {"unstableModule": {"instability": 0.95, "efferent": 10}},
     }
     result = validator.validate("node", report)
     issues = result["issues"]
@@ -68,12 +62,13 @@ def test_unknown_stack_passes_through():
         "coupling_metrics": {},
         "issues": [],
         "architectural_ghosts": [],
-        "red_flags": []
+        "red_flags": [],
     }
     result = validator.validate("unknown", report)
     # Should not modify the report (no additional issues)
     assert result["issues"] == []
     assert result["architectural_ghosts"] == []
+
 
 def test_import_dependency_rule():
     validator = RuleValidator()
@@ -85,7 +80,7 @@ def test_import_dependency_rule():
         ],
         "issues": [],
         "architectural_ghosts": [],
-        "red_flags": []
+        "red_flags": [],
     }
     result = validator.validate("node", report)
     issues = result["issues"]
@@ -103,7 +98,7 @@ def test_global_empty_codebase_rule():
         "large_file_count": 0,
         "issues": [],
         "architectural_ghosts": [],
-        "red_flags": []
+        "red_flags": [],
     }
     result = validator.validate("unknown", report)
     issues = result["issues"]

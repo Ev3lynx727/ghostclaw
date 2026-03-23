@@ -2,11 +2,11 @@
 
 import re
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, Set
 from ghostclaw.core.graph import ImportGraph
 
 # Modules in these directories are typically orchestrators and naturally have high efferent coupling
-ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}
+ENTRY_POINT_DIRS: Set[str] = {"cli", "scripts", "bin", "__main__"}
 
 
 class NodeImportAnalyzer:
@@ -26,19 +26,19 @@ class NodeImportAnalyzer:
 
     def _module_name_from_file(self, filepath: Path) -> str:
         rel = filepath.relative_to(self.root)
-        if rel.name in ('index.js', 'index.ts', 'index.jsx', 'index.tsx'):
+        if rel.name in ("index.js", "index.ts", "index.jsx", "index.tsx"):
             parent = rel.parent
-            if parent == Path('.'):
-                return '.'
+            if parent == Path("."):
+                return "."
             parts = list(parent.parts)
         else:
-            parts = list(rel.with_suffix('').parts)
+            parts = list(rel.with_suffix("").parts)
         # Strip leading 'src' if present
-        if parts and parts[0] == 'src':
+        if parts and parts[0] == "src":
             parts = parts[1:]
         if not parts:
-            return '.'
-        return ".".join(parts).replace('/', '.')
+            return "."
+        return ".".join(parts).replace("/", ".")
 
     def _resolve_import_path(self, import_path: str, source_file: Path) -> Path:
         """
@@ -46,19 +46,19 @@ class NodeImportAnalyzer:
         Returns None if not found.
         """
         # Only handle relative imports
-        if not import_path.startswith('.'):
+        if not import_path.startswith("."):
             return None
 
         # Strip query and hash
-        import_path = import_path.split('?')[0].split('#')[0]
+        import_path = import_path.split("?")[0].split("#")[0]
 
         source_dir = source_file.parent
         candidate = (source_dir / import_path).resolve()
 
         # If candidate is a directory, look for index.js or package.json main
         if candidate.is_dir():
-            for ext in ['.js', '.ts', '.jsx', '.tsx']:
-                index_file = candidate / f'index{ext}'
+            for ext in [".js", ".ts", ".jsx", ".tsx"]:
+                index_file = candidate / f"index{ext}"
                 if index_file.exists():
                     return index_file
             # Could also check package.json main, but skip for now
@@ -68,8 +68,10 @@ class NodeImportAnalyzer:
             return candidate
 
         # Try adding common extensions
-        for ext in ['.js', '.ts', '.jsx', '.tsx', '.json']:
-            candidate_with_ext = candidate.with_suffix(ext) if not candidate.suffix else candidate
+        for ext in [".js", ".ts", ".jsx", ".tsx", ".json"]:
+            candidate_with_ext = (
+                candidate.with_suffix(ext) if not candidate.suffix else candidate
+            )
             if candidate_with_ext.is_file():
                 return candidate_with_ext
 
@@ -81,7 +83,7 @@ class NodeImportAnalyzer:
         flags = []
 
         # Find all Node source files
-        node_exts = ['.js', '.jsx', '.ts', '.tsx']
+        node_exts = [".js", ".jsx", ".ts", ".tsx"]
         files = []
         for ext in node_exts:
             files.extend(self.root.rglob(f"*{ext}"))
@@ -97,7 +99,7 @@ class NodeImportAnalyzer:
         # Parse each file for imports
         for f in files:
             try:
-                content = f.read_text(encoding='utf-8', errors='ignore')
+                content = f.read_text(encoding="utf-8", errors="ignore")
                 importer = self._module_name_from_file(f)
                 imported_modules = set()
 
@@ -125,7 +127,7 @@ class NodeImportAnalyzer:
                 issues.append(f"Circular dependency: {cycle_str}")
                 ghosts.append(f"Circular dependency: {cycle_str}")
             if len(cycles) > 5:
-                issues.append(f"... and {len(cycles)-5} more cycles")
+                issues.append(f"... and {len(cycles) - 5} more cycles")
 
         # Compute coupling metrics
         coupling_metrics = {}
@@ -136,15 +138,17 @@ class NodeImportAnalyzer:
             coupling_metrics[node] = {
                 "afferent": afferent,
                 "efferent": efferent,
-                "instability": round(instability, 2)
+                "instability": round(instability, 2),
             }
             if instability > 0.8:
                 # Skip entry points as they naturally import many things
-                module_parts = set(node.split('.'))
+                module_parts = set(node.split("."))
                 if any(entry in module_parts for entry in ENTRY_POINT_DIRS):
                     continue
 
-                issues.append(f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})")
+                issues.append(
+                    f"Module {node} is highly unstable (I={instability:.2f}, ce={efferent})"
+                )
                 ghosts.append(f"Unstable module {node}: knows too many others")
 
         return {
@@ -152,5 +156,5 @@ class NodeImportAnalyzer:
             "circular_dependencies": [{"cycle": cycle} for cycle in cycles],
             "issues": issues,
             "architectural_ghosts": ghosts,
-            "red_flags": flags
+            "red_flags": flags,
         }

@@ -3,9 +3,7 @@ Interactive REPL console for Ghostclaw debug sessions.
 """
 
 import cmd
-import json
 import logging
-from pathlib import Path
 from typing import Any, Dict
 
 logger = logging.getLogger("ghostclaw.cli.debug.console")
@@ -44,7 +42,7 @@ Type Python expressions directly (no slash) to inspect variables.
     def __init__(self, context: Dict[str, Any]):
         super().__init__()
         self.ctx = context
-        self._breakpoints = set(context.get('breakpoints', []))
+        self._breakpoints = set(context.get("breakpoints", []))
         self._current_phase = None
         self._running = True
 
@@ -54,7 +52,7 @@ Type Python expressions directly (no slash) to inspect variables.
 
     def default(self, line: str):
         """Handle Python expressions."""
-        if line.startswith('/'):
+        if line.startswith("/"):
             print(f"Unknown command: {line.split()[0]}")
             return
         try:
@@ -90,10 +88,22 @@ Type Python expressions directly (no slash) to inspect variables.
     def do_break(self, arg: str):
         """Set breakpoint at phase. Usage: /break [phase]"""
         if not arg:
-            print("Current breakpoints:", ', '.join(sorted(self._breakpoints)) or "(none)")
+            print(
+                "Current breakpoints:", ", ".join(sorted(self._breakpoints)) or "(none)"
+            )
             return
         phase = arg.lower().strip()
-        valid_phases = {'start', 'config', 'files', 'metrics', 'adapters', 'stack', 'pre-synth', 'post-synth', 'end'}
+        valid_phases = {
+            "start",
+            "config",
+            "files",
+            "metrics",
+            "adapters",
+            "stack",
+            "pre-synth",
+            "post-synth",
+            "end",
+        }
         if phase in valid_phases:
             self._breakpoints.add(phase)
             print(f"Breakpoint set at phase: {phase}")
@@ -109,13 +119,18 @@ Type Python expressions directly (no slash) to inspect variables.
 
     def do_config(self, arg: str):
         """Show config (sanitized)."""
-        cfg = self.ctx.get('config')
+        cfg = self.ctx.get("config")
         if not cfg:
             print("No config available.")
             return
         print("\x1b[36mConfig (sanitized):\x1b[0m")
         # Redact sensitive keys
-        sensitive = {'api_key', 'GHOSTCLAW_API_KEY', 'openai_api_key', 'anthropic_api_key'}
+        sensitive = {
+            "api_key",
+            "GHOSTCLAW_API_KEY",
+            "openai_api_key",
+            "anthropic_api_key",
+        }
         for k, v in cfg.__dict__.items():
             if any(s in k.lower() for s in sensitive):
                 print(f"  {k}: <REDACTED>")
@@ -124,37 +139,37 @@ Type Python expressions directly (no slash) to inspect variables.
 
     def do_files(self, arg: str):
         """List files. Usage: /files [N]"""
-        files = self.ctx.get('files', [])
+        files = self.ctx.get("files", [])
         try:
             limit = int(arg) if arg else 20
-        except:
+        except Exception:
             limit = 20
         print(f"\nShowing up to {limit} files (total: {len(files)}):")
         for i, f in enumerate(files[:limit], 1):
             print(f"  {i:4}. {f}")
         if len(files) > limit:
-            print(f"  ... and {len(files)-limit} more")
+            print(f"  ... and {len(files) - limit} more")
 
     def do_metrics(self, arg: str):
         """Show metrics."""
-        metrics = self.ctx.get('metrics', {})
+        metrics = self.ctx.get("metrics", {})
         print("\x1b[36mMetrics:\x1b[0m")
         for k, v in metrics.items():
             print(f"  {k}: {v}")
 
     def do_adapters(self, arg: str):
         """Show adapter results."""
-        results = self.ctx.get('adapter_results', [])
+        results = self.ctx.get("adapter_results", [])
         print(f"\x1b[36mAdapters ({len(results)} ran):\x1b[0m")
         for i, res in enumerate(results, 1):
-            name = res.get('adapter', 'unknown')
-            files = res.get('files_analyzed', 0)
-            issues = len(res.get('issues', []))
+            name = res.get("adapter", "unknown")
+            files = res.get("files_analyzed", 0)
+            issues = len(res.get("issues", []))
             print(f"  {i}. {name}: {files} files, {issues} issues")
 
     def do_stack(self, arg: str):
         """Show stack-specific analysis."""
-        stack_result = self.ctx.get('stack_result', {})
+        stack_result = self.ctx.get("stack_result", {})
         print("\x1b[36mStack Analysis:\x1b[0m")
         for k, v in stack_result.items():
             if isinstance(v, (list, dict)):
@@ -164,37 +179,38 @@ Type Python expressions directly (no slash) to inspect variables.
 
     def do_issues(self, arg: str):
         """Show issues list."""
-        issues = self.ctx.get('issues', [])
+        issues = self.ctx.get("issues", [])
         print(f"\n\x1b[31mIssues ({len(issues)}):\x1b[0m")
         for i, issue in enumerate(issues[:50], 1):
             print(f"  {i}. {issue}")
         if len(issues) > 50:
-            print(f"  ... and {len(issues)-50} more")
+            print(f"  ... and {len(issues) - 50} more")
 
     def do_ghosts(self, arg: str):
         """Show architectural ghosts."""
-        ghosts = self.ctx.get('ghosts', [])
+        ghosts = self.ctx.get("ghosts", [])
         print(f"\n\x1b[33mArchitectural Ghosts ({len(ghosts)}):\x1b[0m")
         for i, ghost in enumerate(ghosts[:20], 1):
             print(f"  {i}. {ghost}")
         if len(ghosts) > 20:
-            print(f"  ... and {len(ghosts)-20} more")
+            print(f"  ... and {len(ghosts) - 20} more")
 
     def do_coupling(self, arg: str):
         """Show coupling metrics."""
-        coupling = self.ctx.get('coupling_metrics', {})
+        coupling = self.ctx.get("coupling_metrics", {})
         print("\n\x1b[36mCoupling Metrics:\x1b[0m")
         for k, v in coupling.items():
             print(f"  {k}: {v}")
 
     def do_imports(self, arg: str):
         """Show top circular import candidates."""
-        edges = self.ctx.get('import_edges', [])
+        edges = self.ctx.get("import_edges", [])
         if not edges:
             print("No import graph available.")
             return
         # Count in-degree for each module
         from collections import Counter
+
         indegree = Counter()
         for src, dst in edges:
             indegree[dst] += 1

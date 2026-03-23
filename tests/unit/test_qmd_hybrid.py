@@ -1,20 +1,21 @@
 """Tests for QMD hybrid search (BM25 + vector)."""
+
 import pytest
 import pytest_asyncio
-import asyncio
-import json
-from pathlib import Path
 from ghostclaw.core.qmd_store import QMDMemoryStore
 
 # Check dependencies
 try:
     import lancedb  # noqa: F401
     import fastembed  # noqa: F401
+
     HAS_DEPS = True
 except ImportError:
     HAS_DEPS = False
 
-pytestmark = pytest.mark.skipif(not HAS_DEPS, reason="vector dependencies not installed")
+pytestmark = pytest.mark.skipif(
+    not HAS_DEPS, reason="vector dependencies not installed"
+)
 
 
 @pytest_asyncio.fixture
@@ -36,11 +37,15 @@ async def test_hybrid_search_basic(enhanced_store, tmp_path):
         "files_analyzed": 5,
         "total_lines": 200,
         "issues": [
-            {"message": "Authentication bypass vulnerability", "file": "auth.py", "severity": "high"}
+            {
+                "message": "Authentication bypass vulnerability",
+                "file": "auth.py",
+                "severity": "high",
+            }
         ],
         "architectural_ghosts": [],
         "ai_synthesis": "The codebase has a critical authentication bypass vulnerability that needs immediate patching.",
-        "metadata": {"timestamp": "2026-03-14T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T12:00:00Z"},
     }
     run_id = await enhanced_store.save_run(report, repo_path=str(tmp_path))
 
@@ -74,7 +79,7 @@ async def test_hybrid_search_alpha_weighting(enhanced_store, tmp_path):
         ],
         "architectural_ghosts": [],
         "ai_synthesis": "There is a potential race condition when multiple threads access the shared dictionary without proper locking. This can lead to data corruption and undefined behavior. Consider using threading.Lock or concurrent.futures to ensure thread safety.",
-        "metadata": {"timestamp": "2026-03-14T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T12:00:00Z"},
     }
     await enhanced_store.save_run(report, repo_path=str(tmp_path))
 
@@ -84,8 +89,8 @@ async def test_hybrid_search_alpha_weighting(enhanced_store, tmp_path):
     results_vector_heavy = await enhanced_store.search("thread safety", alpha=0.1)
 
     # Both should find the report
-    ids_bm25 = [r["id"] for r in results_bm25_heavy]
-    ids_vector = [r["id"] for r in results_vector_heavy]
+    [r["id"] for r in results_bm25_heavy]
+    [r["id"] for r in results_vector_heavy]
     assert any(r["vibe_score"] == 80 for r in results_bm25_heavy)
     assert any(r["vibe_score"] == 80 for r in results_vector_heavy)
 
@@ -100,7 +105,7 @@ async def test_hybrid_search_filters(enhanced_store, tmp_path):
         "total_lines": 200,
         "issues": ["Python-specific issue"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T12:00:00Z"},
     }
     report2 = {
         "vibe_score": 70,
@@ -109,7 +114,7 @@ async def test_hybrid_search_filters(enhanced_store, tmp_path):
         "total_lines": 300,
         "issues": ["Node-specific issue"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T12:00:00Z"},
     }
     id1 = await enhanced_store.save_run(report1, repo_path=str(tmp_path / "repo1"))
     id2 = await enhanced_store.save_run(report2, repo_path=str(tmp_path / "repo2"))
@@ -144,7 +149,7 @@ async def test_hybrid_search_fallback_to_bm25(enhanced_store, tmp_path, monkeypa
         "total_lines": 200,
         "issues": ["Test issue for BM25 fallback"],
         "architectural_ghosts": [],
-        "metadata": {"timestamp": "2026-03-14T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T12:00:00Z"},
     }
     rid = await enhanced_store.save_run(report, repo_path=str(tmp_path))
 
@@ -167,14 +172,12 @@ async def test_save_run_generates_embeddings(enhanced_store, tmp_path):
         "stack": "python",
         "files_analyzed": 10,
         "total_lines": 500,
-        "issues": [
-            {"message": "SQL injection risk", "file": "query.py"}
-        ],
+        "issues": [{"message": "SQL injection risk", "file": "query.py"}],
         "architectural_ghosts": [
             {"message": "God object antipattern", "module": "main"}
         ],
         "ai_synthesis": "The application is vulnerable to SQL injection because user input is concatenated directly into queries.",
-        "metadata": {"timestamp": "2026-03-14T12:00:00Z"}
+        "metadata": {"timestamp": "2026-03-14T12:00:00Z"},
     }
     rid = await enhanced_store.save_run(report, repo_path=str(tmp_path))
 

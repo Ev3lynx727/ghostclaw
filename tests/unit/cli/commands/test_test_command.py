@@ -2,6 +2,7 @@ import pytest
 from argparse import Namespace
 from ghostclaw.cli.commands.test import TestCommand
 
+
 @pytest.mark.asyncio
 async def test_test_command_execute_llm(mocker):
     cmd = TestCommand()
@@ -18,6 +19,7 @@ async def test_test_command_execute_llm(mocker):
 
     result = await cmd.execute(args)
     assert result == 0
+
 
 @pytest.mark.asyncio
 async def test_test_command_execute_help(capsys):

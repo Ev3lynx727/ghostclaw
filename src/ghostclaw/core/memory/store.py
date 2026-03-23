@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 try:
     import aiosqlite
+
     HAS_AIOSQLITE = True
 except ImportError:
     HAS_AIOSQLITE = False
@@ -126,12 +127,15 @@ class MemoryStore:
     # Advanced functionality delegated to mcp submodule
     async def search(self, *args, **kwargs):
         from .mcp import search_memory
+
         return await search_memory(self, *args, **kwargs)
 
     async def diff_runs(self, *args, **kwargs):
         from .mcp import diff_analysis_runs
+
         return await diff_analysis_runs(self, *args, **kwargs)
 
     async def get_knowledge_graph(self, *args, **kwargs):
         from .mcp import generate_knowledge_graph
+
         return await generate_knowledge_graph(self, *args, **kwargs)

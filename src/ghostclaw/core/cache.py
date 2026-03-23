@@ -151,6 +151,7 @@ class PerFileAnalysisCache:
             cache_file.write_text(json.dumps(result), encoding="utf-8")
         except Exception:
             pass
+
     def clear(self) -> None:
         """Clear all cached analysis files."""
         for f in self.cache_dir.glob("*.json"):
@@ -158,7 +159,6 @@ class PerFileAnalysisCache:
                 f.unlink()
             except Exception:
                 pass
-
 
 
 def compute_fingerprint(

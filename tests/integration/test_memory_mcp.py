@@ -23,7 +23,9 @@ def temp_db():
         yield db_path
 
 
-def _make_report(vibe_score=70, issues=None, architectural_ghosts=None, coupling_metrics=None):
+def _make_report(
+    vibe_score=70, issues=None, architectural_ghosts=None, coupling_metrics=None
+):
     """Helper to construct a minimal Ghostclaw report."""
     return {
         "vibe_score": vibe_score,
@@ -38,13 +40,20 @@ def _make_report(vibe_score=70, issues=None, architectural_ghosts=None, coupling
     }
 
 
-async def _seed_run(db_path: Path, vibe_score=70, report=None, repo_path="/test/repo", stack="python", timestamp=None):
+async def _seed_run(
+    db_path: Path,
+    vibe_score=70,
+    report=None,
+    repo_path="/test/repo",
+    stack="python",
+    timestamp=None,
+):
     """Insert a run directly into the database."""
     if timestamp is None:
         # Increment by second to get distinct ordering
         import itertools
+
         _seed_run.counter = getattr(_seed_run, "counter", itertools.count())
-        base = "2025-01-01T00:00:00"
         ts = f"2025-01-01T00:00:{next(_seed_run.counter):02d}"
     else:
         ts = timestamp
@@ -76,8 +85,16 @@ async def test_memory_search_integration(temp_db):
     await store._ensure_db()
 
     # Seed two runs
-    await _seed_run(temp_db, vibe_score=60, report=_make_report(issues=["Large file", "Missing tests"]))
-    await _seed_run(temp_db, vibe_score=80, report=_make_report(issues=["Large file", "Naming convention"]))
+    await _seed_run(
+        temp_db,
+        vibe_score=60,
+        report=_make_report(issues=["Large file", "Missing tests"]),
+    )
+    await _seed_run(
+        temp_db,
+        vibe_score=80,
+        report=_make_report(issues=["Large file", "Naming convention"]),
+    )
 
     results = await store.search(query="Large file", limit=10)
     response = {"results": results, "count": len(results)}
@@ -85,7 +102,9 @@ async def test_memory_search_integration(temp_db):
 
     assert parsed["count"] == 2
     # At least one snippet contains "Large file" per result
-    assert all(any("Large file" in s for s in r["matched_snippets"]) for r in parsed["results"])
+    assert all(
+        any("Large file" in s for s in r["matched_snippets"]) for r in parsed["results"]
+    )
 
 
 @pytest.mark.asyncio
@@ -136,8 +155,14 @@ async def test_memory_diff_runs_integration(temp_db):
     store = MemoryStore(db_path=temp_db)
     await store._ensure_db()
 
-    report_a = _make_report(vibe_score=60, issues=["issue A", "issue B"], architectural_ghosts=["ghost X"])
-    report_b = _make_report(vibe_score=80, issues=["issue B", "issue C"], architectural_ghosts=["ghost X", "ghost Y"])
+    report_a = _make_report(
+        vibe_score=60, issues=["issue A", "issue B"], architectural_ghosts=["ghost X"]
+    )
+    report_b = _make_report(
+        vibe_score=80,
+        issues=["issue B", "issue C"],
+        architectural_ghosts=["ghost X", "ghost Y"],
+    )
 
     await _seed_run(temp_db, vibe_score=60, report=report_a)
     await _seed_run(temp_db, vibe_score=80, report=report_b)
@@ -163,12 +188,17 @@ async def test_knowledge_graph_integration(temp_db):
         await _seed_run(
             temp_db,
             vibe_score=70,
-            report=_make_report(issues=["Large file", "Missing tests"], architectural_ghosts=["God Module"]),
+            report=_make_report(
+                issues=["Large file", "Missing tests"],
+                architectural_ghosts=["God Module"],
+            ),
         )
     await _seed_run(
         temp_db,
         vibe_score=90,
-        report=_make_report(issues=["Large file"], architectural_ghosts=["Circular Import"]),
+        report=_make_report(
+            issues=["Large file"], architectural_ghosts=["Circular Import"]
+        ),
     )
 
     graph = await store.get_knowledge_graph()
@@ -177,5 +207,11 @@ async def test_knowledge_graph_integration(temp_db):
 
     assert parsed["total_runs"] == 4
     # recurring_issues entries have keys: 'item' and 'count'
-    assert any(rec["item"] == "Large file" and rec["count"] >= 4 for rec in parsed["recurring_issues"])
-    assert any(rec["item"] == "God Module" and rec["count"] == 3 for rec in parsed["recurring_ghosts"])
+    assert any(
+        rec["item"] == "Large file" and rec["count"] >= 4
+        for rec in parsed["recurring_issues"]
+    )
+    assert any(
+        rec["item"] == "God Module" and rec["count"] == 3
+        for rec in parsed["recurring_ghosts"]
+    )

@@ -1,7 +1,6 @@
 """EmbeddingManager — handles chunking and embedding generation for reports."""
 
 import hashlib
-from pathlib import Path
 from typing import List, Dict, Any
 
 from ghostclaw.core.vector_store import VectorStore
@@ -14,7 +13,9 @@ class EmbeddingManager:
         self.vector_store = vector_store
         self.embedding_backend = embedding_backend
 
-    def _extract_chunks(self, report: Dict[str, Any], run_id: int) -> List[Dict[str, Any]]:
+    def _extract_chunks(
+        self, report: Dict[str, Any], run_id: int
+    ) -> List[Dict[str, Any]]:
         """
         Break a report into semantic chunks for embedding.
 
@@ -29,7 +30,9 @@ class EmbeddingManager:
 
         # Helper to create chunk
         def make_chunk(text: str, kind: str, extra: Dict = None):
-            chunk_id = hashlib.sha256(f"{run_id}:{kind}:{text[:100]}".encode()).hexdigest()[:16]
+            chunk_id = hashlib.sha256(
+                f"{run_id}:{kind}:{text[:100]}".encode()
+            ).hexdigest()[:16]
             meta = {
                 "run_id": run_id,
                 "kind": kind,

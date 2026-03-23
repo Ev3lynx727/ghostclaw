@@ -1,13 +1,8 @@
 """AnalyzerService — orchestrates the full codebase analysis pipeline."""
 
-import asyncio
-import subprocess
-import datetime
 import sys
-import json
-import shutil
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.cache import LocalCache
@@ -17,15 +12,14 @@ from ghostclaw.core.migration import migrate_legacy_storage
 try:
     from rich.console import Console
     from rich.markdown import Markdown
-    from rich.status import Status
     from rich.text import Text
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
 
 # Import the services package for access to GhostAgent and AgentEvent (patchable)
 import ghostclaw.cli.services as services
-from .pr import PRService
 
 
 class AnalyzerService:
@@ -33,9 +27,16 @@ class AnalyzerService:
     Service for orchestrating the codebase analysis.
     """
 
-    def __init__(self, repo_path: str, config_overrides: Dict[str, Any], use_cache: bool = True,
-                 cache_dir: Optional[Path] = None, cache_ttl: int = 7, json_output: bool = False,
-                 benchmark: bool = False):
+    def __init__(
+        self,
+        repo_path: str,
+        config_overrides: Dict[str, Any],
+        use_cache: bool = True,
+        cache_dir: Optional[Path] = None,
+        cache_ttl: int = 7,
+        json_output: bool = False,
+        benchmark: bool = False,
+    ):
         self.repo_path = repo_path
         self.config_overrides = config_overrides
         self.use_cache = use_cache
@@ -58,14 +59,17 @@ class AnalyzerService:
         # Perform storage migration if needed (old .ghostclaw/{reports,cache} -> storage/)
         repo_path = Path(self.repo_path)
         if migrate_legacy_storage(repo_path):
-            print("🔧 Migrated storage to new layout under .ghostclaw/storage/", file=sys.stderr)
+            print(
+                "🔧 Migrated storage to new layout under .ghostclaw/storage/",
+                file=sys.stderr,
+            )
 
         # Initialize cache if needed
         if self.use_cache:
             self.cache = LocalCache(
                 cache_dir=self.cache_dir,
                 ttl_days=self.cache_ttl,
-                compression=config.cache_compression
+                compression=config.cache_compression,
             )
 
         analyzer = CodebaseAnalyzer(cache=self.cache if self.use_cache else None)
@@ -79,19 +83,26 @@ class AnalyzerService:
         async def on_pre_analyze(data):
             nonlocal status
             if console:
-                status = console.status("[bold green]Ghostclaw is analyzing architecture...[/bold green]", spinner="dots")
+                status = console.status(
+                    "[bold green]Ghostclaw is analyzing architecture...[/bold green]",
+                    spinner="dots",
+                )
                 status.start()
 
         async def on_post_metrics(data):
             nonlocal status
             if status:
-                status.update("[bold blue]Metrics collected. Preparing Ghost Engine...[/bold blue]")
+                status.update(
+                    "[bold blue]Metrics collected. Preparing Ghost Engine...[/bold blue]"
+                )
 
         async def on_pre_synthesis(data):
             nonlocal status
             if status:
-                status.update("[bold cyan]🧠 Ghost Engine Synthesis starting...[/bold cyan]")
-                print("\n" + "="*50 + "\n")
+                status.update(
+                    "[bold cyan]🧠 Ghost Engine Synthesis starting...[/bold cyan]"
+                )
+                print("\n" + "=" * 50 + "\n")
                 print("🧠 Ghost Engine Synthesis:\n")
 
         async def on_synthesis_chunk(data):
@@ -109,13 +120,17 @@ class AnalyzerService:
 
                 if not live:
                     from rich.live import Live
-                    live = Live(Text(""), console=console, refresh_per_second=10, transient=True)
+
+                    live = Live(
+                        Text(""), console=console, refresh_per_second=10, transient=True
+                    )
                     live.start()
 
                 try:
                     live.update(Text("".join(synthesis_content)))
                 except Exception as e:
                     import traceback
+
                     console.print(f"[red]Error joining synthesis_content: {e}[/red]")
                     traceback.print_exc()
             else:
@@ -132,7 +147,10 @@ class AnalyzerService:
                     status = None
                 if not live:
                     from rich.live import Live
-                    live = Live(Text(""), console=console, refresh_per_second=10, transient=True)
+
+                    live = Live(
+                        Text(""), console=console, refresh_per_second=10, transient=True
+                    )
                     live.start()
                 current_text = live.get_renderable()
                 if isinstance(current_text, Text):
@@ -154,7 +172,7 @@ class AnalyzerService:
 
             output_stream = sys.stderr if self.json_output else sys.stdout
             if data.get("synthesis_performed"):
-                output_stream.write("\n\n" + "="*50)
+                output_stream.write("\n\n" + "=" * 50)
             output_stream.flush()
             if console and synthesis_content:
                 full_text = "".join(synthesis_content)
@@ -180,30 +198,38 @@ class AnalyzerService:
                 live = None
 
             if self.benchmark:
-                self.timings = getattr(agent, 'timings', {})
+                self.timings = getattr(agent, "timings", {})
 
             report["_synthesis_streamed"] = self.synthesis_streamed
 
             # Add token usage to metadata if available (only if AI was used)
-            if config.use_ai and hasattr(agent, 'llm_client'):
+            if config.use_ai and hasattr(agent, "llm_client"):
                 lc = agent.llm_client
                 try:
                     total = lc.total_tokens
                     if isinstance(total, (int, float)) and total > 0:
-                        report.setdefault('metadata', {})['tokens'] = {
-                            'prompt': int(getattr(lc, 'prompt_tokens', 0)),
-                            'completion': int(getattr(lc, 'completion_tokens', 0)),
-                            'total': int(total)
+                        report.setdefault("metadata", {})["tokens"] = {
+                            "prompt": int(getattr(lc, "prompt_tokens", 0)),
+                            "completion": int(getattr(lc, "completion_tokens", 0)),
+                            "total": int(total),
                         }
                 except Exception:
                     pass
 
-            if self.use_cache and self.cache and not config.dry_run and "metadata" in report and "fingerprint" in report["metadata"]:
+            if (
+                self.use_cache
+                and self.cache
+                and not config.dry_run
+                and "metadata" in report
+                and "fingerprint" in report["metadata"]
+            ):
                 self.cache.set(report["metadata"]["fingerprint"], report)
 
             return report
 
         except Exception as e:
-            if status: status.stop()
-            if live: live.stop()
+            if status:
+                status.stop()
+            if live:
+                live.stop()
             raise Exception(f"Analysis Error: {e}") from e

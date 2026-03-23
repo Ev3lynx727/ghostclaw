@@ -2,7 +2,6 @@
 
 import asyncio
 import pytest
-from pathlib import Path
 from ghostclaw.core.config import GhostclawConfig
 from ghostclaw.core.adapters.registry import registry, INTERNAL_PLUGINS
 from ghostclaw.core.analyzer import CodebaseAnalyzer
@@ -43,9 +42,7 @@ class TestOrchestrateConfigField:
     def test_orchestrate_and_orchestrator_dict_both_respected(self):
         """Both orchestrate flag and orchestrator dict can coexist; orchestrate takes precedence in enforcement."""
         config = GhostclawConfig.load(
-            ".",
-            orchestrate=True,
-            orchestrator={"enabled": False, "use_llm": True}
+            ".", orchestrate=True, orchestrator={"enabled": False, "use_llm": True}
         )
         assert config.orchestrate is True
         assert config.orchestrator["enabled"] is False
@@ -84,19 +81,21 @@ class TestOrchestratorEnforcement:
         """With orchestrate=True and use_qmd=False, only orchestrator should be enabled."""
         config = GhostclawConfig.load(str(tmp_path), orchestrate=True, use_qmd=False)
         result = asyncio.run(self._run_analyzer(config, tmp_path))
-        assert result == {'orchestrator'}
+        assert result == {"orchestrator"}
 
     def test_orchestrate_flag_with_qmd_enables_orchestrator_and_storage(self, tmp_path):
         """With orchestrate=True and use_qmd=True, enabled set should contain orchestrator, sqlite, qmd."""
         config = GhostclawConfig.load(str(tmp_path), orchestrate=True, use_qmd=True)
         result = asyncio.run(self._run_analyzer(config, tmp_path))
-        assert result == {'orchestrator', 'sqlite', 'qmd'}
+        assert result == {"orchestrator", "sqlite", "qmd"}
 
     def test_orchestrator_dict_enabled_with_qmd(self, tmp_path):
         """Setting orchestrator={'enabled': True} with use_qmd=True also yields orchestrator + storage."""
-        config = GhostclawConfig.load(str(tmp_path), orchestrator={"enabled": True}, use_qmd=True)
+        config = GhostclawConfig.load(
+            str(tmp_path), orchestrator={"enabled": True}, use_qmd=True
+        )
         result = asyncio.run(self._run_analyzer(config, tmp_path))
-        assert result == {'orchestrator', 'sqlite', 'qmd'}
+        assert result == {"orchestrator", "sqlite", "qmd"}
 
     def test_orchestrate_false_with_use_qmd_true_all_plugins(self, tmp_path):
         """Default case: orchestrate=False, use_qmd=True -> all plugins enabled (None)."""
@@ -109,10 +108,10 @@ class TestOrchestratorEnforcement:
         config = GhostclawConfig.load(str(tmp_path), orchestrate=False, use_qmd=False)
         result = asyncio.run(self._run_analyzer(config, tmp_path))
         assert result is not None
-        assert 'orchestrator' not in result
-        assert 'lizard' in result
-        assert 'sqlite' in result
-        assert 'qmd' not in result
+        assert "orchestrator" not in result
+        assert "lizard" in result
+        assert "sqlite" in result
+        assert "qmd" not in result
 
     def test_orchestrate_overrides_plugins_enabled(self, tmp_path):
         """If both orchestrate=True and plugins_enabled set, orchestrate wins."""
@@ -120,30 +119,34 @@ class TestOrchestratorEnforcement:
             str(tmp_path),
             orchestrate=True,
             plugins_enabled=["lizard", "qmd"],
-            use_qmd=False
+            use_qmd=False,
         )
         result = asyncio.run(self._run_analyzer(config, tmp_path))
-        assert result == {'orchestrator'}
+        assert result == {"orchestrator"}
 
     def test_orchestrate_overrides_use_qmd_but_still_adds_storage(self, tmp_path):
         """When both orchestrate=True and use_qmd=True, still only orchestrator + storage."""
         config = GhostclawConfig.load(str(tmp_path), orchestrate=True, use_qmd=True)
         result = asyncio.run(self._run_analyzer(config, tmp_path))
-        assert result == {'orchestrator', 'sqlite', 'qmd'}
+        assert result == {"orchestrator", "sqlite", "qmd"}
 
     def test_orchestrator_dict_disabled_does_not_force(self, tmp_path):
         """If orchestrator.enabled=False and orchestrate=False, normal rules apply (here we set use_qmd=True to avoid set test)."""
-        config = GhostclawConfig.load(str(tmp_path), orchestrator={"enabled": False}, use_qmd=True)
+        config = GhostclawConfig.load(
+            str(tmp_path), orchestrator={"enabled": False}, use_qmd=True
+        )
         result = asyncio.run(self._run_analyzer(config, tmp_path))
         assert result is None
 
     def test_orchestrator_dict_disabled_with_use_qmd_false(self, tmp_path):
         """orchestrator disabled and use_qmd=False yields standard set (no orchestrator)."""
-        config = GhostclawConfig.load(str(tmp_path), orchestrator={"enabled": False}, use_qmd=False)
+        config = GhostclawConfig.load(
+            str(tmp_path), orchestrator={"enabled": False}, use_qmd=False
+        )
         result = asyncio.run(self._run_analyzer(config, tmp_path))
         assert result is not None
-        assert 'orchestrator' not in result
-        assert 'lizard' in result
+        assert "orchestrator" not in result
+        assert "lizard" in result
 
 
 class TestOrchestrateConfigFieldExtra:
@@ -203,6 +206,7 @@ class TestOrchestrateConfigFieldExtra:
     def test_orchestrate_in_local_config_file(self, tmp_path, monkeypatch):
         """orchestrate=true in .ghostclaw/ghostclaw.json should be respected."""
         import json
+
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
         gc_dir = tmp_path / ".ghostclaw"
@@ -211,9 +215,12 @@ class TestOrchestrateConfigFieldExtra:
         config = GhostclawConfig.load(str(tmp_path))
         assert config.orchestrate is True
 
-    def test_cli_override_orchestrate_takes_precedence_over_local_config(self, tmp_path, monkeypatch):
+    def test_cli_override_orchestrate_takes_precedence_over_local_config(
+        self, tmp_path, monkeypatch
+    ):
         """CLI override orchestrate=False should beat orchestrate=true from local config file."""
         import json
+
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
         gc_dir = tmp_path / ".ghostclaw"
@@ -225,6 +232,7 @@ class TestOrchestrateConfigFieldExtra:
     def test_orchestrator_dict_in_local_config_file(self, tmp_path, monkeypatch):
         """orchestrator dict in .ghostclaw/ghostclaw.json should be loaded."""
         import json
+
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
         gc_dir = tmp_path / ".ghostclaw"
@@ -242,7 +250,7 @@ class TestOrchestrateConfigFieldExtra:
         config = GhostclawConfig.load(".", orchestrate=False)
         assert config.orchestrator is None
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get('enabled', False)
+            config.orchestrator and config.orchestrator.get("enabled", False)
         )
         # Python short-circuit: `False or None` evaluates to None (falsy), not strict False
         assert not orchestrator_enabled
@@ -251,34 +259,40 @@ class TestOrchestrateConfigFieldExtra:
         """orchestrator={} (no 'enabled' key) with orchestrate=False should not enable enforcement."""
         config = GhostclawConfig.load(".", orchestrate=False, orchestrator={})
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get('enabled', False)
+            config.orchestrator and config.orchestrator.get("enabled", False)
         )
         # Python short-circuit: `False or {}` evaluates to {} (falsy empty dict), not strict False
         assert not orchestrator_enabled
 
     def test_orchestrator_dict_without_enabled_key_does_not_trigger(self):
         """orchestrator dict with only non-'enabled' keys should not force orchestration."""
-        config = GhostclawConfig.load(".", orchestrate=False, orchestrator={"use_llm": True, "weight": 0.5})
+        config = GhostclawConfig.load(
+            ".", orchestrate=False, orchestrator={"use_llm": True, "weight": 0.5}
+        )
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get('enabled', False)
+            config.orchestrator and config.orchestrator.get("enabled", False)
         )
         assert orchestrator_enabled is False
 
     def test_orchestrator_dict_enabled_true_triggers_enforcement(self):
         """orchestrator={'enabled': True} with orchestrate=False should enable orchestration."""
-        config = GhostclawConfig.load(".", orchestrate=False, orchestrator={"enabled": True})
+        config = GhostclawConfig.load(
+            ".", orchestrate=False, orchestrator={"enabled": True}
+        )
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get('enabled', False)
+            config.orchestrator and config.orchestrator.get("enabled", False)
         )
         assert orchestrator_enabled is True
 
     def test_both_orchestrate_true_and_orchestrator_dict_enabled_true(self):
         """Both orchestrate=True and orchestrator.enabled=True should both be True (no conflict)."""
-        config = GhostclawConfig.load(".", orchestrate=True, orchestrator={"enabled": True})
+        config = GhostclawConfig.load(
+            ".", orchestrate=True, orchestrator={"enabled": True}
+        )
         assert config.orchestrate is True
         assert config.orchestrator["enabled"] is True
         orchestrator_enabled = config.orchestrate or (
-            config.orchestrator and config.orchestrator.get('enabled', False)
+            config.orchestrator and config.orchestrator.get("enabled", False)
         )
         assert orchestrator_enabled is True
 
@@ -290,6 +304,7 @@ class TestOrchestratorEnforcementExtra:
     def reset_registry(self):
         """Reset registry state between tests."""
         from ghostclaw.core.adapters.registry import registry
+
         registry.enabled_plugins = None
         registry._registered_plugins = []
         registry.internal_plugins = set()
@@ -302,12 +317,15 @@ class TestOrchestratorEnforcementExtra:
 
     def _apply_plugin_filter(self, config):
         """Replicate the plugin filter logic from Analyzer.analyze()."""
-        from ghostclaw.core.adapters.registry import registry, INTERNAL_PLUGINS
+        from ghostclaw.core.adapters.registry import registry
+
         registry.internal_plugins = set(INTERNAL_PLUGINS)
 
-        orchestrator_enabled = config.orchestrate or (config.orchestrator and config.orchestrator.get('enabled', False))
+        orchestrator_enabled = config.orchestrate or (
+            config.orchestrator and config.orchestrator.get("enabled", False)
+        )
         if orchestrator_enabled:
-            registry.enabled_plugins = {'orchestrator'}
+            registry.enabled_plugins = {"orchestrator"}
         elif config.plugins_enabled is not None:
             registry.enabled_plugins = set(config.plugins_enabled)
         elif config.use_qmd:
@@ -318,53 +336,73 @@ class TestOrchestratorEnforcementExtra:
             registry.enabled_plugins = plugins
 
         if config.use_qmd and registry.enabled_plugins is not None:
-            registry.enabled_plugins.add('sqlite')
-            registry.enabled_plugins.add('qmd')
+            registry.enabled_plugins.add("sqlite")
+            registry.enabled_plugins.add("qmd")
 
     def test_orchestrate_false_orchestrator_none_standard_set(self):
         """Default config (orchestrate=False, orchestrator=None, use_qmd=False) -> standard plugin set."""
-        from ghostclaw.core.adapters.registry import registry, INTERNAL_PLUGINS
+        from ghostclaw.core.adapters.registry import registry
+
         config = GhostclawConfig.load(".", orchestrate=False, use_qmd=False)
         assert config.orchestrator is None
         self._apply_plugin_filter(config)
-        expected = (set(INTERNAL_PLUGINS) - {"qmd"})
+        expected = set(INTERNAL_PLUGINS) - {"qmd"}
         assert registry.enabled_plugins == expected
 
     def test_orchestrator_empty_dict_does_not_force_orchestrator_only(self):
         """orchestrator={} (no 'enabled' key) with orchestrate=False falls through to normal rules."""
         from ghostclaw.core.adapters.registry import registry
-        config = GhostclawConfig.load(".", orchestrate=False, orchestrator={}, use_qmd=False)
+
+        config = GhostclawConfig.load(
+            ".", orchestrate=False, orchestrator={}, use_qmd=False
+        )
         self._apply_plugin_filter(config)
         assert registry.enabled_plugins is not None
-        assert 'orchestrator' not in registry.enabled_plugins
+        assert "orchestrator" not in registry.enabled_plugins
 
     def test_orchestrator_dict_enabled_true_alone_forces_orchestrator(self):
         """orchestrate=False but orchestrator.enabled=True alone should force orchestrator-only."""
         from ghostclaw.core.adapters.registry import registry
-        config = GhostclawConfig.load(".", orchestrate=False, orchestrator={"enabled": True}, use_qmd=False)
+
+        config = GhostclawConfig.load(
+            ".", orchestrate=False, orchestrator={"enabled": True}, use_qmd=False
+        )
         self._apply_plugin_filter(config)
-        assert registry.enabled_plugins == {'orchestrator'}
+        assert registry.enabled_plugins == {"orchestrator"}
 
     def test_orchestrator_dict_enabled_true_alone_with_qmd_adds_storage(self):
         """orchestrate=False but orchestrator.enabled=True with use_qmd=True should add sqlite and qmd."""
         from ghostclaw.core.adapters.registry import registry
-        config = GhostclawConfig.load(".", orchestrate=False, orchestrator={"enabled": True}, use_qmd=True)
+
+        config = GhostclawConfig.load(
+            ".", orchestrate=False, orchestrator={"enabled": True}, use_qmd=True
+        )
         self._apply_plugin_filter(config)
-        assert registry.enabled_plugins == {'orchestrator', 'sqlite', 'qmd'}
+        assert registry.enabled_plugins == {"orchestrator", "sqlite", "qmd"}
 
     def test_orchestrator_dict_without_enabled_key_no_qmd_falls_through(self):
         """orchestrator dict without 'enabled' key should use get default (False) -> no forced mode."""
         from ghostclaw.core.adapters.registry import registry
-        config = GhostclawConfig.load(".", orchestrate=False, orchestrator={"routing": "round_robin"}, use_qmd=False)
+
+        config = GhostclawConfig.load(
+            ".",
+            orchestrate=False,
+            orchestrator={"routing": "round_robin"},
+            use_qmd=False,
+        )
         self._apply_plugin_filter(config)
         assert registry.enabled_plugins is not None
-        assert 'orchestrator' not in registry.enabled_plugins
+        assert "orchestrator" not in registry.enabled_plugins
 
     def test_plugins_enabled_respected_when_orchestrate_false(self):
         """plugins_enabled list is respected when orchestrate=False."""
         from ghostclaw.core.adapters.registry import registry
+
         config = GhostclawConfig.load(
-            ".", orchestrate=False, use_qmd=False, plugins_enabled=["lizard", "json_target"]
+            ".",
+            orchestrate=False,
+            use_qmd=False,
+            plugins_enabled=["lizard", "json_target"],
         )
         self._apply_plugin_filter(config)
         assert registry.enabled_plugins == {"lizard", "json_target"}
@@ -372,6 +410,7 @@ class TestOrchestratorEnforcementExtra:
     def test_orchestrate_true_beats_plugins_enabled_list(self):
         """When orchestrate=True, plugins_enabled list is ignored in favor of orchestrator-only."""
         from ghostclaw.core.adapters.registry import registry
+
         config = GhostclawConfig.load(
             ".", orchestrate=True, use_qmd=False, plugins_enabled=["lizard"]
         )
@@ -382,14 +421,16 @@ class TestOrchestratorEnforcementExtra:
     def test_qmd_not_added_when_use_qmd_false_and_orchestrate_true(self):
         """With orchestrate=True and use_qmd=False, qmd and sqlite must NOT be in enabled set."""
         from ghostclaw.core.adapters.registry import registry
+
         config = GhostclawConfig.load(".", orchestrate=True, use_qmd=False)
         self._apply_plugin_filter(config)
-        assert 'qmd' not in registry.enabled_plugins
-        assert 'sqlite' not in registry.enabled_plugins
+        assert "qmd" not in registry.enabled_plugins
+        assert "sqlite" not in registry.enabled_plugins
 
     def test_orchestrate_enabled_set_contains_only_orchestrator_string(self):
         """The value set when orchestrate=True (no qmd) must be exactly {'orchestrator'}."""
         from ghostclaw.core.adapters.registry import registry
+
         config = GhostclawConfig.load(".", orchestrate=True, use_qmd=False)
         self._apply_plugin_filter(config)
         assert registry.enabled_plugins == {"orchestrator"}

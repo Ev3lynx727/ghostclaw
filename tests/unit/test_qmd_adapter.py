@@ -1,8 +1,7 @@
 """Tests for QMDStorageAdapter plugin."""
+
 import pytest
-import asyncio
 import json
-from pathlib import Path
 from ghostclaw.core.adapters.storage.qmd import QMDStorageAdapter
 import aiosqlite
 
@@ -44,7 +43,7 @@ async def test_qmd_adapter_save_and_metadata(temp_qmd_db):
         "total_lines": 800,
         "issues": ["Test issue"],
         "architectural_ghosts": ["Test ghost"],
-        "metadata": {"timestamp": "2026-03-12T18:00:00Z"}
+        "metadata": {"timestamp": "2026-03-12T18:00:00Z"},
     }
     run_id = await adapter.save_report(report)
     assert isinstance(run_id, str)
@@ -53,7 +52,9 @@ async def test_qmd_adapter_save_and_metadata(temp_qmd_db):
     # Verify data in DB
     async with aiosqlite.connect(temp_qmd_db) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM reports WHERE id = ?", (int(run_id),)) as cursor:
+        async with db.execute(
+            "SELECT * FROM reports WHERE id = ?", (int(run_id),)
+        ) as cursor:
             row = await cursor.fetchone()
             assert row is not None
             assert row["vibe_score"] == 72
@@ -85,7 +86,7 @@ async def test_qmd_adapter_multiple_saves(temp_qmd_db):
             "total_lines": 400,
             "issues": [],
             "architectural_ghosts": [],
-            "metadata": {"timestamp": f"2026-03-12T18:00:{i:02d}Z"}
+            "metadata": {"timestamp": f"2026-03-12T18:00:{i:02d}Z"},
         }
         await adapter.save_report(report)
 
@@ -102,7 +103,11 @@ async def test_qmd_adapter_multiple_saves(temp_qmd_db):
 async def test_qmd_adapter_hook_save(temp_qmd_db):
     """Test ghost_save_report hook calls save_report correctly."""
     adapter = get_qmd_adapter(temp_qmd_db)
-    report = {"vibe_score": 50, "stack": "go", "metadata": {"timestamp": "2026-03-12T18:00:00Z"}}
+    report = {
+        "vibe_score": 50,
+        "stack": "go",
+        "metadata": {"timestamp": "2026-03-12T18:00:00Z"},
+    }
     run_id = await adapter.ghost_save_report(report)
     assert isinstance(run_id, str)
     # Verify it's in DB

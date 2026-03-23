@@ -1,12 +1,12 @@
 """Storage adapter using QMD (Quantum Memory Database) backend."""
 
-import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
     import aiosqlite
+
     HAS_AIOSQLITE = True
 except ImportError:
     HAS_AIOSQLITE = False
@@ -35,9 +35,9 @@ class QMDStorageAdapter(StorageAdapter):
         # Determine embedding_backend from project config
         try:
             cfg = GhostclawConfig.load(".")
-            self.embedding_backend = getattr(cfg, 'embedding_backend', 'fastembed')
+            self.embedding_backend = getattr(cfg, "embedding_backend", "fastembed")
         except Exception:
-            self.embedding_backend = 'fastembed'
+            self.embedding_backend = "fastembed"
 
     async def _ensure_db_schema(self):
         """Ensure the base reports table exists (for backward compatibility)."""
@@ -68,23 +68,26 @@ class QMDStorageAdapter(StorageAdapter):
             # Determine ai_buff_enabled and prefetch settings from project config
             try:
                 from ghostclaw.core.config import GhostclawConfig
-                repo_path = self.db_path.parent.parent.parent.parent  # .ghostclaw/storage/qmd/ghostclaw.db -> repo root
+
+                repo_path = (
+                    self.db_path.parent.parent.parent.parent
+                )  # .ghostclaw/storage/qmd/ghostclaw.db -> repo root
                 cfg = GhostclawConfig.load(repo_path)
-                ai_buff = getattr(cfg, 'ai_buff_enabled', False)
-                prefetch_enabled = getattr(cfg, 'prefetch_enabled', True)
-                prefetch_workers = getattr(cfg, 'prefetch_workers', 2)
-                prefetch_window = getattr(cfg, 'prefetch_window', 2)
-                prefetch_hours = getattr(cfg, 'prefetch_hours', 24)
-                prefetch_vibe_delta = getattr(cfg, 'prefetch_vibe_delta', 10)
-                prefetch_stack_count = getattr(cfg, 'prefetch_stack_count', 5)
-                auto_migrate = getattr(cfg, 'auto_migrate', True)
-                migration_batch_size = getattr(cfg, 'migration_batch_size', 50)
-                migration_throttle_ms = getattr(cfg, 'migration_throttle_ms', 100)
+                ai_buff = getattr(cfg, "ai_buff_enabled", False)
+                prefetch_enabled = getattr(cfg, "prefetch_enabled", True)
+                prefetch_workers = getattr(cfg, "prefetch_workers", 2)
+                prefetch_window = getattr(cfg, "prefetch_window", 2)
+                prefetch_hours = getattr(cfg, "prefetch_hours", 24)
+                prefetch_vibe_delta = getattr(cfg, "prefetch_vibe_delta", 10)
+                prefetch_stack_count = getattr(cfg, "prefetch_stack_count", 5)
+                auto_migrate = getattr(cfg, "auto_migrate", True)
+                migration_batch_size = getattr(cfg, "migration_batch_size", 50)
+                migration_throttle_ms = getattr(cfg, "migration_throttle_ms", 100)
                 # Phase 6: vector optimization & diversity
-                max_chunks_per_report = getattr(cfg, 'max_chunks_per_report', None)
+                max_chunks_per_report = getattr(cfg, "max_chunks_per_report", None)
                 vector_index_config = {}
-                if hasattr(cfg, 'vector_index'):
-                    vector_index_config = getattr(cfg, 'vector_index', {})
+                if hasattr(cfg, "vector_index"):
+                    vector_index_config = getattr(cfg, "vector_index", {})
                 # Optionally also get classifier config but not used directly here
             except Exception:
                 ai_buff = False

@@ -16,7 +16,7 @@ def detect_github_remote(repo_path: str) -> Optional[str]:
             cwd=repo_path,
             capture_output=True,
             text=True,
-            check=False
+            check=False,
         )
         if result.returncode == 0:
             url = result.stdout.strip()
@@ -34,25 +34,80 @@ def estimate_repo_file_count(repo_path: str) -> int:
         return 0
 
     exclude_dirs = {
-        '.git', 'node_modules', 'venv', '.venv', 'env', 'virtualenv',
-        '__pycache__', '.pytest_cache', 'build', 'dist', 'target', 'bin', 'obj',
-        '.idea', '.vscode', '.cache', 'tmp', 'temp', 'coverage', '.coverage', 'htmlcov',
-        '.next', '.nuxt', 'out', 'turbo', '.turbo'
+        ".git",
+        "node_modules",
+        "venv",
+        ".venv",
+        "env",
+        "virtualenv",
+        "__pycache__",
+        ".pytest_cache",
+        "build",
+        "dist",
+        "target",
+        "bin",
+        "obj",
+        ".idea",
+        ".vscode",
+        ".cache",
+        "tmp",
+        "temp",
+        "coverage",
+        ".coverage",
+        "htmlcov",
+        ".next",
+        ".nuxt",
+        "out",
+        "turbo",
+        ".turbo",
     }
     exclude_extensions = {
-        '.pyc', '.pyo', '.pyd', '.so', '.dll', '.exe', '.bin', '.obj', '.o', '.a', '.lib',
-        '.class', '.jar', '.war', '.ear', '.log', '.cache', '.pid', '.lock',
-        '.sqlite', '.db', '.sqlite3', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico',
-        '.pdf', '.zip', '.tar', '.gz', '.tgz', '.rar', '.7z'
+        ".pyc",
+        ".pyo",
+        ".pyd",
+        ".so",
+        ".dll",
+        ".exe",
+        ".bin",
+        ".obj",
+        ".o",
+        ".a",
+        ".lib",
+        ".class",
+        ".jar",
+        ".war",
+        ".ear",
+        ".log",
+        ".cache",
+        ".pid",
+        ".lock",
+        ".sqlite",
+        ".db",
+        ".sqlite3",
+        ".svg",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".ico",
+        ".pdf",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".tgz",
+        ".rar",
+        ".7z",
     }
 
     count = 0
     try:
         for root, dirs, files in os.walk(repo):
             # Skip excluded directories
-            dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
+            dirs[:] = [
+                d for d in dirs if d not in exclude_dirs and not d.startswith(".")
+            ]
             for file in files:
-                if file.startswith('.'):
+                if file.startswith("."):
                     continue
                 if any(file.lower().endswith(ext) for ext in exclude_extensions):
                     continue

@@ -4,8 +4,6 @@ from pathlib import Path
 # Add repo root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-import asyncio
-import json
 import pytest
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.config import GhostclawConfig
@@ -65,8 +63,11 @@ async def test_delta_mode_filters_to_changed_files(tmp_path):
     """Delta mode should analyze only files that changed in git diff."""
     # Initialize git repo
     import subprocess
+
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
 
     # Create initial files (commit A)
@@ -81,7 +82,9 @@ async def test_delta_mode_filters_to_changed_files(tmp_path):
     subprocess.run(["git", "commit", "-m", "update file1"], cwd=tmp_path, check=True)
 
     # Now run delta analysis against HEAD~1 (should see only file1.py changes)
-    config = GhostclawConfig.load(str(tmp_path), delta_mode=True, delta_base_ref="HEAD~1")
+    config = GhostclawConfig.load(
+        str(tmp_path), delta_mode=True, delta_base_ref="HEAD~1"
+    )
     analyzer = CodebaseAnalyzer()
     report_model = await analyzer.analyze(str(tmp_path), config=config)
     report = report_model.model_dump()
@@ -108,8 +111,11 @@ async def test_delta_mode_filters_to_changed_files(tmp_path):
 async def test_delta_mode_base_report_discovery(tmp_path):
     """Delta mode should attempt to load base report from .ghostclaw/storage/reports/."""
     import subprocess
+
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, check=True
+    )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
 
     # Create initial files and commit
@@ -121,13 +127,15 @@ async def test_delta_mode_base_report_discovery(tmp_path):
     analyzer = CodebaseAnalyzer()
     base_config = GhostclawConfig.load(str(tmp_path))
     base_report_model = await analyzer.analyze(str(tmp_path), config=base_config)
-    base_report = base_report_model.model_dump()
+    base_report_model.model_dump()
 
     # The full analysis should have written a JSON report and we can verify it exists
     reports_dir = tmp_path / ".ghostclaw" / "storage" / "reports"
     if reports_dir.exists():
         json_files = list(reports_dir.glob("ARCHITECTURE-REPORT-*.json"))
-        assert len(json_files) > 0, "Base full analysis should have written a JSON report"
+        assert len(json_files) > 0, (
+            "Base full analysis should have written a JSON report"
+        )
 
     # Now make a change
     (tmp_path / "file.py").write_text("print('v2 updated')\n")
@@ -135,7 +143,9 @@ async def test_delta_mode_base_report_discovery(tmp_path):
     subprocess.run(["git", "commit", "-m", "v2"], cwd=tmp_path, check=True)
 
     # Run delta mode
-    delta_config = GhostclawConfig.load(str(tmp_path), delta_mode=True, delta_base_ref="HEAD~1")
+    delta_config = GhostclawConfig.load(
+        str(tmp_path), delta_mode=True, delta_base_ref="HEAD~1"
+    )
     delta_report_model = await analyzer.analyze(str(tmp_path), config=delta_config)
     delta_report = delta_report_model.model_dump()
 

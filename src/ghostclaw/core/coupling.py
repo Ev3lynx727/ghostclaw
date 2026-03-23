@@ -2,11 +2,11 @@
 
 import ast
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, Set
 from ghostclaw.core.graph import ImportGraph
 
 # Modules in these directories are typically orchestrators and naturally have high efferent coupling
-ENTRY_POINT_DIRS: Set[str] = {'cli', 'scripts', 'bin', '__main__'}
+ENTRY_POINT_DIRS: Set[str] = {"cli", "scripts", "bin", "__main__"}
 
 
 class PythonImportAnalyzer:
@@ -32,7 +32,7 @@ class PythonImportAnalyzer:
             else:
                 parts = list(rel_path.with_suffix("").parts)
             # Strip leading 'src' directory to align with import paths (src layout)
-            if parts and parts[0] == 'src':
+            if parts and parts[0] == "src":
                 parts = parts[1:]
             module_name = ".".join(parts)
             self.graph.module_to_file[module_name] = str(py_file)
@@ -41,7 +41,7 @@ class PythonImportAnalyzer:
         # Parse each file and extract imports
         for module_name, filepath in self.graph.module_to_file.items():
             try:
-                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
                 tree = ast.parse(content)
 
@@ -52,7 +52,9 @@ class PythonImportAnalyzer:
                             if self._is_local_import(imported_module):
                                 self.graph.add_edge(module_name, imported_module)
                     elif isinstance(node, ast.ImportFrom):
-                        imported_module = self._resolve_relative_import(module_name, node)
+                        imported_module = self._resolve_relative_import(
+                            module_name, node
+                        )
                         if imported_module and self._is_local_import(imported_module):
                             self.graph.add_edge(module_name, imported_module)
             except Exception:
@@ -61,17 +63,19 @@ class PythonImportAnalyzer:
         # Compute metrics
         return self._compute_report()
 
-    def _resolve_relative_import(self, current_module: str, node: ast.ImportFrom) -> str:
+    def _resolve_relative_import(
+        self, current_module: str, node: ast.ImportFrom
+    ) -> str:
         """Resolve a relative or absolute 'from' import to an absolute module name."""
         if node.level == 0:
             return node.module
 
         # PEP 328: relative import dots indicate parent packages.
         # Determine the package name of the current module.
-        parts = current_module.split('.')
+        parts = current_module.split(".")
         # Check if current_module is a package (i.e., __init__.py)
         filepath = self.graph.module_to_file.get(current_module)
-        is_package = filepath and filepath.endswith('__init__.py')
+        is_package = filepath and filepath.endswith("__init__.py")
         if is_package:
             base_parts = parts  # the package is the full module name
         else:
@@ -97,7 +101,7 @@ class PythonImportAnalyzer:
             return True
         # Also check prefix: import of a submodule within a known package
         for known in self.graph.nodes:
-            if module_name.startswith(known + '.'):
+            if module_name.startswith(known + "."):
                 return True
         return False
 
@@ -120,33 +124,37 @@ class PythonImportAnalyzer:
         # Identify highly unstable modules (God modules)
         for module in self.graph.nodes:
             # Skip entry points as they naturally import many things
-            module_parts = set(module.split('.'))
+            module_parts = set(module.split("."))
             if any(entry in module_parts for entry in ENTRY_POINT_DIRS):
                 continue
 
             instability = self.graph.get_instability(module)
             if instability > 0.8:
                 ce = self.graph.get_efferent_coupling(module)
-                issues.append(f"Module {module} is highly unstable (I={instability:.2f}, ce={ce})")
+                issues.append(
+                    f"Module {module} is highly unstable (I={instability:.2f}, ce={ce})"
+                )
                 ghosts.append(f"Unstable module {module}: knows too many others")
 
         # Modules with high afferent coupling (utility modules)
         for module in self.graph.nodes:
             ca = self.graph.get_afferent_coupling(module)
             if ca > 10:
-                issues.append(f"Module {module} is heavily depended upon (ca={ca}) — treat as stable layer")
+                issues.append(
+                    f"Module {module} is heavily depended upon (ca={ca}) — treat as stable layer"
+                )
 
         return {
             "coupling_metrics": {
                 module: {
                     "afferent": self.graph.get_afferent_coupling(module),
                     "efferent": self.graph.get_efferent_coupling(module),
-                    "instability": round(self.graph.get_instability(module), 2)
+                    "instability": round(self.graph.get_instability(module), 2),
                 }
                 for module in self.graph.nodes
             },
             "circular_dependencies": [{"cycle": cycle} for cycle in cycles],
             "issues": issues,
             "architectural_ghosts": ghosts,
-            "red_flags": flags
+            "red_flags": flags,
         }

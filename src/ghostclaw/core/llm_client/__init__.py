@@ -5,11 +5,12 @@ LLM Client for Ghostclaw.
 import json
 import logging
 import asyncio
-from typing import AsyncGenerator, Optional, List, Dict, Any
+from typing import AsyncGenerator
 from pathlib import Path
 
 try:
     import tiktoken
+
     HAS_TIKTOKEN = True
 except ImportError:
     HAS_TIKTOKEN = False
@@ -25,6 +26,7 @@ logger = logging.getLogger("ghostclaw.llm_client")
 
 class TokenBudgetExceededError(Exception):
     """Raised when token budget for LLM prompt is exceeded."""
+
     pass
 
 
@@ -37,7 +39,7 @@ class LLMClient:
         self.max_tokens = 100000
         self.provider = None
         self.model = ""
-        
+
         # Token usage tracking
         self.prompt_tokens: int = 0
         self.completion_tokens: int = 0
@@ -55,15 +57,22 @@ class LLMClient:
             self.provider = OpenAIProvider(api_key=api_key, client_cls=AsyncOpenAI)
         elif provider_name == "anthropic":
             self.model = self.config.ai_model or "claude-3-5-sonnet-20241022"
-            self.provider = AnthropicProvider(api_key=api_key, client_cls=AsyncAnthropic)
-        else: # Default fallback (openrouter or unknown)
+            self.provider = AnthropicProvider(
+                api_key=api_key, client_cls=AsyncAnthropic
+            )
+        else:  # Default fallback (openrouter or unknown)
             self.model = self.config.ai_model or "anthropic/claude-3.5-sonnet"
             base_url = "https://openrouter.ai/api/v1"
             headers = {
                 "HTTP-Referer": "https://github.com/Ev3lynx727/ghostclaw",
                 "X-Title": "Ghostclaw Architecture Engine",
             }
-            self.provider = OpenAIProvider(api_key=api_key, base_url=base_url, headers=headers, client_cls=AsyncOpenAI)
+            self.provider = OpenAIProvider(
+                api_key=api_key,
+                base_url=base_url,
+                headers=headers,
+                client_cls=AsyncOpenAI,
+            )
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count for a given text."""
@@ -90,7 +99,9 @@ class LLMClient:
             )
         return prompt
 
-    def _log_verbose(self, payload: dict, response_data: dict = None, error: str = None):
+    def _log_verbose(
+        self, payload: dict, response_data: dict = None, error: str = None
+    ):
         """Log API requests and responses if verbose mode is enabled."""
         if not self.config.verbose:
             return
@@ -99,8 +110,10 @@ class LLMClient:
         debug_log_path.parent.mkdir(parents=True, exist_ok=True)
 
         log_entry = {"request": payload}
-        if response_data: log_entry["response"] = response_data
-        if error: log_entry["error"] = error
+        if response_data:
+            log_entry["response"] = response_data
+        if error:
+            log_entry["error"] = error
 
         try:
             with open(debug_log_path, "a", encoding="utf-8") as f:
@@ -116,10 +129,17 @@ class LLMClient:
                 return await func(*args, **kwargs)
             except Exception as e:
                 attempts += 1
-                if attempts >= self.config.retry_attempts: raise
-                if isinstance(e, (TokenBudgetExceededError, ValueError)): raise
-                delay = min(self.config.retry_backoff_factor * (2 ** (attempts - 1)), self.config.retry_max_delay)
-                logger.warning(f"Retry {attempts}/{self.config.retry_attempts} for {func.__name__}")
+                if attempts >= self.config.retry_attempts:
+                    raise
+                if isinstance(e, (TokenBudgetExceededError, ValueError)):
+                    raise
+                delay = min(
+                    self.config.retry_backoff_factor * (2 ** (attempts - 1)),
+                    self.config.retry_max_delay,
+                )
+                logger.warning(
+                    f"Retry {attempts}/{self.config.retry_attempts} for {func.__name__}"
+                )
                 await asyncio.sleep(delay)
 
     async def _retry_stream(self, gen_func, *args, **kwargs):
@@ -132,9 +152,14 @@ class LLMClient:
                 return
             except Exception as e:
                 attempts += 1
-                if attempts >= self.config.retry_attempts: raise
-                if isinstance(e, (TokenBudgetExceededError, ValueError)): raise
-                delay = min(self.config.retry_backoff_factor * (2 ** (attempts - 1)), self.config.retry_max_delay)
+                if attempts >= self.config.retry_attempts:
+                    raise
+                if isinstance(e, (TokenBudgetExceededError, ValueError)):
+                    raise
+                delay = min(
+                    self.config.retry_backoff_factor * (2 ** (attempts - 1)),
+                    self.config.retry_max_delay,
+                )
                 logger.warning(f"Retry stream {attempts}/{self.config.retry_attempts}")
                 await asyncio.sleep(delay)
 
@@ -194,8 +219,9 @@ class LLMClient:
         try:
             if isinstance(self.provider, AnthropicProvider):
                 await self.provider.client.messages.create(
-                    model=self.model, max_tokens=1, 
-                    messages=[{"role": "user", "content": "ping"}]
+                    model=self.model,
+                    max_tokens=1,
+                    messages=[{"role": "user", "content": "ping"}],
                 )
             else:
                 await self.provider.client.models.list()

@@ -2,14 +2,14 @@
 
 from typing import Dict, List
 from .base import StackAnalyzer
-from ghostclaw.lib.complexity import analyze_files_cognitive, HAS_COMPLEXIPY
+from ghostclaw.lib.complexity import analyze_files_cognitive
 
 
 class ShellAnalyzer(StackAnalyzer):
     """Analyzes Shell scripts for architectural issues."""
 
     def get_extensions(self) -> List[str]:
-        return ['.sh', '.bash', '.zsh']
+        return [".sh", ".bash", ".zsh"]
 
     def get_large_file_threshold(self) -> int:
         return 150
@@ -35,5 +35,5 @@ class ShellAnalyzer(StackAnalyzer):
             "issues": issues,
             "architectural_ghosts": ghosts,
             "red_flags": flags,
-            "coupling_metrics": coupling_metrics
+            "coupling_metrics": coupling_metrics,
         }

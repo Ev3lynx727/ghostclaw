@@ -45,14 +45,15 @@ def test_cache_ttl_expiration(temp_cache):
     # Load JSON (handle compressed or plain), set cached_at to 2 days ago, write back
     if cache_file.suffix == ".gz":
         import gzip
-        data = json.loads(gzip.decompress(cache_file.read_bytes()).decode('utf-8'))
+
+        data = json.loads(gzip.decompress(cache_file.read_bytes()).decode("utf-8"))
         data["cached_at"] = (datetime.now() - timedelta(days=2)).isoformat()
-        new_content = gzip.compress(json.dumps(data).encode('utf-8'))
+        new_content = gzip.compress(json.dumps(data).encode("utf-8"))
         cache_file.write_bytes(new_content)
     else:
-        data = json.loads(cache_file.read_text(encoding='utf-8'))
+        data = json.loads(cache_file.read_text(encoding="utf-8"))
         data["cached_at"] = (datetime.now() - timedelta(days=2)).isoformat()
-        cache_file.write_text(json.dumps(data), encoding='utf-8')
+        cache_file.write_text(json.dumps(data), encoding="utf-8")
 
     # Should be expired (None)
     assert temp_cache.get(fingerprint) is None
@@ -83,11 +84,24 @@ def test_fingerprint_git_repo(tmp_path):
     # Initialize a minimal git repo
     (tmp_path / "test.txt").write_text("hello")
     import subprocess
+
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test User"], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=tmp_path, check=True, capture_output=True
+    )
 
     fp = compute_fingerprint(tmp_path)
     assert fp.startswith("ghostclaw:v1:git:")

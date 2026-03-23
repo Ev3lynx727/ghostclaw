@@ -10,7 +10,7 @@ class NodeAnalyzer(StackAnalyzer):
     """Analyzes Node.js projects for architectural issues."""
 
     def get_extensions(self) -> List[str]:
-        return ['.ts', '.tsx', '.js', '.jsx']
+        return [".ts", ".tsx", ".js", ".jsx"]
 
     def get_large_file_threshold(self) -> int:
         return 400
@@ -26,10 +26,10 @@ class NodeAnalyzer(StackAnalyzer):
             analyzer = NodeImportAnalyzer(root)
             coupling_report = analyzer.analyze()
 
-            issues.extend(coupling_report.get('issues', []))
-            ghosts.extend(coupling_report.get('architectural_ghosts', []))
-            flags.extend(coupling_report.get('red_flags', []))
-            coupling_metrics = coupling_report.get('coupling_metrics', {})
+            issues.extend(coupling_report.get("issues", []))
+            ghosts.extend(coupling_report.get("architectural_ghosts", []))
+            flags.extend(coupling_report.get("red_flags", []))
+            coupling_metrics = coupling_report.get("coupling_metrics", {})
         except Exception as e:
             coupling_metrics = {}
             issues.append(f"Import analysis failed: {str(e)}")
@@ -46,5 +46,5 @@ class NodeAnalyzer(StackAnalyzer):
             "issues": issues,
             "architectural_ghosts": ghosts,
             "red_flags": flags,
-            "coupling_metrics": coupling_metrics
+            "coupling_metrics": coupling_metrics,
         }

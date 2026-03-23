@@ -59,7 +59,7 @@ class ImportGraph:
                 dfs(neighbor)
             stack.pop()
 
-        for node in sorted(list(self.nodes)): # Sorted for deterministic results
+        for node in sorted(list(self.nodes)):  # Sorted for deterministic results
             dfs(node)
 
         return cycles

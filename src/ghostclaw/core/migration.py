@@ -5,9 +5,12 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, TYPE_CHECKING
 
 import aiosqlite
+
+if TYPE_CHECKING:
+    from .qmd_store import QMDMemoryStore
 
 logger = logging.getLogger("ghostclaw.qmd.migration")
 
@@ -21,7 +24,9 @@ class EmbeddingBackfillManager:
     throttling to avoid overwhelming the system.
     """
 
-    def __init__(self, store: 'QMDMemoryStore', batch_size: int = 50, throttle_ms: int = 100):
+    def __init__(
+        self, store: "QMDMemoryStore", batch_size: int = 50, throttle_ms: int = 100
+    ):
         """
         Initialize backfill manager.
 
@@ -137,8 +142,11 @@ class EmbeddingBackfillManager:
             self._running = False
             self._stats["completed_at"] = datetime.utcnow().isoformat() + "Z"
             await self._persist_migration_state()
-            logger.info("Migration finished: processed=%d, errors=%d",
-                       self._stats["processed_runs"], self._stats["errors"])
+            logger.info(
+                "Migration finished: processed=%d, errors=%d",
+                self._stats["processed_runs"],
+                self._stats["errors"],
+            )
 
     async def _fetch_next_batch(self) -> List[Dict]:
         """
@@ -160,7 +168,7 @@ class EmbeddingBackfillManager:
                 "WHERE id > ? "
                 "ORDER BY id ASC "
                 "LIMIT ?",
-                (last_id or 0, self.batch_size)
+                (last_id or 0, self.batch_size),
             ) as cursor:
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
@@ -227,7 +235,7 @@ class EmbeddingBackfillManager:
                 SET completed_at = ?, is_migrating = 0
                 WHERE id = 1
                 """,
-                (self._stats["completed_at"],)
+                (self._stats["completed_at"],),
             )
             await db.commit()
 
@@ -249,7 +257,7 @@ class EmbeddingBackfillManager:
                     COALESCE((SELECT started_at FROM migration_state WHERE id = 1), datetime('now'))
                 )
                 """,
-                (run_id, self._stats["processed_runs"])
+                (run_id, self._stats["processed_runs"]),
             )
             await db.commit()
 
@@ -288,4 +296,3 @@ def migrate_legacy_storage(repo_path: Path) -> bool:
     """
     # Placeholder: not yet implemented; return False to skip
     return False
-

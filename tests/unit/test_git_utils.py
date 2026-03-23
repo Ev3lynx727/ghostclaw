@@ -1,6 +1,5 @@
 """Unit tests for ghostclaw.core.git_utils."""
 
-import json
 from unittest.mock import patch, MagicMock
 from ghostclaw.core.git_utils import (
     get_git_diff,
@@ -10,7 +9,6 @@ from ghostclaw.core.git_utils import (
     has_uncommitted_changes,
     get_current_branch,
     get_current_sha,
-    DiffResult,
 )
 
 

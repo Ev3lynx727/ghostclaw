@@ -1,49 +1,53 @@
 """Tests for VectorStore (LanceDB + embeddings)."""
+
 import pytest
-import asyncio
 import numpy as np
-from pathlib import Path
 from ghostclaw.core.vector_store import VectorStore
 
 # Check if dependencies are available
 try:
     import lancedb  # noqa: F401
     import fastembed  # noqa: F401
+
     HAS_DEPS = True
 except ImportError:
     HAS_DEPS = False
 
 
-pytestmark = pytest.mark.skipif(not HAS_DEPS, reason="lancedb or sentence-transformers not installed")
+pytestmark = pytest.mark.skipif(
+    not HAS_DEPS, reason="lancedb or sentence-transformers not installed"
+)
 
 
 @pytest.fixture(autouse=True)
 def mock_embedding_provider(mocker):
     """Mock EmbeddingProvider to avoid downloading models in tests."""
     from ghostclaw.core.vector_store.embedding import EmbeddingProvider
-    
+
     # Mock initialize to do nothing
     mocker.patch.object(EmbeddingProvider, "initialize", return_value=None)
-    
+
     # Mock embed_batch to return dummy vectors
     async def dummy_embed_batch(self, texts):
         import hashlib
+
         results = []
         for text in texts:
             # Word-based hashing for basic similarity
             words = text.lower().replace(",", " ").replace(".", " ").split()
             vec = np.zeros(384, dtype=np.float32)
             for word in set(words):
-                if len(word) < 3: continue
+                if len(word) < 3:
+                    continue
                 h = hashlib.sha256(word.encode()).digest()
                 seed = int.from_bytes(h, "big") % 384
                 vec[seed] += 1.0
-            
+
             # Add some unique flavor based on whole text to avoid exact same vector for different order
             h_full = hashlib.sha256(text.encode()).digest()
             seed_full = int.from_bytes(h_full, "big") % 384
             vec[seed_full] += 0.1
-            
+
             norm = np.linalg.norm(vec)
             if norm > 1e-6:
                 vec = vec / norm
@@ -52,7 +56,7 @@ def mock_embedding_provider(mocker):
                 vec = np.ones(384, dtype=np.float32) / np.sqrt(384)
             results.append(vec)
         return results
-        
+
     mocker.patch.object(EmbeddingProvider, "embed_batch", dummy_embed_batch)
 
 

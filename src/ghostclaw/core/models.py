@@ -1,16 +1,18 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
-from datetime import datetime
+
 
 class GhostIssue(BaseModel):
     """Standardized issue found by a metric adapter."""
-    type: str # 'issue', 'ghost', 'flag'
-    id: str   # internal tool id
+
+    type: str  # 'issue', 'ghost', 'flag'
+    id: str  # internal tool id
     message: str
     file: Optional[str] = None
     line: Optional[int] = None
-    severity: str = "medium" # 'low', 'medium', 'high', 'critical'
+    severity: str = "medium"  # 'low', 'medium', 'high', 'critical'
     metadata: Dict = Field(default_factory=dict)
+
 
 class MetricSummary(BaseModel):
     total_files: int
@@ -20,10 +22,12 @@ class MetricSummary(BaseModel):
     vibe_score: int
     coupling_metrics: Optional[Dict] = Field(default_factory=dict)
 
+
 class AIInsights(BaseModel):
     synthesis: Optional[str] = None
     reasoning: Optional[str] = None
     patches: List[Dict] = Field(default_factory=list)
+
 
 class ArchitectureReport(BaseModel):
     repo_path: str

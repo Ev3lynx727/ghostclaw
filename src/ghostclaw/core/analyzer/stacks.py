@@ -3,7 +3,7 @@ Stack detection and analysis logic for Ghostclaw analyzer.
 """
 
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from ghostclaw.core.detector import detect_stack
 from ghostclaw.stacks import get_analyzer
 
@@ -17,7 +17,9 @@ class StackAnalyzer:
         return await asyncio.to_thread(detect_stack, root)
 
     @staticmethod
-    async def analyze_stack(stack: str, root: str, files: List[str], base_metrics: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze_stack(
+        stack: str, root: str, files: List[str], base_metrics: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Perform legacy stack-specific analysis."""
         analyzer = get_analyzer(stack)
         if not analyzer:
@@ -26,17 +28,19 @@ class StackAnalyzer:
                 "architectural_ghosts": [],
                 "red_flags": [],
                 "coupling_metrics": {},
-                "graph": None
+                "graph": None,
             }
 
-        stack_result = await asyncio.to_thread(analyzer.analyze, root, files, base_metrics)
-        
+        stack_result = await asyncio.to_thread(
+            analyzer.analyze, root, files, base_metrics
+        )
+
         # Extract graph if available
-        if hasattr(analyzer, 'graph'):
-            stack_result['import_edges'] = analyzer.graph.edges
+        if hasattr(analyzer, "graph"):
+            stack_result["import_edges"] = analyzer.graph.edges
         else:
-            stack_result['import_edges'] = []
-            
+            stack_result["import_edges"] = []
+
         return stack_result
 
     @staticmethod

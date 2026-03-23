@@ -44,7 +44,9 @@ class QMDMemoryStore:
         vector_index_config: Optional[Dict] = None,
     ):
         # Use .ghostclaw/storage/qmd/ instead of .ghostclaw/storage/
-        self.db_path = db_path or Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "ghostclaw.db"
+        self.db_path = (
+            db_path or Path.cwd() / ".ghostclaw" / "storage" / "qmd" / "ghostclaw.db"
+        )
         self.use_enhanced = use_enhanced
         self.embedding_backend = embedding_backend
         self.ai_buff_enabled = ai_buff_enabled
@@ -70,7 +72,9 @@ class QMDMemoryStore:
         from .qmd.query_engine import QueryEngine
         from .vector_store import VectorStore
         from .qmd.embeddings import EmbeddingManager
-        from .search_cache import SearchCache  # relative import from same package (core)
+        from .search_cache import (
+            SearchCache,
+        )  # relative import from same package (core)
         from .prefetch import PrefetchManager
         from .migration import EmbeddingBackfillManager
 
@@ -89,9 +93,11 @@ class QMDMemoryStore:
             self.vector_store = VectorStore(
                 db_path=lancedb_path,
                 embedding_backend=self.embedding_backend,
-                index_config=self.vector_index_config
+                index_config=self.vector_index_config,
             )
-            self.embedding_mgr = EmbeddingManager(self.vector_store, self.embedding_backend)
+            self.embedding_mgr = EmbeddingManager(
+                self.vector_store, self.embedding_backend
+            )
         else:
             self.vector_store = None
             self.embedding_mgr = None
@@ -102,7 +108,7 @@ class QMDMemoryStore:
             self.fts,
             self.vector_store,
             self.search_cache,
-            max_chunks_per_report=self.max_chunks_per_report
+            max_chunks_per_report=self.max_chunks_per_report,
         )
 
         # Prefetch manager (requires AI-Buff enabled)
@@ -112,11 +118,16 @@ class QMDMemoryStore:
 
         # Migration manager (backfill embeddings for legacy reports)
         self.backfill_manager = None
-        if self.auto_migrate and self.use_enhanced and self.vector_store and self.embedding_mgr:
+        if (
+            self.auto_migrate
+            and self.use_enhanced
+            and self.vector_store
+            and self.embedding_mgr
+        ):
             self.backfill_manager = EmbeddingBackfillManager(
                 self,
                 batch_size=self.migration_batch_size,
-                throttle_ms=self.migration_throttle_ms
+                throttle_ms=self.migration_throttle_ms,
             )
             # Start migration in background (fire-and-forget)
             asyncio.create_task(self.backfill_manager.start_background())
@@ -245,7 +256,7 @@ class QMDMemoryStore:
             stack=stack,
             min_score=min_score,
             max_score=max_score,
-            alpha=alpha
+            alpha=alpha,
         )
 
         # Trigger prefetch based on search results (if repo_path filter used)
@@ -289,7 +300,7 @@ class QMDMemoryStore:
                 "recurring_flags": [],
                 "coupling_hotspots": [],
                 "nodes": [],
-                "edges": []
+                "edges": [],
             }
         # QueryEngine.knowledge_graph accepts limit
         return await self.query_engine.knowledge_graph(limit=limit)
