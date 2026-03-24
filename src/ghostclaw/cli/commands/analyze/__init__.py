@@ -5,7 +5,6 @@ Analyze command implementation.
 import sys
 import json
 import datetime
-import pdb
 from pathlib import Path
 from typing import Dict, Any, Optional
 from argparse import ArgumentParser, Namespace
@@ -108,7 +107,7 @@ class AnalyzeCommand(Command):
         except Exception as e:
             if getattr(args, 'pdb', False):
                 print("\n\x1b[31m⚠️  Debugger enabled. Entering pdb post-mortem session.\x1b[0m", file=sys.stderr)
-                import traceback
+                import pdb
                 tb = sys.exc_info()[2]
                 pdb.post_mortem(tb)
             else:
@@ -121,7 +120,8 @@ class AnalyzeCommand(Command):
 
         report, service = await self._run_analysis(args.repo_path, cli_overrides, args)
 
-        if getattr(args, 'delta_summary', False): self._print_delta_summary(report)
+        if getattr(args, 'delta_summary', False):
+            self._print_delta_summary(report)
         self._format_and_print_report(report, args)
 
         report_file_path = None
@@ -139,21 +139,36 @@ class AnalyzeCommand(Command):
 
     def _build_cli_overrides(self, args: Namespace) -> Dict[str, Any]:
         overrides: Dict[str, Any] = {}
-        if args.use_ai: overrides['use_ai'] = True
-        elif args.no_ai: overrides['use_ai'] = False
-        if args.ai_provider: overrides['ai_provider'] = args.ai_provider
-        if args.ai_model: overrides['ai_model'] = args.ai_model
-        if args.dry_run: overrides['dry_run'] = True
-        if args.verbose: overrides['verbose'] = True
-        if args.patch: overrides['patch'] = True
-        if args.delta: overrides['delta_mode'] = True
-        if args.delta_base_ref is not None: overrides['delta_base_ref'] = args.delta_base_ref
-        if args.use_qmd: overrides['use_qmd'] = True
-        if getattr(args, 'embedding_backend', None): overrides['embedding_backend'] = args.embedding_backend
-        if args.pyscn: overrides['use_pyscn'] = True
-        elif args.no_pyscn: overrides['use_pyscn'] = False
-        if args.ai_codeindex: overrides['use_ai_codeindex'] = True
-        elif args.no_ai_codeindex: overrides['use_ai_codeindex'] = False
+        if args.use_ai:
+            overrides['use_ai'] = True
+        elif args.no_ai:
+            overrides['use_ai'] = False
+        if args.ai_provider:
+            overrides['ai_provider'] = args.ai_provider
+        if args.ai_model:
+            overrides['ai_model'] = args.ai_model
+        if args.dry_run:
+            overrides['dry_run'] = True
+        if args.verbose:
+            overrides['verbose'] = True
+        if args.patch:
+            overrides['patch'] = True
+        if args.delta:
+            overrides['delta_mode'] = True
+        if args.delta_base_ref is not None:
+            overrides['delta_base_ref'] = args.delta_base_ref
+        if args.use_qmd:
+            overrides['use_qmd'] = True
+        if getattr(args, 'embedding_backend', None):
+            overrides['embedding_backend'] = args.embedding_backend
+        if args.pyscn:
+            overrides['use_pyscn'] = True
+        elif args.no_pyscn:
+            overrides['use_pyscn'] = False
+        if args.ai_codeindex:
+            overrides['use_ai_codeindex'] = True
+        elif args.no_ai_codeindex:
+            overrides['use_ai_codeindex'] = False
 
         # Orchestrator flags (only set if explicitly enabled/disabled)
         if getattr(args, 'orchestrate', False):
@@ -185,12 +200,15 @@ class AnalyzeCommand(Command):
             overrides['orchestrator'] = overrides.get('orchestrator', {})
             overrides['orchestrator']['enable_plan_cache'] = False
 
-        if args.no_parallel: overrides['parallel_enabled'] = False
-        if args.concurrency_limit is not None: overrides['concurrency_limit'] = args.concurrency_limit
+        if args.no_parallel:
+            overrides['parallel_enabled'] = False
+        if args.concurrency_limit is not None:
+            overrides['concurrency_limit'] = args.concurrency_limit
         return overrides
 
     def _handle_parallel_warning(self, args: Namespace, overrides: Dict[str, Any]) -> None:
-        if not args.no_parallel: return
+        if not args.no_parallel:
+            return
         LARGE_REPO_THRESHOLD = 5000
         file_count = estimate_repo_file_count(args.repo_path)
         if file_count > LARGE_REPO_THRESHOLD:
@@ -214,17 +232,21 @@ class AnalyzeCommand(Command):
 
     def _print_delta_summary(self, report: Dict[str, Any]) -> None:
         delta = report.get("metadata", {}).get("delta", {})
-        if not delta.get("mode"): return
+        if not delta.get("mode"):
+            return
         diff_text = delta.get("diff", "")
-        if not diff_text: return
+        if not diff_text:
+            return
         files_changed = len(delta.get("files_changed", []))
-        insertions = sum(1 for l in diff_text.splitlines() if l.startswith("+") and not l.startswith("+++"))
-        deletions = sum(1 for l in diff_text.splitlines() if l.startswith("-") and not l.startswith("---"))
+        insertions = sum(1 for line in diff_text.splitlines() if line.startswith("+") and not line.startswith("+++"))
+        deletions = sum(1 for line in diff_text.splitlines() if line.startswith("-") and not line.startswith("---"))
         print(f"\n=== Delta Summary ===\nFiles: {files_changed}, +{insertions}, -{deletions}", file=sys.stderr)
 
     def _format_and_print_report(self, report: Dict[str, Any], args: Namespace) -> None:
-        if args.json: print(JSONFormatter().format(report))
-        else: TerminalFormatter().print_to_terminal(report)
+        if args.json:
+            print(JSONFormatter().format(report))
+        else:
+            TerminalFormatter().print_to_terminal(report)
 
     async def _write_report(self, report: Dict[str, Any], args: Namespace) -> Optional[Path]:
         now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -255,24 +277,28 @@ class AnalyzeCommand(Command):
             return None
 
     async def _handle_pr_creation(self, report: Dict[str, Any], report_path: Optional[Path], repo_path: str, args: Namespace) -> None:
-        if not report_path: return
+        if not report_path:
+            return
         title = args.pr_title or f"🏰 Architecture Report - {datetime.datetime.now().strftime('%Y-%m-%d')}"
         body = args.pr_body or f"Ghostclaw review. Vibe Score: {report['vibe_score']}/100"
         pr_service = PRService(repo_path)
         try:
             await pr_service.create_pr(report_path, title, body)
-        except Exception: pass
+        except Exception:
+            pass
         finally:
             try:
                 report_path.unlink(missing_ok=True)
                 report_path.with_suffix('.json').unlink(missing_ok=True)
-            except: pass
+            except Exception:
+                pass
 
     def _print_auxiliary_info(self, report: Dict[str, Any], service, args: Namespace) -> None:
         info_file = sys.stderr if args.json else sys.stdout
         if args.benchmark and getattr(service, 'timings', None):
             print("\n=== Benchmark Results ===", file=sys.stderr)
-            for p, d in sorted(service.timings.items()): print(f"{p:20} {d:>8.3f}s", file=sys.stderr)
+            for p, d in sorted(service.timings.items()):
+                print(f"{p:20} {d:>8.3f}s", file=sys.stderr)
         if getattr(args, 'show_tokens', False):
             tokens = report.get('metadata', {}).get('tokens', {})
             print(f"\n=== Token Usage ===\nTotal: {tokens.get('total', 0)}", file=sys.stderr)
@@ -281,4 +307,4 @@ class AnalyzeCommand(Command):
             print(f"\n=== Cache Statistics ===\nCache: {stats.get('cache_dir')}\nentries: {stats.get('entries')}", file=info_file)
         remote_url = detect_github_remote(args.repo_path)
         if remote_url and not args.create_pr:
-            print(f"💡 Tip: Use --create-pr to upload findings.", file=info_file)
+            print("💡 Tip: Use --create-pr to upload findings.", file=info_file)
