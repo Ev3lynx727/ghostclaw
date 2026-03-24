@@ -82,6 +82,12 @@ class AnalyzeCommand(Command):
         parser.add_argument("--orchestrate-llm-model", type=str, help="LLM model to use for orchestrator planning (overrides config)")
         parser.add_argument("--orchestrate-concurrency", type=int, help="Concurrency limit for orchestrator plugin execution (overrides config)")
 
+        # Orchestrator enhancements (v0.2.4)
+        parser.add_argument("--orchestrate-verbose", action="store_true", help="Enable verbose output from orchestrator (shows planning details)")
+        parser.add_argument("--orchestrate-cache-dir", type=str, help="Custom directory for orchestrator plan cache")
+        parser.add_argument("--orchestrate-history-len", type=int, help="Number of past analysis runs to consider for vector similarity (default: 20)")
+        parser.add_argument("--orchestrate-no-cache", action="store_true", help="Disable plan caching in orchestrator (alias for --no-orchestrate-cache)")
+
         # Orchestrator caching (mutually exclusive)
         orchestrate_cache_group = parser.add_mutually_exclusive_group()
         orchestrate_cache_group.add_argument("--orchestrate-cache", action="store_true", help="Enable plan caching in orchestrator")
@@ -197,6 +203,21 @@ class AnalyzeCommand(Command):
             overrides['orchestrator'] = overrides.get('orchestrator', {})
             overrides['orchestrator']['enable_plan_cache'] = True
         if getattr(args, 'no_orchestrate_cache', False):
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['enable_plan_cache'] = False
+
+        # v0.2.4: New orchestrator options
+        if getattr(args, 'orchestrate_verbose', False):
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['verbose'] = True
+        if getattr(args, 'orchestrate_cache_dir', None):
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['cache_dir'] = args.orchestrate_cache_dir
+        if getattr(args, 'orchestrate_history_len', None) is not None:
+            overrides['orchestrator'] = overrides.get('orchestrator', {})
+            overrides['orchestrator']['history_len'] = args.orchestrate_history_len
+        # Alias for --no-orchestrate-cache (positive flag to disable)
+        if getattr(args, 'orchestrate_no_cache', False):
             overrides['orchestrator'] = overrides.get('orchestrator', {})
             overrides['orchestrator']['enable_plan_cache'] = False
 

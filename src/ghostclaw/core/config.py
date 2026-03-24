@@ -43,6 +43,11 @@ class OrchestratorConfig(BaseModel):
     plan_cache_ttl_hours: int = 24
     plan_cache_file: Optional[str] = None
 
+    # v0.2.4 enhancements
+    verbose: bool = False
+    cache_dir: Optional[str] = None
+    history_len: int = 20
+
     plan_only: bool = False
     report_plan_details: bool = True
 

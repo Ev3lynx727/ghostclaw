@@ -294,3 +294,157 @@ class TestOrchestrateCLIParser:
         overrides = cmd._build_cli_overrides(args)
         assert "parallel_enabled" not in overrides
         assert "concurrency_limit" not in overrides
+
+    def test_orchestrate_verbose_flag_registered_in_parser(self):
+        """Parser should accept --orchestrate-verbose and set orchestrate_verbose=True."""
+        parser = self._make_parser()
+        args = parser.parse_args(["--orchestrate-verbose"])
+        assert getattr(args, 'orchestrate_verbose', False) is True
+
+    def test_orchestrate_cache_dir_flag_registered_in_parser(self):
+        """Parser should accept --orchestrate-cache-dir with a path argument."""
+        parser = self._make_parser()
+        args = parser.parse_args(["--orchestrate-cache-dir", "/tmp/cache"])
+        assert getattr(args, 'orchestrate_cache_dir', None) == "/tmp/cache"
+
+    def test_orchestrate_history_len_flag_registered_in_parser(self):
+        """Parser should accept --orchestrate-history-len with an integer argument."""
+        parser = self._make_parser()
+        args = parser.parse_args(["--orchestrate-history-len", "30"])
+        assert getattr(args, 'orchestrate_history_len', None) == 30
+
+    def test_orchestrate_no_cache_flag_registered_in_parser(self):
+        """Parser should accept --orchestrate-no-cache and set orchestrate_no_cache=True."""
+        parser = self._make_parser()
+        args = parser.parse_args(["--orchestrate-no-cache"])
+        assert getattr(args, 'orchestrate_no_cache', False) is True
+
+    # v0.2.4 new flags tests
+    def test_orchestrate_verbose_flag_sets_override(self):
+        """--orchestrate-verbose should set orchestrator.verbose=True."""
+        cmd = AnalyzeCommand()
+        args = Namespace(
+            orchestrate=True,
+            no_orchestrate=False,
+            orchestrate_verbose=True,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
+            # new v0.2.4 flags (others can be omitted)
+            orchestrate_cache_dir=None,
+            orchestrate_history_len=None,
+            orchestrate_no_cache=False,
+        )
+        overrides = cmd._build_cli_overrides(args)
+        assert "orchestrator" in overrides
+        assert overrides["orchestrator"]["verbose"] is True
+
+    def test_orchestrate_cache_dir_flag_sets_override(self):
+        """--orchestrate-cache-dir should set orchestrator.cache_dir to the given path."""
+        cmd = AnalyzeCommand()
+        args = Namespace(
+            orchestrate=True,
+            no_orchestrate=False,
+            orchestrate_verbose=False,
+            orchestrate_cache_dir="/custom/cache/dir",
+            orchestrate_history_len=None,
+            orchestrate_no_cache=False,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
+        )
+        overrides = cmd._build_cli_overrides(args)
+        assert "orchestrator" in overrides
+        assert overrides["orchestrator"]["cache_dir"] == "/custom/cache/dir"
+
+    def test_orchestrate_history_len_flag_sets_override(self):
+        """--orchestrate-history-len should set orchestrator.history_len to the given int."""
+        cmd = AnalyzeCommand()
+        args = Namespace(
+            orchestrate=True,
+            no_orchestrate=False,
+            orchestrate_verbose=False,
+            orchestrate_cache_dir=None,
+            orchestrate_history_len=50,
+            orchestrate_no_cache=False,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
+        )
+        overrides = cmd._build_cli_overrides(args)
+        assert "orchestrator" in overrides
+        assert overrides["orchestrator"]["history_len"] == 50
+
+    def test_orchestrate_no_cache_alias_sets_override(self):
+        """--orchestrate-no-cache should set orchestrator.enable_plan_cache=False."""
+        cmd = AnalyzeCommand()
+        args = Namespace(
+            orchestrate=True,
+            no_orchestrate=False,
+            orchestrate_verbose=False,
+            orchestrate_cache_dir=None,
+            orchestrate_history_len=None,
+            orchestrate_no_cache=True,
+            use_ai=None,
+            no_ai=None,
+            ai_provider=None,
+            ai_model=None,
+            dry_run=None,
+            verbose=None,
+            patch=None,
+            delta=None,
+            delta_base_ref=None,
+            use_qmd=None,
+            embedding_backend=None,
+            pyscn=None,
+            no_pyscn=None,
+            ai_codeindex=None,
+            no_ai_codeindex=None,
+            no_parallel=None,
+            concurrency_limit=None,
+        )
+        overrides = cmd._build_cli_overrides(args)
+        assert "orchestrator" in overrides
+        assert overrides["orchestrator"]["enable_plan_cache"] is False
