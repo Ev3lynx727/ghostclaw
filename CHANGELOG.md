@@ -2,6 +2,36 @@
 
 All notable changes to Ghostclaw will be documented here.
 
+## [v0.2.4] - Upcoming
+
+### Added
+- **Orchestrator CLI flags** — new options:
+  - `--orchestrate-verbose` — print detailed planning info to stderr
+  - `--orchestrate-cache-dir <path>` — specify custom plan cache directory
+  - `--orchestrate-history-len <N>` — number of past runs for vector similarity (default: 20)
+  - `--orchestrate-no-cache` — disable plan caching (alias)
+- **Orchestrator configuration** — new fields:
+  - `orchestrator.verbose` — enable verbose output
+  - `orchestrator.cache_dir` — custom cache location
+- **Comprehensive Orchestrator documentation** — added README section with LLM setup, config reference, troubleshooting
+
+### Improved
+- **Registry robustness** — early creation in `CodebaseAnalyzer.analyze()` guarantees availability for `save_report`, fixing "Analyzer registry not available" errors.
+- **Duplicate plugin discovery** — noisy "Plugin name already registered" errors are now logged at DEBUG level; duplicates are skipped silently.
+- **Config validation** — core `OrchestratorConfig` now validates:
+  - `vector_weight + heuristics_weight ≈ 1.0`
+  - `max_plugins`, `max_concurrent_plugins`, `plugin_history_lookback >= 1`
+  - `plan_cache_ttl_hours >= 0`
+- **CLI overrides builder** — correctly maps `--orchestrate-history-len` → `plugin_history_lookback`
+- **Test coverage** — added 8 new unit tests for orchestrator CLI flags (total 21); full suite now 298 passed, 2 skipped.
+
+### Fixed
+- `test_cli_json_mode_streaming_to_stderr` — fixed registry mocking issue
+- Orchestrator CLI tests — safe `getattr` usage for optional flags
+- Cache fingerprinting includes orchestrator parameters for accurate invalidation
+
+---
+
 ## [v0.2.3] - 2026-03-24
 
 ### Added
