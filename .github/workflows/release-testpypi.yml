@@ -25,14 +25,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
       - name: Build package
-        run: python -m build
+        run: |
+          rm -rf dist
+          python -m build
       - name: Twine check (validate distribution metadata)
         run: twine check dist/*
       - name: Upload to TestPyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: twine upload --repository testpypi dist/*
+        run: twine upload --skip-existing --repository testpypi dist/*
       - name: Extract release notes from CHANGELOG
         id: release_notes
         run: |
