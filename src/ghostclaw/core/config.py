@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import Optional, List, Dict, get_origin, get_args, Union
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Optional json5 support for comments and nicer formatting
@@ -53,6 +53,21 @@ class OrchestratorConfig(BaseModel):
     concurrency_limit: Optional[int] = None
 
     model_config = {"extra": "allow"}
+
+    @model_validator(mode='after')
+    def validate_orchestrator_config(self) -> 'OrchestratorConfig':
+        total = self.vector_weight + self.heuristics_weight
+        if abs(total - 1.0) > 0.01:
+            raise ValueError(f"Orchestrator weights must sum to 1.0, got {total:.2f}")
+        if self.max_concurrent_plugins < 1:
+            raise ValueError("max_concurrent_plugins must be >= 1")
+        if self.plan_cache_ttl_hours < 0:
+            raise ValueError("plan_cache_ttl_hours must be >= 0")
+        if self.max_plugins < 1:
+            raise ValueError("max_plugins must be >= 1")
+        if self.plugin_history_lookback < 1:
+            raise ValueError("plugin_history_lookback must be >= 1")
+        return self
 
 
 class GhostclawConfig(BaseSettings):

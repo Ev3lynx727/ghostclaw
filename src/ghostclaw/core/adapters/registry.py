@@ -188,9 +188,13 @@ class PluginRegistry:
                             self._registered_plugins.append((plugin_name, instance))
                             self.external_plugins.add(plugin_name)
                         except Exception as e:
-                            logger.error(
-                                f"Failed to load plugin class {obj.__name__}: {e}"
-                            )
+                            # Downgrade duplicate plugin errors to debug level; other errors remain error
+                            if "already registered" in str(e):
+                                logger.debug(f"Plugin {plugin_name} already registered, skipping: {e}")
+                            else:
+                                logger.error(
+                                    f"Failed to load plugin class {obj.__name__}: {e}"
+                                )
         except Exception as e:
             logger.debug(f"Error loading plugin module at {path}: {e}")
 
