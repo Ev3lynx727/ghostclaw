@@ -2,6 +2,38 @@
 
 All notable changes to Ghostclaw will be documented here.
 
+## [v0.2.3] - 2026-03-24
+
+### Added
+- **CI/CD Pipeline** — Introduced GitHub Actions for lint (ruff), test (pytest matrix), build verification, and automated releases (TestPyPI + PyPI).
+- **Release Workflows** — `release-testpypi.yml` triggers on tag push; `release-pypi.yml` for manual promotion to production.
+- **Comprehensive Test Suite** — Added 100+ new unit tests covering CLI, orchestrator, QMD, and vector store components.
+
+### Improved
+- **Orchestrator Config Normalization** — Refined handling of `--orchestrate` and `--no-orchestrate` flags; config semantics now consistent and predictable.
+- **CLI Robustness** — Safe attribute access for optional flags (`getattr` usage) prevents crashes in test environments and edge cases.
+- **Analyzer Registry Handling** — `CodebaseAnalyzer` now properly sets `self.registry` for post-analysis operations (e.g., save_report).
+- **Non-Git Repo Support** — Gracefully handles analysis when `git` operations fail (e.g., not a git repo).
+- **Lint Compliance** — Codebase now passes `ruff` check with zero errors (E701, E741, F401, etc.) under Python 3.12.
+
+### Fixed
+- **`test_cli_json_mode_streaming_to_stderr`** — Fixed registry mocking issue causing JSON output failure in `--json` mode.
+- **Orchestrator CLI Tests** — Resolved `AttributeError` for missing optional CLI arguments by using safe defaults.
+- **Configuration Deep-Merge** — Nested dict overrides now merge correctly, preserving default values.
+- **Per-File Cache Global Data Preservation** — Global/cross-file results (coupling_metrics, symbol_index) no longer dropped during cached runs.
+- **Delta Mode Base Report Discovery** — Improved async SHA resolution and error handling.
+
+### Documentation
+- Added `MIGRATION_GUIDE.md` for upgrading from v0.1.x to v0.2.x.
+- Extended README with Orchestrator section (setup, CLI options, experimental status).
+- Added benchmark scripts and QMD reference documentation.
+
+### Tests
+- All tests passing: **290 passed, 2 skipped** (Python 3.10, 3.11, 3.12).
+- Added dedicated suites: `test_orchestrator_cli.py`, `test_orchestrator_integration.py`, `test_qmd_*`, `test_vector_store.py`.
+
+---
+
 ## [v0.2.2a0] - Upcoming
 
 ### Added
