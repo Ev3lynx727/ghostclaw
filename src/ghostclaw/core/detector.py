@@ -1,16 +1,36 @@
 """Tech stack detection for codebases."""
 
-import json
 from pathlib import Path
 from typing import List, Set
 import asyncio
 
 # Directories that should always be excluded from analysis
 EXCLUDE_DIRS: Set[str] = {
-    '.venv', 'venv', '.env', '__pycache__', '.pytest_cache', '.coverage',
-    '.git', '.hg', '.svn', 'node_modules', 'dist', 'build', 'target',
-    'vendor', '.deps', 'tests', 'test', 'spec', 'specs', 'docs', 'doc',
-    'example', 'examples', 'scripts'
+    ".venv",
+    "venv",
+    ".env",
+    "__pycache__",
+    ".pytest_cache",
+    ".coverage",
+    ".git",
+    ".hg",
+    ".svn",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "vendor",
+    ".deps",
+    "tests",
+    "test",
+    "spec",
+    "specs",
+    "docs",
+    "doc",
+    "example",
+    "examples",
+    "scripts",
+    ".ghostclaw",
 }
 
 
@@ -25,36 +45,55 @@ def detect_stack(root: str) -> str:
     root_path = Path(root)
 
     # Python (Django, FastAPI, plain) - Prioritize Python to avoid misidentification in hybrid projects
-    python_indicators = ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile', 'poetry.lock']
+    python_indicators = [
+        "requirements.txt",
+        "pyproject.toml",
+        "setup.py",
+        "Pipfile",
+        "poetry.lock",
+    ]
     if any((root_path / f).exists() for f in python_indicators):
-        return 'python'
+        return "python"
 
     # Node / TypeScript / React setup
-    node_indicators = ['package.json', 'vite.config.ts', 'next.config.js', 'remix.config.js']
-    typescript_indicators = ['tsconfig.json']
+    node_indicators = [
+        "package.json",
+        "vite.config.ts",
+        "next.config.js",
+        "remix.config.js",
+    ]
+    typescript_indicators = ["tsconfig.json"]
 
     # Prioritize TypeScript if tsconfig.json or many .ts files are present
     if any((root_path / f).exists() for f in typescript_indicators):
-        return 'typescript'
+        return "typescript"
 
     if any((root_path / f).exists() for f in node_indicators):
-        return 'node'
+        return "node"
 
     # Go
-    if any((root_path / f).exists() for f in ['go.mod', 'go.sum']):
-        return 'go'
+    if any((root_path / f).exists() for f in ["go.mod", "go.sum"]):
+        return "go"
 
     # Shell
-    shell_indicators = ['.shellcheckrc', '.sh', '.bash', '.zsh']
-    if any((root_path / ext).exists() or any(root_path.glob(f"*{ext}")) for ext in shell_indicators):
-        return 'shell'
+    shell_indicators = [".shellcheckrc", ".sh", ".bash", ".zsh"]
+    if any(
+        (root_path / ext).exists() or any(root_path.glob(f"*{ext}"))
+        for ext in shell_indicators
+    ):
+        return "shell"
 
     # Docker
-    docker_indicators = ['Dockerfile', 'docker-compose.yml', 'compose.yaml', '.dockerignore']
+    docker_indicators = [
+        "Dockerfile",
+        "docker-compose.yml",
+        "compose.yaml",
+        ".dockerignore",
+    ]
     if any((root_path / f).exists() for f in docker_indicators):
-        return 'docker'
+        return "docker"
 
-    return 'unknown'
+    return "unknown"
 
 
 def find_files(root: str, extensions: List[str]) -> List[str]:
@@ -68,7 +107,9 @@ def find_files(root: str, extensions: List[str]) -> List[str]:
     return sorted(all_files)
 
 
-async def find_files_parallel(root: str, extensions: List[str], limit: int = 32) -> List[str]:
+async def find_files_parallel(
+    root: str, extensions: List[str], limit: int = 32
+) -> List[str]:
     """
     Parallel file discovery using multiple threads for I/O.
 
@@ -114,6 +155,7 @@ async def find_files_parallel(root: str, extensions: List[str], limit: int = 32)
                         if not _should_exclude(rel):
                             files.append(str(f))
                 return files
+
             return await asyncio.to_thread(_blocking_scan)
 
     # 4. Launch tasks for all subdirs

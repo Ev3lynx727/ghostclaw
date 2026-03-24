@@ -1,8 +1,7 @@
 """Notification system — Telegram, email, or log."""
 
-import os
 import requests
-from typing import Dict, List, Optional
+from typing import List
 
 
 class Notifier:
@@ -18,11 +17,15 @@ class Notifier:
             return False
         try:
             url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-            resp = requests.post(url, data={
-                "chat_id": self.telegram_chat_id,
-                "text": message,
-                "parse_mode": "Markdown"
-            }, timeout=10)
+            resp = requests.post(
+                url,
+                data={
+                    "chat_id": self.telegram_chat_id,
+                    "text": message,
+                    "parse_mode": "Markdown",
+                },
+                timeout=10,
+            )
             resp.raise_for_status()
             return True
         except requests.RequestException:
@@ -34,10 +37,18 @@ class Notifier:
         vibe_score: int,
         delta: int,
         issues: List[str],
-        pr_url: str = None
+        pr_url: str = None,
     ):
         """Send a notification about a repository's health."""
-        status_emoji = "🟢" if vibe_score >= 80 else "🟡" if vibe_score >= 60 else "🟠" if vibe_score >= 40 else "🔴"
+        status_emoji = (
+            "🟢"
+            if vibe_score >= 80
+            else "🟡"
+            if vibe_score >= 60
+            else "🟠"
+            if vibe_score >= 40
+            else "🔴"
+        )
         delta_emoji = "📈" if delta > 0 else "📉" if delta < 0 else "➡️"
 
         message = (
@@ -46,7 +57,7 @@ class Notifier:
         )
 
         if issues:
-            message += f"\n🚨 Issues:\n"
+            message += "\n🚨 Issues:\n"
             for issue in issues[:5]:  # Limit to top 5
                 message += f"  • {issue}\n"
             if len(issues) > 5:

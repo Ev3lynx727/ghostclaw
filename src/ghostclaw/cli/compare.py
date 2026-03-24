@@ -7,10 +7,9 @@ Usage:
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 # Ensure root directory is in sys.path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -30,7 +29,7 @@ def load_repos(repos_file: Path) -> List[str]:
         sys.exit(1)
     return [
         line.strip()
-        for line in repos_file.read_text(encoding='utf-8').splitlines()
+        for line in repos_file.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
 
@@ -94,7 +93,7 @@ def main():
                 vibe_cache.record_score(repo_url, curr_score)
                 # For refresh, previous score is what was the latest before this record
                 prev_score = history[-1]["vibe_score"] if history else None
-            except Exception as e:
+            except Exception:
                 # If analysis fails, we don't record a new score but we still have the history
                 curr_score = None
                 prev_score = history[-1]["vibe_score"] if history else None

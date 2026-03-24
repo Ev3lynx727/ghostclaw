@@ -1,23 +1,23 @@
-import pytest
-from unittest.mock import MagicMock, patch, ANY, AsyncMock
-from pathlib import Path
-from ghostclaw.cli.ghostclaw import generate_markdown_report, detect_github_remote, main as cli_main
-from ghostclaw.core.cache import LocalCache
-import subprocess
+from unittest.mock import MagicMock, patch, AsyncMock
+from ghostclaw.cli.ghostclaw import (
+    generate_markdown_report,
+    detect_github_remote,
+    main as cli_main,
+)
 import sys
 import json
 
 
 def test_generate_markdown_report():
     report = {
-        'vibe_score': 85,
-        'stack': 'python',
-        'files_analyzed': 10,
-        'total_lines': 1000,
-        'issues': ['Issue 1'],
-        'architectural_ghosts': ['Ghost 1'],
-        'red_flags': ['Flag 1'],
-        'metadata': {'timestamp': '2026-02-24T22:00:00Z'}
+        "vibe_score": 85,
+        "stack": "python",
+        "files_analyzed": 10,
+        "total_lines": 1000,
+        "issues": ["Issue 1"],
+        "architectural_ghosts": ["Ghost 1"],
+        "red_flags": ["Flag 1"],
+        "metadata": {"timestamp": "2026-02-24T22:00:00Z"},
     }
     md = generate_markdown_report(report)
     assert "# Architecture Report — 2026-02-24T22:00:00Z" in md
@@ -33,14 +33,18 @@ def test_generate_markdown_report():
 
 @patch("subprocess.run")
 def test_detect_github_remote_success(mock_run):
-    mock_run.return_value = MagicMock(returncode=0, stdout="https://github.com/user/repo.git")
+    mock_run.return_value = MagicMock(
+        returncode=0, stdout="https://github.com/user/repo.git"
+    )
     url = detect_github_remote("/fake/path")
     assert url == "https://github.com/user/repo.git"
 
 
 @patch("subprocess.run")
 def test_detect_github_remote_not_github(mock_run):
-    mock_run.return_value = MagicMock(returncode=0, stdout="https://gitlab.com/user/repo.git")
+    mock_run.return_value = MagicMock(
+        returncode=0, stdout="https://gitlab.com/user/repo.git"
+    )
     url = detect_github_remote("/fake/path")
     assert url is None
 
@@ -61,10 +65,15 @@ def test_cli_no_cache_flag(mock_agent_class, tmp_path, capsys):
     (repo / "module.py").write_text("def foo(): return 1\n")
 
     mock_agent = mock_agent_class.return_value
-    mock_agent.run = AsyncMock(return_value={
-        'vibe_score': 85, 'stack': 'python', 'files_analyzed': 1, 'total_lines': 1,
-        'metadata': {'timestamp': '2026-02-24T22:00:00Z', 'fingerprint': 'test'}
-    })
+    mock_agent.run = AsyncMock(
+        return_value={
+            "vibe_score": 85,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "metadata": {"timestamp": "2026-02-24T22:00:00Z", "fingerprint": "test"},
+        }
+    )
 
     original_argv = sys.argv
     try:
@@ -86,10 +95,15 @@ def test_cli_cache_stats_flag(mock_agent_class, tmp_path, capsys):
     (repo / "module.py").write_text("def foo(): return 1\n")
 
     mock_agent = mock_agent_class.return_value
-    mock_agent.run = AsyncMock(return_value={
-        'vibe_score': 85, 'stack': 'python', 'files_analyzed': 1, 'total_lines': 1,
-        'metadata': {'timestamp': '2026-02-24T22:00:00Z', 'fingerprint': 'test'}
-    })
+    mock_agent.run = AsyncMock(
+        return_value={
+            "vibe_score": 85,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "metadata": {"timestamp": "2026-02-24T22:00:00Z", "fingerprint": "test"},
+        }
+    )
 
     original_argv = sys.argv
     try:
@@ -114,14 +128,25 @@ def test_cli_cache_dir_flag(mock_agent_class, tmp_path, capsys):
     (repo / "module.py").write_text("def foo(): return 1\n")
 
     mock_agent = mock_agent_class.return_value
-    mock_agent.run = AsyncMock(return_value={
-        'vibe_score': 85, 'stack': 'python', 'files_analyzed': 1, 'total_lines': 1,
-        'metadata': {'timestamp': '2026-02-24T22:00:00Z', 'fingerprint': 'test'}
-    })
+    mock_agent.run = AsyncMock(
+        return_value={
+            "vibe_score": 85,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "metadata": {"timestamp": "2026-02-24T22:00:00Z", "fingerprint": "test"},
+        }
+    )
 
     original_argv = sys.argv
     try:
-        sys.argv = ["ghostclaw", str(repo), "--cache-dir", str(custom_cache), "--cache-stats"]
+        sys.argv = [
+            "ghostclaw",
+            str(repo),
+            "--cache-dir",
+            str(custom_cache),
+            "--cache-stats",
+        ]
         cli_main()
 
         captured = capsys.readouterr()
@@ -143,22 +168,44 @@ def test_cli_json_mode_streaming_to_stderr(tmp_path, capsys, monkeypatch):
     class MockReport:
         def model_dump(self):
             return {
-                'vibe_score': 85,
-                'stack': 'python',
-                'files_analyzed': 1,
-                'total_lines': 1,
-                'ai_prompt': 'fake prompt',
-                'metadata': {'timestamp': '2026-02-24T22:00:00Z'},
+                "vibe_score": 85,
+                "stack": "python",
+                "files_analyzed": 1,
+                "total_lines": 1,
+                "ai_prompt": "fake prompt",
+                "metadata": {"timestamp": "2026-02-24T22:00:00Z"},
             }
+
     async def mock_analyze(self, *args, **kwargs):
         return MockReport()
-    monkeypatch.setattr("ghostclaw.core.analyzer.CodebaseAnalyzer.analyze", mock_analyze, raising=True)
+
+    monkeypatch.setattr(
+        "ghostclaw.core.analyzer.CodebaseAnalyzer.analyze", mock_analyze, raising=True
+    )
+
+    # Ensure analyzer has a registry with async save_report; use the global registry instance
+    from ghostclaw.core.adapters.registry import registry as global_registry
+    from ghostclaw.core.analyzer import CodebaseAnalyzer as _CAA
+
+    _original_init = _CAA.__init__
+
+    def _patched_init(self, *args, **kwargs):
+        _original_init(self, *args, **kwargs)
+        # Use the global registry (with emit/save methods) instead of a MagicMock
+        self.registry = global_registry
+
+    monkeypatch.setattr(
+        "ghostclaw.core.analyzer.CodebaseAnalyzer.__init__", _patched_init, raising=True
+    )
 
     # Mock LLMClient.stream_analysis to yield chunks
     async def fake_stream(self, prompt):
         yield {"type": "content", "content": "STREAMED_CHUNK_1"}
         yield {"type": "content", "content": "STREAMED_CHUNK_2"}
-    monkeypatch.setattr("ghostclaw.core.llm_client.LLMClient.stream_analysis", fake_stream, raising=True)
+
+    monkeypatch.setattr(
+        "ghostclaw.core.llm_client.LLMClient.stream_analysis", fake_stream, raising=True
+    )
 
     # Provide dummy API key to satisfy client init
     monkeypatch.setenv("GHOSTCLAW_API_KEY", "dummy")
@@ -166,16 +213,25 @@ def test_cli_json_mode_streaming_to_stderr(tmp_path, capsys, monkeypatch):
     # Patch registry.save_report and emit_event to avoid JSON serialization errors
     async def noop_save(report):
         pass
+
     async def noop_emit(event_name, data):
         pass
-    monkeypatch.setattr("ghostclaw.core.adapters.registry.registry.save_report", noop_save)
-    monkeypatch.setattr("ghostclaw.core.adapters.registry.registry.emit_event", noop_emit)
+
+    monkeypatch.setattr(
+        "ghostclaw.core.adapters.registry.registry.save_report", noop_save
+    )
+    monkeypatch.setattr(
+        "ghostclaw.core.adapters.registry.registry.emit_event", noop_emit
+    )
 
     original_argv = sys.argv
     try:
         sys.argv = ["ghostclaw", str(repo), "--json", "--use-ai"]
         cli_main()
         captured = capsys.readouterr()
+        # Debug: if JSON parsing fails, print captured.out and captured.err
+        print(f"\nDEBUG captured.out: {repr(captured.out)}", file=sys.__stderr__)
+        print(f"DEBUG captured.err: {repr(captured.err)}", file=sys.__stderr__)
         # stdout should be valid JSON
         output = json.loads(captured.out)
         # The ai_synthesis field should contain concatenated chunks
@@ -196,16 +252,18 @@ def test_cli_cached_synthesis_displayed(mock_agent_class, tmp_path, capsys):
     (repo / "module.py").write_text("def foo(): return 1\n")
 
     mock_agent = mock_agent_class.return_value
+
     # Simulate a cache hit with ai_synthesis present
     async def mock_run():
         return {
-            'vibe_score': 85,
-            'stack': 'python',
-            'files_analyzed': 1,
-            'total_lines': 1,
-            'ai_synthesis': 'Cached AI analysis',
-            'metadata': {'timestamp': '2026-02-24T22:00:00Z', 'cache_hit': True}
+            "vibe_score": 85,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "ai_synthesis": "Cached AI analysis",
+            "metadata": {"timestamp": "2026-02-24T22:00:00Z", "cache_hit": True},
         }
+
     mock_agent.run = mock_run
 
     original_argv = sys.argv
@@ -225,7 +283,9 @@ def test_cli_cached_synthesis_displayed(mock_agent_class, tmp_path, capsys):
 
 @patch("ghostclaw.cli.services.PRService.create_pr", new_callable=AsyncMock)
 @patch("ghostclaw.cli.services.GhostAgent")
-def test_cli_create_pr_writes_to_repo_root_and_cleans_up(mock_agent_class, mock_create_pr, tmp_path, capsys):
+def test_cli_create_pr_writes_to_repo_root_and_cleans_up(
+    mock_agent_class, mock_create_pr, tmp_path, capsys
+):
     """BUG 1: Verify --create-pr writes report to repo root and cleans up after PR creation."""
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -233,14 +293,16 @@ def test_cli_create_pr_writes_to_repo_root_and_cleans_up(mock_agent_class, mock_
     (repo / "module.py").write_text("def foo(): return 1\n")
 
     mock_agent = mock_agent_class.return_value
+
     async def mock_run():
         return {
-            'vibe_score': 85,
-            'stack': 'python',
-            'files_analyzed': 1,
-            'total_lines': 1,
-            'metadata': {'timestamp': '2026-02-24T22:00:00Z'}
+            "vibe_score": 85,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "metadata": {"timestamp": "2026-02-24T22:00:00Z"},
         }
+
     mock_agent.run = mock_run
 
     original_argv = sys.argv
@@ -248,7 +310,7 @@ def test_cli_create_pr_writes_to_repo_root_and_cleans_up(mock_agent_class, mock_
         sys.argv = ["ghostclaw", str(repo), "--create-pr"]
         cli_main()
 
-        captured = capsys.readouterr()
+        capsys.readouterr()
         # Check that the report was written to repo root
         report_files = list(repo.glob("ARCHITECTURE-REPORT-*.md"))
         assert len(report_files) == 0, "Report should be cleaned up after PR creation"
@@ -271,16 +333,18 @@ def test_cli_spinner_cleanup_on_synthesis(mock_agent_class, tmp_path, capsys):
     (repo / "module.py").write_text("def foo(): return 1\n")
 
     mock_agent = mock_agent_class.return_value
+
     # Simulate agent that triggers synthesis events
     async def mock_run():
         # We won't simulate streaming; just complete
         return {
-            'vibe_score': 85,
-            'stack': 'python',
-            'files_analyzed': 1,
-            'total_lines': 1,
-            'metadata': {'timestamp': '2026-02-24T22:00:00Z'}
+            "vibe_score": 85,
+            "stack": "python",
+            "files_analyzed": 1,
+            "total_lines": 1,
+            "metadata": {"timestamp": "2026-02-24T22:00:00Z"},
         }
+
     mock_agent.run = mock_run
 
     # Patch GhostAgent to simulate events? Actually easier: test that no exceptions occur

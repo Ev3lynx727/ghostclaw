@@ -3,15 +3,18 @@
 import asyncio
 import json
 from typing import Dict, List, Any, Optional
-from ghostclaw.core.adapters.base import MetricAdapter, AdapterMetadata
+from ghostclaw.core.adapters.base import MetricAdapter
+
 
 class AsyncProcessMetricAdapter(MetricAdapter):
     """
-    Base MetricAdapter that provides common utilities for running 
+    Base MetricAdapter that provides common utilities for running
     external tools via async subprocesses.
     """
 
-    async def run_tool(self, cmd: List[str], cwd: Optional[str] = None) -> Dict[str, Any]:
+    async def run_tool(
+        self, cmd: List[str], cwd: Optional[str] = None, timeout: Optional[int] = None
+    ) -> Dict[str, Any]:
         """
         Safely execute an external tool and capture its output.
         Uses process.communicate() to avoid pipe deadlocks.
@@ -21,15 +24,35 @@ class AsyncProcessMetricAdapter(MetricAdapter):
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=cwd
+                cwd=cwd,
             )
-            
-            stdout, stderr = await process.communicate()
-            
+
+            try:
+                if timeout is not None:
+                    stdout, stderr = await asyncio.wait_for(
+                        process.communicate(), timeout=timeout
+                    )
+                else:
+                    stdout, stderr = await process.communicate()
+            except asyncio.TimeoutError:
+                try:
+                    process.terminate()
+                    await asyncio.wait_for(process.wait(), timeout=5)
+                except ProcessLookupError:
+                    pass
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
+                return {
+                    "error": f"Tool timed out after {timeout}s",
+                    "returncode": -1,
+                    "timeout": True,
+                }
+
             return {
                 "returncode": process.returncode,
-                "stdout": stdout.decode().strip(),
-                "stderr": stderr.decode().strip()
+                "stdout": (stdout or b"").decode().strip(),
+                "stderr": (stderr or b"").decode().strip(),
             }
         except Exception as e:
             return {"error": str(e), "returncode": -1}

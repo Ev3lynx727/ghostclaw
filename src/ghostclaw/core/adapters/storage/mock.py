@@ -4,6 +4,7 @@ from typing import List, Any, Dict, Optional
 from ghostclaw.core.adapters.base import StorageAdapter, AdapterMetadata
 from ghostclaw.core.adapters.hooks import hookimpl
 
+
 class MockStorageAdapter(StorageAdapter):
     """In-memory storage for vibe reports. No persistence."""
 
@@ -15,7 +16,7 @@ class MockStorageAdapter(StorageAdapter):
         return AdapterMetadata(
             name="mock-storage",
             version="0.1.0",
-            description="In-memory storage for unit testing."
+            description="In-memory storage for unit testing.",
         )
 
     async def is_available(self) -> bool:
@@ -32,7 +33,7 @@ class MockStorageAdapter(StorageAdapter):
             data = report.model_dump()
         else:
             data = report
-        
+
         report_id = str(len(self.reports) + 1)
         data["id"] = report_id
         self.reports.append(data)
@@ -50,5 +51,5 @@ class MockStorageAdapter(StorageAdapter):
             "name": meta.name,
             "version": meta.version,
             "description": meta.description,
-            "available": True
+            "available": True,
         }

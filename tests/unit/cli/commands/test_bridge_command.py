@@ -2,6 +2,7 @@ import pytest
 from argparse import Namespace
 from ghostclaw.cli.commands.bridge import BridgeCommand
 
+
 @pytest.mark.asyncio
 async def test_bridge_command_execute(mocker):
     cmd = BridgeCommand()
@@ -14,6 +15,7 @@ async def test_bridge_command_execute(mocker):
     result = await cmd.execute(args)
     assert result == 0
     mock_instance.run.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_bridge_command_keyboard_interrupt(mocker):

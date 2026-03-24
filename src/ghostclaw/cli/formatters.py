@@ -7,6 +7,7 @@ import datetime
 
 # === BaseFormatter (from formatters/base.py) ===
 
+
 class BaseFormatter(ABC):
     """Base interface for formatting architecture reports."""
 
@@ -19,7 +20,9 @@ class BaseFormatter(ABC):
         """Print the formatted report to stdout."""
         print(self.format(report))
 
+
 # === JSONFormatter (from formatters/json.py) ===
+
 
 class JSONFormatter(BaseFormatter):
     """Format the architecture report as a JSON string."""
@@ -30,19 +33,23 @@ class JSONFormatter(BaseFormatter):
     def format(self, report: Dict[str, Any]) -> str:
         return json.dumps(report, indent=self.indent)
 
+
 # === MarkdownFormatter (from formatters/markdown.py) ===
+
 
 class MarkdownFormatter(BaseFormatter):
     """Format the architecture report as a Markdown document."""
 
     def format(self, report: Dict[str, Any]) -> str:
-        vibe_score = report.get('vibe_score', 0)
-        stack = report.get('stack', 'unknown')
-        files = report.get('files_analyzed', 0)
-        total = report.get('total_lines', 0)
+        vibe_score = report.get("vibe_score", 0)
+        stack = report.get("stack", "unknown")
+        files = report.get("files_analyzed", 0)
+        total = report.get("total_lines", 0)
 
         now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        timestamp = report.get('metadata', {}).get('timestamp', now_utc.isoformat() + "Z")
+        timestamp = report.get("metadata", {}).get(
+            "timestamp", now_utc.isoformat() + "Z"
+        )
 
         if vibe_score >= 80:
             emoji = "🟢"
@@ -62,44 +69,64 @@ class MarkdownFormatter(BaseFormatter):
             f"- **Total Lines**: {total}",
         ]
 
-        metrics = report.get('coupling_metrics', {})
+        metrics = report.get("coupling_metrics", {})
         if metrics:
-            avg_ccn = metrics.get('avg_ccn')
-            avg_nd = metrics.get('avg_nd')
+            avg_ccn = metrics.get("avg_ccn")
+            avg_nd = metrics.get("avg_nd")
+            avg_cog = metrics.get("avg_cognitive")
+            max_cog = metrics.get("max_cognitive")
+            # Traditional metrics (keep original format)
             if avg_ccn is not None or avg_nd is not None:
-                lines.append(f"- **Avg CCN**: {avg_ccn or 'N/A'}")
-                lines.append(f"- **Avg Nesting Depth**: {avg_nd or 'N/A'}")
+                if avg_ccn is not None:
+                    lines.append(f"- **Avg CCN**: {avg_ccn}")
+                if avg_nd is not None:
+                    lines.append(f"- **Avg Nesting Depth**: {avg_nd}")
+            # Cognitive complexity metrics (new)
+            if avg_cog is not None or max_cog is not None:
+                cog_parts = []
+                if avg_cog is not None:
+                    cog_parts.append(f"Avg Cognitive: {avg_cog}")
+                if max_cog is not None:
+                    cog_parts.append(f"Max Cognitive: {max_cog}")
+                lines.append(f"- **Cognitive**: {' | '.join(cog_parts)}")
 
         lines.append("")
 
-        issues = report.get('issues', [])
+        issues = report.get("issues", [])
         if issues:
             lines.append("## Issues Detected")
             for issue in issues:
                 lines.append(f"- {issue}")
             lines.append("")
 
-        ghosts = report.get('architectural_ghosts', [])
+        ghosts = report.get("architectural_ghosts", [])
         if ghosts:
             lines.append("## 👻 Architectural Ghosts")
             for ghost in ghosts:
                 lines.append(f"- {ghost}")
             lines.append("")
 
-        flags = report.get('red_flags', [])
+        flags = report.get("red_flags", [])
         if flags:
             lines.append("## 🚨 Red Flags")
             for flag in flags:
                 lines.append(f"- {flag}")
             lines.append("")
 
-        reasoning = report.get('ai_reasoning')
+        errors = report.get("errors", [])
+        if errors:
+            lines.append("## ⚠️ Adapter Errors")
+            for err in errors:
+                lines.append(f"- {err}")
+            lines.append("")
+
+        reasoning = report.get("ai_reasoning")
         if reasoning:
             lines.append("## AI Architect Reasoning")
             lines.append(reasoning)
             lines.append("")
 
-        synthesis = report.get('ai_synthesis')
+        synthesis = report.get("ai_synthesis")
         if synthesis:
             lines.append("## ✨ AI Synthesis")
             lines.append(synthesis)
@@ -110,65 +137,94 @@ class MarkdownFormatter(BaseFormatter):
 
         return "\n".join(lines)
 
+
 # === TerminalFormatter (from formatters/terminal.py) ===
 
+
 class TerminalFormatter(BaseFormatter):
-    """Format the architecture report for terminal output."""
+    """Format the architecture report for terminal output with ANSI colors."""
+
+    # ANSI color codes
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    ORANGE = "\033[38;5;208m"  # 256-color orange
+    RED = "\033[91m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
 
     def format(self, report: Dict[str, Any]) -> str:
-        vibe_score = report.get('vibe_score', 0)
-        stack = report.get('stack', 'unknown')
-        files = report.get('files_analyzed', 0)
-        total = report.get('total_lines', 0)
+        vibe_score = report.get("vibe_score", 0)
+        stack = report.get("stack", "unknown")
+        files = report.get("files_analyzed", 0)
+        total = report.get("total_lines", 0)
 
+        # Choose color and emoji
         if vibe_score >= 80:
+            color = self.GREEN
             emoji = "🟢"
         elif vibe_score >= 60:
+            color = self.YELLOW
             emoji = "🟡"
         elif vibe_score >= 40:
+            color = self.ORANGE
             emoji = "🟠"
         else:
+            color = self.RED
             emoji = "🔴"
 
-        lines = [
-            f"{emoji} Vibe Score: {vibe_score}/100",
-            f"   Stack: {stack}",
-            f"   Files: {files}, Lines: {total}"
-        ]
+        # Header line with colored vibe score and emoji prefix
+        header = f"{emoji} {color}{self.BOLD}Vibe Score: {vibe_score}/100{self.RESET}"
+        lines = [header, f"   Stack: {stack}", f"   Files: {files}, Lines: {total}"]
 
-        metrics = report.get('coupling_metrics', {})
+        metrics = report.get("coupling_metrics", {})
         if metrics:
-            avg_ccn = metrics.get('avg_ccn')
-            avg_nd = metrics.get('avg_nd')
+            avg_ccn = metrics.get("avg_ccn")
+            avg_nd = metrics.get("avg_nd")
+            avg_cog = metrics.get("avg_cognitive")
+            max_cog = metrics.get("max_cognitive")
+            # Traditional metrics (original format)
             if avg_ccn is not None or avg_nd is not None:
-                lines.append(f"   Metrics: Avg CCN: {avg_ccn or 'N/A'}, Avg Nesting: {avg_nd or 'N/A'}")
+                parts = []
+                if avg_ccn is not None:
+                    parts.append(f"Avg CCN: {avg_ccn}")
+                if avg_nd is not None:
+                    parts.append(f"Avg Nesting: {avg_nd}")
+                lines.append(f"   Metrics: {', '.join(parts)}")
+            # Cognitive complexity metrics
+            if avg_cog is not None or max_cog is not None:
+                cog_parts = []
+                if avg_cog is not None:
+                    cog_parts.append(f"Avg Cognitive: {avg_cog}")
+                if max_cog is not None:
+                    cog_parts.append(f"Max Cognitive: {max_cog}")
+                lines.append(f"   Cognitive: {', '.join(cog_parts)}")
 
         lines.append("")
 
-        issues = report.get('issues', [])
+        issues = report.get("issues", [])
         if issues:
-            lines.append("Issues detected:")
+            lines.append(f"{self.RED}Issues detected:{self.RESET}")
             for issue in issues:
                 lines.append(f"  • {issue}")
             lines.append("")
 
-        ghosts = report.get('architectural_ghosts', [])
+        ghosts = report.get("architectural_ghosts", [])
         if ghosts:
-            lines.append("👻 Architectural Ghosts:")
+            lines.append(f"{self.ORANGE}👻 Architectural Ghosts:{self.RESET}")
             for ghost in ghosts:
                 lines.append(f"   {ghost}")
             lines.append("")
 
-        flags = report.get('red_flags', [])
+        flags = report.get("red_flags", [])
         if flags:
-            lines.append("🚨 Red Flags:")
+            lines.append(f"{self.YELLOW}🚨 Red Flags:{self.RESET}")
             for flag in flags:
                 lines.append(f"   {flag}")
             lines.append("")
 
-        errors = report.get('errors', [])
+        errors = report.get("errors", [])
         if errors:
-            lines.append("⚠️ Adapter Errors:")
+            lines.append(f"{self.RED}⚠️ Adapter Errors:{self.RESET}")
             for err in errors:
                 lines.append(f"   {err}")
             lines.append("")
@@ -179,12 +235,24 @@ class TerminalFormatter(BaseFormatter):
             lines.append("\n✨ AI Synthesis:")
             if report.get("metadata", {}).get("cache_hit"):
                 lines.append("(cached)")
-            lines.append(report["ai_synthesis"])
+            syn = report["ai_synthesis"]
+            if syn is not None:
+                lines.append(syn)
 
         return "\n".join(lines)
 
     def print_to_terminal(self, report: Dict[str, Any]) -> None:
         """Print the formatted report to stdout."""
-        print(self.format(report))
+        try:
+            output = self.format(report)
+            print(output)
+        except Exception as e:
+            import sys
+            import traceback
 
-__all__ = ['BaseFormatter', 'JSONFormatter', 'MarkdownFormatter', 'TerminalFormatter']
+            print(f"\x1b[31mTerminalFormatter error: {e}\x1b[0m", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            raise
+
+
+__all__ = ["BaseFormatter", "JSONFormatter", "MarkdownFormatter", "TerminalFormatter"]

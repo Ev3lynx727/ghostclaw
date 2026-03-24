@@ -10,7 +10,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 from dotenv import load_dotenv
 from ghostclaw.core.analyzer import CodebaseAnalyzer
@@ -30,7 +30,7 @@ def clone_or_pull(repo_url: str, dest_dir: Path) -> bool:
             subprocess.run(
                 ["git", "-C", str(dest_dir), "pull", "--rebase", "--quiet"],
                 check=True,
-                capture_output=True
+                capture_output=True,
             )
             return True
         except subprocess.CalledProcessError as e:
@@ -43,18 +43,31 @@ def clone_or_pull(repo_url: str, dest_dir: Path) -> bool:
             repo_path = Path(repo_url)
             if repo_path.exists() and repo_path.is_dir():
                 import shutil
+
                 shutil.copytree(repo_path, dest_dir)
                 # Initialize as git repo if not already
                 if not (dest_dir / ".git").exists():
-                    subprocess.run(["git", "init"], cwd=dest_dir, check=True, capture_output=True)
-                    subprocess.run(["git", "add", "-A"], cwd=dest_dir, check=True, capture_output=True)
-                    subprocess.run(["git", "commit", "-m", "Initial"], cwd=dest_dir, check=True, capture_output=True)
+                    subprocess.run(
+                        ["git", "init"], cwd=dest_dir, check=True, capture_output=True
+                    )
+                    subprocess.run(
+                        ["git", "add", "-A"],
+                        cwd=dest_dir,
+                        check=True,
+                        capture_output=True,
+                    )
+                    subprocess.run(
+                        ["git", "commit", "-m", "Initial"],
+                        cwd=dest_dir,
+                        check=True,
+                        capture_output=True,
+                    )
                 return True
             else:
                 subprocess.run(
                     ["git", "clone", "--quiet", repo_url, str(dest_dir)],
                     check=True,
-                    capture_output=True
+                    capture_output=True,
                 )
                 return True
         except subprocess.CalledProcessError as e:
@@ -72,7 +85,9 @@ def analyze_repo(repo_path: Path) -> Dict:
     return analyzer.analyze(str(repo_path))
 
 
-def should_create_pr(delta: int, vibe_score: int, threshold_delta: int = -5, min_score: int = 50) -> bool:
+def should_create_pr(
+    delta: int, vibe_score: int, threshold_delta: int = -5, min_score: int = 50
+) -> bool:
     """
     Decide whether to open a PR based on score changes.
     - PR if vibe dropped by threshold_delta points (default -5)
@@ -98,7 +113,7 @@ def generate_pr_body(repo: str, old_score: int, new_score: int, report: Dict) ->
 ### Current Issues
 
 """
-    issues = report.get('issues', [])
+    issues = report.get("issues", [])
     if issues:
         for issue in issues[:15]:
             body += f"- {issue}\n"
@@ -127,40 +142,31 @@ def main():
     parser.add_argument(
         "--repos-file",
         required=True,
-        help="Path to file containing repository URLs (one per line)"
+        help="Path to file containing repository URLs (one per line)",
     )
     parser.add_argument(
         "--work-dir",
         default="/tmp/ghostclaw-watcher",
-        help="Directory to clone repositories into"
+        help="Directory to clone repositories into",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Analyze but don't create PRs or send notifications"
+        help="Analyze but don't create PRs or send notifications",
     )
     parser.add_argument(
         "--create-pr",
         action="store_true",
-        help="Create GitHub PRs with suggestions (requires gh auth)"
+        help="Create GitHub PRs with suggestions (requires gh auth)",
     )
     parser.add_argument(
         "--notify",
         action="store_true",
-        help="Send notifications (Telegram if configured)"
+        help="Send notifications (Telegram if configured)",
     )
-    parser.add_argument(
-        "--telegram-token",
-        help="Telegram bot token"
-    )
-    parser.add_argument(
-        "--telegram-chat-id",
-        help="Telegram chat ID"
-    )
-    parser.add_argument(
-        "--gh-token",
-        help="GitHub token (or set GH_TOKEN env)"
-    )
+    parser.add_argument("--telegram-token", help="Telegram bot token")
+    parser.add_argument("--telegram-chat-id", help="Telegram chat ID")
+    parser.add_argument("--gh-token", help="GitHub token (or set GH_TOKEN env)")
 
     args = parser.parse_args()
 
@@ -176,19 +182,22 @@ def main():
     cache = VibeCache()
     github = GitHubClient(token=args.gh_token) if args.gh_token else GitHubClient()
     notifier = Notifier(
-        telegram_token=args.telegram_token,
-        telegram_chat_id=args.telegram_chat_id
+        telegram_token=args.telegram_token, telegram_chat_id=args.telegram_chat_id
     )
 
     # Read repository list
-    repos = [line.strip() for line in repos_file.read_text().splitlines() if line.strip() and not line.startswith('#')]
+    repos = [
+        line.strip()
+        for line in repos_file.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
     print(f"👻 Ghostclaw watcher starting: {len(repos)} repositories")
 
     for repo_url in repos:
         print(f"\n--- Processing {repo_url} ---")
 
         # Determine repo name for cloning
-        repo_name = repo_url.rstrip('/').split('/')[-1]
+        repo_name = repo_url.rstrip("/").split("/")[-1]
         repo_dir = work_dir / repo_name
 
         # Clone or pull
@@ -197,18 +206,22 @@ def main():
 
         # Analyze
         report = analyze_repo(repo_dir)
-        vibe_score = report['vibe_score']
-        issues = report.get('issues', [])
+        vibe_score = report["vibe_score"]
+        issues = report.get("issues", [])
 
         print(f"Vibe Score: {vibe_score}/100, Issues: {len(issues)}")
 
         # Cache old score
         old_score = cache.get_latest_score(repo_url)
         delta = vibe_score - old_score if old_score is not None else 0
-        cache.record_score(repo_url, vibe_score, metadata={
-            "stack": report.get('stack'),
-            "files_analyzed": report.get('files_analyzed')
-        })
+        cache.record_score(
+            repo_url,
+            vibe_score,
+            metadata={
+                "stack": report.get("stack"),
+                "files_analyzed": report.get("files_analyzed"),
+            },
+        )
 
         # Decision: create PR?
         if args.create_pr and github.can_open_prs():
@@ -216,14 +229,16 @@ def main():
                 print(f"🔨 Would create PR: {repo_url} (score changed by {delta:+d})")
                 if not args.dry_run:
                     branch_name = f"ghostclaw-improve-{vibe_score}"
-                    pr_body = generate_pr_body(repo_url, old_score or 0, vibe_score, report)
+                    pr_body = generate_pr_body(
+                        repo_url, old_score or 0, vibe_score, report
+                    )
                     pr_url = github.create_pr(
                         repo=repo_url,
                         title=f"🏰 Architectural improvements (vibe {vibe_score}/100)",
                         body=pr_body,
                         head=branch_name,
                         base="main",
-                        draft=True
+                        draft=True,
                     )
                     if pr_url:
                         print(f"✅ PR created: {pr_url}")
@@ -239,7 +254,7 @@ def main():
                 vibe_score=vibe_score,
                 delta=delta,
                 issues=issues[:10],
-                pr_url=pr_url if 'pr_url' in locals() else None
+                pr_url=pr_url if "pr_url" in locals() else None,
             )
 
     print("\n✅ Watcher cycle complete")

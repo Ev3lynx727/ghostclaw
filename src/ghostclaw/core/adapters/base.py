@@ -4,8 +4,10 @@ import abc
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
 
+
 class AdapterMetadata(BaseModel):
     """Metadata for an adapter."""
+
     name: str
     version: str
     description: str
@@ -13,6 +15,10 @@ class AdapterMetadata(BaseModel):
     dependencies: List[str] = []  # External binaries required
     min_ghostclaw_version: Optional[str] = None
     max_ghostclaw_version: Optional[str] = None
+    supports_per_file_cache: bool = (
+        False  # Whether adapter outputs can be split per file safely
+    )
+
 
 class BaseAdapter(abc.ABC):
     """Abstract base class for all Ghostclaw adapters."""
@@ -27,6 +33,7 @@ class BaseAdapter(abc.ABC):
         """Check if the adapter's external dependencies are available."""
         pass
 
+
 class MetricAdapter(BaseAdapter):
     """Adapter for external analysis tools (pyscn, sonar, eslint)."""
 
@@ -34,11 +41,12 @@ class MetricAdapter(BaseAdapter):
     async def analyze(self, root: str, files: List[str]) -> Dict[str, Any]:
         """
         Run analysis on the given files and return discovered issues/ghosts.
-        
+
         Returns:
             Dict containing 'issues', 'architectural_ghosts', and 'red_flags'.
         """
         pass
+
 
 class TargetAdapter(BaseAdapter):
     """Adapter for output routing (CLI, Markdown file, JSON-API)."""
@@ -47,6 +55,7 @@ class TargetAdapter(BaseAdapter):
     async def emit(self, event_type: str, data: Any) -> None:
         """Handle an agent lifecycle event."""
         pass
+
 
 class StorageAdapter(BaseAdapter):
     """Adapter for vibe history persistence (JSON/SQLite)."""
@@ -60,6 +69,7 @@ class StorageAdapter(BaseAdapter):
     async def get_history(self, limit: int = 10) -> List[Any]:
         """Retrieve recent reports."""
         pass
+
 
 class ScoringAdapter(BaseAdapter):
     """Adapter for custom vibe score calculation algorithms (e.g., CodeBERTScore)."""

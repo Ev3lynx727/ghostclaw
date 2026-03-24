@@ -1,0 +1,60 @@
+name: Publish to TestPyPI
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*a*"
+      - "v*.*.*b*"
+      - "v*.*.*rc*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build package
+        run: python -m build
+      - name: Twine check (validate distribution metadata)
+        run: twine check dist/*
+      - name: Upload to TestPyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: twine upload --repository testpypi dist/*
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          HEADER="## [${VERSION}]"
+          # Some entries have dash and date after: "## [v0.2.2a0] - 2026-03-22"
+          # So match the prefix line starting with ## [vX.Y.Z
+          awk -v ver="## [${VERSION}" '
+            $0 ~ ver {found=1; print_line=1; next}
+            /^## \[/ && found {exit}
+            found {print}
+          ' CHANGELOG.md > release_notes.txt
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Create GitHub Release (draft)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: true
+          prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

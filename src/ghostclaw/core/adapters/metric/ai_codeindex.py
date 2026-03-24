@@ -1,10 +1,10 @@
 """Metric adapter for ai-codeindex symbol analysis."""
 
-import json
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from ghostclaw.core.adapters.metric.base import AsyncProcessMetricAdapter
 from ghostclaw.core.adapters.base import AdapterMetadata
 from ghostclaw.core.adapters.hooks import hookimpl
+
 
 class AICodeIndexAdapter(AsyncProcessMetricAdapter):
     """Wraps ai-codeindex tool into the Ghostclaw adapter interface."""
@@ -14,7 +14,7 @@ class AICodeIndexAdapter(AsyncProcessMetricAdapter):
             name="ai-codeindex",
             version="0.1.0",
             description="Deep architectural analysis and symbol indexing.",
-            dependencies=["ai-codeindex"]
+            dependencies=["ai-codeindex"],
         )
 
     async def is_available(self) -> bool:
@@ -33,17 +33,20 @@ class AICodeIndexAdapter(AsyncProcessMetricAdapter):
             return {}
 
         # Run ai-codeindex symbols
-        result = await self.run_tool(["ai-codeindex", "symbols", "--root", root, "-o", "PROJECT_SYMBOLS.md"])
+        result = await self.run_tool(
+            ["ai-codeindex", "symbols", "--root", root, "-o", "PROJECT_SYMBOLS.md"]
+        )
         if result.get("returncode") != 0:
             return {"issues": [f"AI-CodeIndex error: {result.get('stderr')}"]}
 
         # Read the generated symbols file
         from pathlib import Path
+
         symbols_path = Path(root) / "PROJECT_SYMBOLS.md"
         symbols_content = ""
         if symbols_path.exists():
             try:
-                with open(symbols_path, 'r', encoding='utf-8') as f:
+                with open(symbols_path, "r", encoding="utf-8") as f:
                     symbols_content = f.read()
             except Exception as e:
                 return {"issues": [f"AI-CodeIndex: Failed to read symbols file: {e}"]}
@@ -52,7 +55,7 @@ class AICodeIndexAdapter(AsyncProcessMetricAdapter):
             "issues": [],
             "architectural_ghosts": ["Symbols indexed and PROJECT_SYMBOLS.md read."],
             "red_flags": [],
-            "symbol_index": symbols_content
+            "symbol_index": symbols_content,
         }
 
     @hookimpl
@@ -63,5 +66,5 @@ class AICodeIndexAdapter(AsyncProcessMetricAdapter):
             "name": meta.name,
             "version": meta.version,
             "description": meta.description,
-            "available": True
+            "available": True,
         }

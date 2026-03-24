@@ -3,6 +3,7 @@ from ghostclaw.cli.commander import Command
 from ghostclaw.cli.services import ConfigService
 import sys
 
+
 class InitCommand(Command):
     @property
     def name(self) -> str:

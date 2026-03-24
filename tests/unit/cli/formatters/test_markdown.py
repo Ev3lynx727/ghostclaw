@@ -2,6 +2,7 @@ import pytest
 from ghostclaw.cli.formatters import MarkdownFormatter
 from typing import Dict, Any
 
+
 @pytest.fixture
 def mock_report() -> Dict[str, Any]:
     return {
@@ -15,8 +16,9 @@ def mock_report() -> Dict[str, Any]:
         "red_flags": ["Flag 1"],
         "ai_reasoning": "This is good code.",
         "ai_synthesis": "Overall looks fine.",
-        "coupling_metrics": {"avg_ccn": 2.5, "avg_nd": 1.5}
+        "coupling_metrics": {"avg_ccn": 2.5, "avg_nd": 1.5},
     }
+
 
 def test_markdown_formatter(mock_report):
     formatter = MarkdownFormatter()

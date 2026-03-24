@@ -10,42 +10,51 @@ Before installing Ghostclaw, you must have [OpenClaw](https://openclaw.ai/) and 
 
 ## Quick Start (Installation)
 
-### Method 1: NPM (Recommended)
+Ghostclaw can be installed via **npm** (recommended for OpenClaw users) or **pip** (for Python environments). Choose the method that fits your workflow.
 
-Install Ghostclaw globally from the npm registry:
+### via NPM (Recommended for OpenClaw)
+
+Install globally from the npm registry:
 
 ```bash
 npm install -g ghostclaw
 ```
 
-### Method 2: NPX
-
-To run it without explicitly installing globally:
+Or run directly with npx:
 
 ```bash
 npx ghostclaw /path/to/repo
 ```
 
-You can also add it via OpenClaw skills:
+You can also add it as an OpenClaw skill:
 
 ```bash
 npx skills add Ev3lynx727/ghostclaw
 ```
 
-### Method 3: ClawHub
+### via ClawHub
 
-Install skills only via ClawHub by running:
+Install using ClawHub (skill-only manager):
 
 ```bash
 clawhub install skill ghostclaw
 ```
 
-### Method 4: Build from source
+### via PyPI (Python)
+
+Install using pip (includes both CLI and library):
 
 ```bash
+# Latest stable release
+pip install ghostclaw
+
+# Or install the pre-release beta
+pip install --pre ghostclaw
+
+# For development, install from source
 git clone https://github.com/Ev3lynx727/ghostclaw.git
 cd ghostclaw
-pip install .
+pip install -e .
 ```
 
 For a detailed integration guide, see **[GUIDE.md](docs/GUIDE.md)**.
@@ -61,6 +70,59 @@ ghostclaw /path/to/your/repo
 # If running from source
 python3 src/ghostclaw/cli/ghostclaw.py /path/to/your/repo
 ```
+
+### Delta-Context Analysis (PR Reviews)
+
+Ghostclaw supports **delta-context mode** for analyzing only the code changes (git diff) instead of the entire codebase. This is perfect for:
+
+- **CI/CD integration**: Fast PR checks without scanning the whole repo
+- **Focused feedback**: Architectural review specifically on the changed files
+- **Token efficiency**: Smaller prompts, lower AI costs
+- **Drift detection**: Compare current changes against a previous baseline
+
+#### Usage
+
+```bash
+# Analyze changes against HEAD~1 (default)
+ghostclaw /path/to/repo --delta
+
+# Compare against a specific branch, tag, or commit
+ghostclaw /path/to/repo --delta --base origin/main
+ghostclaw /path/to/repo --delta --base v1.2.3
+
+# In CI (e.g., GitHub Actions)
+ghostclaw . --delta --base ${{ github.event.pull_request.base.sha }} --json
+
+# Combine with AI synthesis
+ghostclaw . --delta --base HEAD~5 --use-ai --dry-run  # preview prompt
+```
+
+The delta report will be saved as `ARCHITECTURE-DELTA-<timestamp>.md` in `.ghostclaw/`.
+
+For more examples and CI integration, see `docs/examples/delta-analysis.md`.
+
+#### How It Works
+
+1. **Diff extraction**: Ghostclaw runs `git diff` between the current working tree and the specified `--base` reference.
+2. **Changed files only**: Only files modified in the diff are analyzed (filtered by stack extensions).
+3. **Base context**: If a previous Ghostclaw report exists in `.ghostclaw/reports/`, it is loaded and used as baseline for comparing architectural drift.
+4. **Delta prompt**: The AI prompt includes `<base_context>`, `<diff>`, and `<current_state>` sections to enable targeted synthesis.
+
+#### Delta Summary
+
+Use `--delta-summary` to print diff statistics (files changed, insertions, deletions) to stderr after the analysis completes. Useful for CI logs and quick metrics.
+
+#### Benefits over Full Scan
+
+- **Faster** (fewer files to analyze)
+- **Cheaper** (fewer tokens in AI prompt)
+- **More relevant** (focuses on what actually changed)
+
+#### Base Report Auto-Discovery
+
+When using `--delta`, Ghostclaw automatically loads the most recent report from `.ghostclaw/storage/reports/` to serve as the base context. No manual `--base-report` flag needed. If no base report exists, the delta prompt proceeds with just the diff and current metrics.
+
+**Precise matching**: When `--base` is a specific commit SHA, Ghostclaw tries to find a report with matching `metadata.vcs.commit`. If not found, it falls back to the latest report (with a warning).
 
 ### Background Monitoring (Cron)
 
@@ -227,6 +289,19 @@ Ghostclaw is designed to be fast out of the box, but for large repositories or s
 - Ensure `parallel_enabled: true` in `~/.ghostclaw/ghostclaw.json`.
 - Avoid `--no-parallel` on any non-trivial repository.
 - For extremely large repos, consider analyzing a specific subdirectory instead of the entire codebase.
+
+### Storage & Memory Backend
+- Ghostclaw stores analysis results and history in `.ghostclaw/storage/` (reports, cache, SQLite DB).
+- **Automatic migration**: If you have legacy `.ghostclaw/reports/` or `.ghostclaw/cache/` from older versions, they will be automatically moved to the new storage layout on first run.
+- **QMD backend** (production-ready as of v0.2.1-beta): Use `--use-qmd` or set `use_qmd: true` in config for a high-performance alternative storage with AI-Buff optimizations (requires `ghostclaw[qmd]`).
+  - AI-Buff includes: embedding cache, search cache, query planning, prefetching, auto-migration for legacy data, optional IVF-PQ index, adaptive alpha tuning, and result diversity.
+- MCP tools (`ghostclaw_mcp`) automatically detect and use the configured backend.
+
+### Configuration File
+- Config files support **JSON5** format (comments, trailing commas) if the `json5` package is installed.
+- Global config: `~/.ghostclaw/ghostclaw.json`
+- Project config: `<repo>/.ghostclaw/ghostclaw.json`
+- Run `ghostclaw init` (or `python -m ghostclaw.cli.services.ConfigService.init_project`) to scaffold a local config with all options.
 
 ## License
 

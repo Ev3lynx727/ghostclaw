@@ -29,6 +29,9 @@ build/
 .pyscn/
 .ai-codeindex/
 .cache/
+.codeguardian
+.mypy_cache/
+.benchmarks/
 # Node / NPM
 node_modules/
 package-lock.json
@@ -60,4 +63,5 @@ report.md
 # Agents
 .agents/
 .drafts/
+.summarizes/
 

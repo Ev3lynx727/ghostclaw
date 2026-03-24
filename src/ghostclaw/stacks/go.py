@@ -8,7 +8,7 @@ class GoAnalyzer(StackAnalyzer):
     """Analyzes Go projects for architectural issues (stub for now)."""
 
     def get_extensions(self) -> List[str]:
-        return ['.go']
+        return [".go"]
 
     def get_large_file_threshold(self) -> int:
         return 500
@@ -20,5 +20,5 @@ class GoAnalyzer(StackAnalyzer):
             "issues": [],
             "architectural_ghosts": [],
             "red_flags": [],
-            "notes": ["Go detection not yet implemented"]
+            "notes": ["Go detection not yet implemented"],
         }

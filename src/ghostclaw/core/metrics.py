@@ -1,14 +1,12 @@
 """Codebase metrics: file sizes, lines, complexity indicators."""
 
-from pathlib import Path
 from typing import Dict, List
-import os
 
 
 def count_lines(filepath: str) -> int:
     """Count lines in a file, ignoring errors."""
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             return sum(1 for _ in f)
     except Exception:
         return 0
@@ -22,7 +20,7 @@ def analyze_file_sizes(files: List[str]) -> Dict:
             "total_lines": 0,
             "average_lines": 0,
             "large_files": [],
-            "large_file_count": 0
+            "large_file_count": 0,
         }
 
     line_counts = [count_lines(f) for f in files]
@@ -38,16 +36,11 @@ def analyze_file_sizes(files: List[str]) -> Dict:
         "total_lines": total_lines,
         "average_lines": avg_lines,
         "large_files": large_files,
-        "large_file_count": len(large_files)
+        "large_file_count": len(large_files),
     }
 
 
 def get_stack_threshold(stack: str) -> int:
     """Get the 'large file' line count threshold for a given stack."""
-    thresholds = {
-        'node': 400,
-        'python': 300,
-        'go': 500,
-        'unknown': 300
-    }
+    thresholds = {"node": 400, "python": 300, "go": 500, "unknown": 300}
     return thresholds.get(stack, 300)

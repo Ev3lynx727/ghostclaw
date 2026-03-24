@@ -32,3 +32,9 @@ dist/
 # Misc
 .DS_Store
 Thumbs.db
+
+# Agents
+.agents/
+.drafts/
+.summarizes/
+

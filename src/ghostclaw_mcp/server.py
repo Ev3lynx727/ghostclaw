@@ -8,7 +8,7 @@ ghostclaw_memory_diff_runs, ghostclaw_knowledge_graph.
 import sys
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Optional
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -16,12 +16,16 @@ sys.path.append(str(Path(__file__).parent.parent))
 # Use try-import to handle optional dependencies for Phase 2
 try:
     from mcp.server.fastmcp import FastMCP
+
     HAS_MCP = True
 except ImportError:
     HAS_MCP = False
 
 from ghostclaw.core.analyzer import CodebaseAnalyzer
 from ghostclaw.core.memory import MemoryStore
+from ghostclaw.core.qmd_store import QMDMemoryStore
+from ghostclaw.core.config import GhostclawConfig
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +33,13 @@ logger = logging.getLogger("ghostclaw-mcp")
 
 # Initialize MCP server if available
 mcp = FastMCP("Ghostclaw") if HAS_MCP else None
+
+
+def conditional_mcp_tool(func):
+    """Apply mcp.tool() if MCP is available, else identity."""
+    if HAS_MCP:
+        return mcp.tool()(func)
+    return func
 
 
 def get_analyzer() -> CodebaseAnalyzer:
@@ -40,10 +51,78 @@ def get_memory_store(repo_path: Optional[str] = None) -> MemoryStore:
         db_path = Path(repo_path) / ".ghostclaw" / "storage" / "ghostclaw.db"
     else:
         db_path = Path.cwd() / ".ghostclaw" / "storage" / "ghostclaw.db"
-    return MemoryStore(db_path=db_path)
+
+    # Determine whether to use QMD backend.
+    # Precedence: env var > project config > default (False)
+    use_qmd = False
+
+    # 1. Environment variable (explicit override)
+    if os.getenv("GHOSTCLAW_USE_QMD", "").lower() in ("1", "true", "yes"):
+        use_qmd = True
+    else:
+        # 2. Project config (if repo_path known)
+        try:
+            cfg = GhostclawConfig.load(repo_path or ".")
+            use_qmd = cfg.use_qmd
+        except Exception as e:
+            logger.debug(f"Could not load Ghostclaw config: {e}")
+            use_qmd = False
+
+    if use_qmd:
+        qmd_db_path = db_path.parent / "qmd" / "ghostclaw.db"
+        # Determine embedding backend, prefetch, migration, and Phase 6 settings from config
+        embedding_backend = "fastembed"
+        ai_buff_enabled = False
+        prefetch_enabled = True
+        prefetch_workers = 2
+        prefetch_window = 2
+        prefetch_hours = 24
+        prefetch_vibe_delta = 10
+        prefetch_stack_count = 5
+        auto_migrate = True
+        migration_batch_size = 50
+        migration_throttle_ms = 100
+        max_chunks_per_report = None
+        vector_index_config = {}
+        try:
+            cfg = GhostclawConfig.load(repo_path or ".")
+            embedding_backend = getattr(cfg, "embedding_backend", "fastembed")
+            ai_buff_enabled = getattr(cfg, "ai_buff_enabled", False)
+            prefetch_enabled = getattr(cfg, "prefetch_enabled", True)
+            prefetch_workers = getattr(cfg, "prefetch_workers", 2)
+            prefetch_window = getattr(cfg, "prefetch_window", 2)
+            prefetch_hours = getattr(cfg, "prefetch_hours", 24)
+            prefetch_vibe_delta = getattr(cfg, "prefetch_vibe_delta", 10)
+            prefetch_stack_count = getattr(cfg, "prefetch_stack_count", 5)
+            auto_migrate = getattr(cfg, "auto_migrate", True)
+            migration_batch_size = getattr(cfg, "migration_batch_size", 50)
+            migration_throttle_ms = getattr(cfg, "migration_throttle_ms", 100)
+            max_chunks_per_report = getattr(cfg, "max_chunks_per_report", None)
+            if hasattr(cfg, "vector_index"):
+                vector_index_config = getattr(cfg, "vector_index", {})
+        except Exception:
+            pass
+        return QMDMemoryStore(
+            db_path=qmd_db_path,
+            embedding_backend=embedding_backend,
+            ai_buff_enabled=ai_buff_enabled,
+            prefetch_enabled=prefetch_enabled,
+            prefetch_workers=prefetch_workers,
+            prefetch_window=prefetch_window,
+            prefetch_hours=prefetch_hours,
+            prefetch_vibe_delta=prefetch_vibe_delta,
+            prefetch_stack_count=prefetch_stack_count,
+            auto_migrate=auto_migrate,
+            migration_batch_size=migration_batch_size,
+            migration_throttle_ms=migration_throttle_ms,
+            max_chunks_per_report=max_chunks_per_report,
+            vector_index_config=vector_index_config,
+        )
+    else:
+        return MemoryStore(db_path=db_path)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_analyze(repo_path: str) -> str:
     """
     Perform a full architectural vibe analysis of a codebase.
@@ -54,10 +133,10 @@ async def ghostclaw_analyze(repo_path: str) -> str:
 
     analyzer = get_analyzer()
     report = await analyzer.analyze(repo_path)
-    return json.dumps(report, indent=2)
+    return report.model_dump_json(indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_get_ghosts(repo_path: str) -> str:
     """
     Analyze architectural smells and 'ghosts' only.
@@ -68,11 +147,11 @@ async def ghostclaw_get_ghosts(repo_path: str) -> str:
 
     analyzer = get_analyzer()
     report = await analyzer.analyze(repo_path)
-    ghosts = report.get("architectural_ghosts", [])
+    ghosts = report.architectural_ghosts
     return json.dumps({"architectural_ghosts": ghosts}, indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_refactor_plan(repo_path: str) -> str:
     """
     Generate an automated refactor blueprint based on architectural analysis.
@@ -85,8 +164,8 @@ async def ghostclaw_refactor_plan(repo_path: str) -> str:
     report = await analyzer.analyze(repo_path)
 
     # Placeholder for advanced refactor planning logic (Phase 2 enhancement)
-    issues = report.get("issues", [])
-    ghosts = report.get("architectural_ghosts", [])
+    issues = report.issues
+    ghosts = report.architectural_ghosts
 
     plan = [
         "### Ghostclaw Refactor Blueprint",
@@ -99,7 +178,7 @@ async def ghostclaw_refactor_plan(repo_path: str) -> str:
         "",
         "3. **Next Steps**:",
         "   - Review large files and apply SOLID principles.",
-        "   - Implement missing unit tests for identified hotspots."
+        "   - Implement missing unit tests for identified hotspots.",
     ]
 
     return "\n".join(plan)
@@ -108,7 +187,7 @@ async def ghostclaw_refactor_plan(repo_path: str) -> str:
 # --- Agent-Facing Memory Tools ---
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_memory_search(
     query: str,
     repo_path: Optional[str] = None,
@@ -138,7 +217,7 @@ async def ghostclaw_memory_search(
     return json.dumps({"results": results, "count": len(results)}, indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_memory_get_run(
     run_id: int,
     repo_path: Optional[str] = None,
@@ -157,7 +236,7 @@ async def ghostclaw_memory_get_run(
     return json.dumps(run, indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_memory_list_runs(
     repo_path: Optional[str] = None,
     limit: int = 20,
@@ -174,7 +253,7 @@ async def ghostclaw_memory_list_runs(
     return json.dumps({"runs": runs, "count": len(runs)}, indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_memory_diff_runs(
     run_id_a: int,
     run_id_b: int,
@@ -194,7 +273,7 @@ async def ghostclaw_memory_diff_runs(
     return json.dumps(diff, indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_knowledge_graph(
     repo_path: Optional[str] = None,
     limit: int = 50,
@@ -214,7 +293,7 @@ async def ghostclaw_knowledge_graph(
     return json.dumps(graph, indent=2)
 
 
-@mcp.tool() if HAS_MCP else lambda x: x
+@conditional_mcp_tool
 async def ghostclaw_memory_get_previous_run(
     repo_path: Optional[str] = None,
 ) -> str:
@@ -235,7 +314,10 @@ async def ghostclaw_memory_get_previous_run(
 def main():
     """Entry point for the MCP server."""
     if not HAS_MCP:
-        print("Error: mcp-sdk not installed. Install with 'pip install ghostclaw[mcp]'.", file=sys.stderr)
+        print(
+            "Error: mcp-sdk not installed. Install with 'pip install ghostclaw[mcp]'.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     mcp.run()

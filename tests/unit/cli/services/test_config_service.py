@@ -1,7 +1,7 @@
 import pytest
 import json
-from pathlib import Path
 from ghostclaw.cli.services import ConfigService
+
 
 def test_config_service_init_project(tmp_path):
     ConfigService.init_project(str(tmp_path))
@@ -12,6 +12,7 @@ def test_config_service_init_project(tmp_path):
     data = json.loads(config_file.read_text())
     assert data["use_ai"] is True
     assert data["ai_provider"] == "openrouter"
+
 
 def test_config_service_init_project_existing(tmp_path):
     config_file = tmp_path / ".ghostclaw" / "ghostclaw.json"

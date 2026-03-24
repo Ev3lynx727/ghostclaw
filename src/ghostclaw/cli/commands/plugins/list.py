@@ -1,13 +1,14 @@
 from argparse import ArgumentParser, Namespace
-from ghostclaw.cli.commands.plugins.base import PluginsCommand, PluginService
-import sys
+from ghostclaw.cli.commands.plugins.base import PluginsCommand
 
 try:
     from rich.console import Console
     from rich.table import Table
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
+
 
 class PluginsListCommand(PluginsCommand):
     @property
@@ -38,19 +39,25 @@ class PluginsListCommand(PluginsCommand):
 
             for meta in metadata:
                 p_name = meta.get("name", "unknown")
-                p_type = "Built-in" if p_name in registry.internal_plugins else "External"
+                p_type = (
+                    "Built-in" if p_name in registry.internal_plugins else "External"
+                )
                 table.add_row(
                     p_name,
                     meta.get("version", "unknown"),
                     meta.get("description", ""),
-                    p_type
+                    p_type,
                 )
             Console().print(table)
         else:
             print("Name | Version | Description | Type")
             for meta in metadata:
                 p_name = meta.get("name")
-                p_type = "Built-in" if p_name in registry.internal_plugins else "External"
-                print(f"{p_name} | {meta.get('version')} | {meta.get('description')} | {p_type}")
+                p_type = (
+                    "Built-in" if p_name in registry.internal_plugins else "External"
+                )
+                print(
+                    f"{p_name} | {meta.get('version')} | {meta.get('description')} | {p_type}"
+                )
 
         return 0

@@ -3,6 +3,7 @@ from ghostclaw.cli.commander import Command
 from ghostclaw.core.bridge import GhostBridge
 import sys
 
+
 class BridgeCommand(Command):
     @property
     def name(self) -> str:
@@ -13,7 +14,11 @@ class BridgeCommand(Command):
         return "Start the JSON-RPC 2.0 bridge server"
 
     def configure_parser(self, parser: ArgumentParser) -> None:
-        parser.add_argument("--verbose", action="store_true", help="Enable verbose file logging (ghostclaw.log)")
+        parser.add_argument(
+            "--verbose",
+            action="store_true",
+            help="Enable verbose file logging (ghostclaw.log)",
+        )
 
     async def execute(self, args: Namespace) -> int:
         try:

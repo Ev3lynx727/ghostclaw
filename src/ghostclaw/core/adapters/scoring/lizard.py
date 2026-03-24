@@ -1,14 +1,21 @@
 """Polyglot scoring adapter using the Lizard library."""
 
-import lizard
-import lizard_ext.lizardnd
-import lizard_ext.lizardns
 import logging
 from typing import Any, List, Dict
 from ghostclaw.core.adapters.base import ScoringAdapter, AdapterMetadata
 from ghostclaw.core.adapters.hooks import hookimpl
 
+try:
+    import lizard
+    import lizard_ext.lizardnd
+    import lizard_ext.lizardns
+
+    HAS_LIZARD = True
+except ImportError:
+    HAS_LIZARD = False
+
 logger = logging.getLogger(__name__)
+
 
 class LizardScoringAdapter(ScoringAdapter):
     """
@@ -22,15 +29,11 @@ class LizardScoringAdapter(ScoringAdapter):
             version="0.1.0",
             description="Polyglot metric scoring (CCN, Cognitive Complexity, ND)",
             author="Ghostclaw Team",
-            dependencies=["lizard"]
+            dependencies=["lizard"],
         )
 
     async def is_available(self) -> bool:
-        try:
-            import lizard
-            return True
-        except ImportError:
-            return False
+        return HAS_LIZARD
 
     @hookimpl
     def ghost_get_metadata(self) -> Dict[str, Any]:
@@ -40,21 +43,27 @@ class LizardScoringAdapter(ScoringAdapter):
             "name": meta.name,
             "version": meta.version,
             "description": meta.description,
-            "available": True
+            "available": HAS_LIZARD,
         }
 
     @hookimpl
     async def ghost_analyze(self, root: str, files: List[str]) -> Dict[str, Any]:
         """Gather metrics and hotspots."""
+        if not HAS_LIZARD:
+            return {}
         data = await self._analyze_internal(files)
         if not data or data["total_functions"] == 0:
             return {}
 
         issues = []
         if data["max_ccn"] > 20:
-            issues.append(f"Lizard: Complex logic hotspot detected (Max CCN: {data['max_ccn']})")
+            issues.append(
+                f"Lizard: Complex logic hotspot detected (Max CCN: {data['max_ccn']})"
+            )
         if data["max_nd"] > 6:
-            issues.append(f"Lizard: Deeply nested code hotspot detected (Max ND: {data['max_nd']})")
+            issues.append(
+                f"Lizard: Deeply nested code hotspot detected (Max ND: {data['max_nd']})"
+            )
 
         return {
             "issues": issues,
@@ -63,8 +72,8 @@ class LizardScoringAdapter(ScoringAdapter):
                 "avg_nd": round(data["avg_nd"], 2),
                 "max_ccn": data["max_ccn"],
                 "max_nd": data["max_nd"],
-                "total_functions": data["total_functions"]
-            }
+                "total_functions": data["total_functions"],
+            },
         }
 
     @hookimpl
@@ -74,12 +83,12 @@ class LizardScoringAdapter(ScoringAdapter):
         metrics = context.get("coupling_metrics", {})
         if "avg_ccn" in metrics and "avg_nd" in metrics:
             return self._calculate_vibe_from_metrics(metrics)
-            
+
         return await self.compute_vibe(context)
 
     async def compute_vibe(self, context: Any) -> float:
         """Fallback vibe computation if metrics not yet gathered."""
-        files = context.get('files', [])
+        files = context.get("files", [])
         data = await self._analyze_internal(files)
         return self._calculate_vibe_from_metrics(data)
 
@@ -100,9 +109,9 @@ class LizardScoringAdapter(ScoringAdapter):
         nd_penalty = min(50.0, (avg_nd / 5.0) * 50.0) if avg_nd > 2 else 0
         # 20% LoC (threshold 100)
         loc_penalty = min(20.0, (avg_nloc / 100.0) * 20.0) if avg_nloc > 40 else 0
-        
+
         score = 100.0 - (ccn_penalty + nd_penalty + loc_penalty)
-        
+
         if max_ccn > 25 or max_nd > 8:
             score -= 10.0
 
@@ -120,26 +129,28 @@ class LizardScoringAdapter(ScoringAdapter):
         total_functions = 0
         max_ccn = 0
         max_nd = 0
-        
-        extensions = lizard.get_extensions([
-            lizard_ext.lizardnd.LizardExtension(),
-            lizard_ext.lizardns.LizardExtension()
-        ])
+
+        extensions = lizard.get_extensions(
+            [
+                lizard_ext.lizardnd.LizardExtension(),
+                lizard_ext.lizardns.LizardExtension(),
+            ]
+        )
         analyzer = lizard.FileAnalyzer(extensions)
-        
+
         for file_path in files:
             try:
                 analysis = analyzer(file_path)
                 for func in analysis.function_list:
                     total_ccn += func.cyclomatic_complexity
-                    func_nd = getattr(func, 'max_nesting_depth', 0)
-                    func_ns = getattr(func, 'max_nested_structures', 0)
-                    
+                    func_nd = getattr(func, "max_nesting_depth", 0)
+                    func_ns = getattr(func, "max_nested_structures", 0)
+
                     total_nd += func_nd
                     total_ns += func_ns
                     total_nloc += func.nloc
                     total_functions += 1
-                    
+
                     if func.cyclomatic_complexity > max_ccn:
                         max_ccn = func.cyclomatic_complexity
                     if func_nd > max_nd:
@@ -156,5 +167,5 @@ class LizardScoringAdapter(ScoringAdapter):
             "avg_nloc": total_nloc / total_functions,
             "max_ccn": max_ccn,
             "max_nd": max_nd,
-            "total_functions": total_functions
+            "total_functions": total_functions,
         }

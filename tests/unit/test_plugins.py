@@ -1,7 +1,6 @@
 """Tests for plugin system robustness (Phase 3)."""
 
 import pytest
-import asyncio
 from ghostclaw.core.adapters.registry import PluginRegistry
 from ghostclaw.core.adapters.base import BaseAdapter, AdapterMetadata
 
@@ -17,7 +16,7 @@ class DummyAdapter(BaseAdapter):
             version="1.0",
             description=f"Dummy plugin {self.name}",
             min_ghostclaw_version="0.1.0",
-            max_ghostclaw_version="2.0.0"
+            max_ghostclaw_version="2.0.0",
         )
 
     async def ghost_analyze(self, root, files):
@@ -38,6 +37,7 @@ def test_check_version_compatible(fresh_registry):
     """Test _check_version_compatible handles constraints correctly."""
     meta = AdapterMetadata(name="test", version="1.0", description="test")
     from ghostclaw.version import __version__ as current_ver
+
     # No constraints -> always compatible
     assert fresh_registry._check_version_compatible(current_ver, meta) is True
 
@@ -89,6 +89,3 @@ async def test_plugin_filtering_by_enabled_plugins(fresh_registry):
     fresh_registry.enabled_plugins = set()
     results = await fresh_registry.run_analysis("/", [])
     assert len(results) == 0
-
-
-

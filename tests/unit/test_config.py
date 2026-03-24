@@ -1,13 +1,13 @@
-import os
 import json
 import pytest
-from pathlib import Path
 from ghostclaw.core.config import GhostclawConfig
+
 
 def test_config_load_cli_overrides():
     config = GhostclawConfig.load(".", use_ai=True, ai_provider="openai")
     assert config.use_ai is True
     assert config.ai_provider == "openai"
+
 
 def test_config_load_env_vars(monkeypatch):
     monkeypatch.setenv("GHOSTCLAW_API_KEY", "test-key")
@@ -16,6 +16,7 @@ def test_config_load_env_vars(monkeypatch):
     config = GhostclawConfig.load(".")
     assert config.api_key == "test-key"
     assert config.use_ai is True
+
 
 def test_config_reject_local_api_key(tmp_path, monkeypatch):
     # Change current working directory to tmp_path for the test
@@ -29,7 +30,9 @@ def test_config_reject_local_api_key(tmp_path, monkeypatch):
     with open(config_file, "w") as f:
         json.dump({"api_key": "secret-key"}, f)
 
-    with pytest.raises(ValueError, match="SECURITY RISK: API key found in local project configuration"):
+    with pytest.raises(
+        ValueError, match="SECURITY RISK: API key found in local project configuration"
+    ):
         # The validation is now correctly in the `load` classmethod to check the specific repo path
         GhostclawConfig.load(".")
 
@@ -38,6 +41,8 @@ def test_config_optional_bool_env_vars(monkeypatch, tmp_path):
     """Test that Optional[bool] env vars are correctly converted from strings."""
     # Run in a clean temporary directory to avoid picking up the real .ghostclaw/ghostclaw.json
     monkeypatch.chdir(tmp_path)
+    # Also isolate global config by setting HOME to tmp_path
+    monkeypatch.setenv("HOME", str(tmp_path))
     # Test use_pyscn (Optional[bool])
     monkeypatch.setenv("GHOSTCLAW_USE_PYSCN", "true")
     config = GhostclawConfig.load(".")

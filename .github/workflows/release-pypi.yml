@@ -1,0 +1,38 @@
+name: Promote to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to promote (e.g., v0.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build package (again, to ensure clean)
+        run: python -m build
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+      - name: Publish GitHub Release
+        run: |
+          gh release edit ${{ github.event.inputs.version }} --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

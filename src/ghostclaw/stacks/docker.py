@@ -9,7 +9,7 @@ class DockerAnalyzer(StackAnalyzer):
 
     def get_extensions(self) -> List[str]:
         # Return generic names that are often in Docker projects
-        return ['Dockerfile', 'docker-compose.yml', 'compose.yaml', '.dockerignore']
+        return ["Dockerfile", "docker-compose.yml", "compose.yaml", ".dockerignore"]
 
     def get_large_file_threshold(self) -> int:
         # Dockerfiles should be small; 100 lines is quite a lot for a single file
@@ -22,8 +22,12 @@ class DockerAnalyzer(StackAnalyzer):
         flags = []
 
         # Find specific files to report in metadata
-        dockerfiles = [f for f in files if 'Dockerfile' in f]
-        compose_files = [f for f in files if 'compose' in f.lower() and (f.endswith('.yml') or f.endswith('.yaml'))]
+        dockerfiles = [f for f in files if "Dockerfile" in f]
+        compose_files = [
+            f
+            for f in files
+            if "compose" in f.lower() and (f.endswith(".yml") or f.endswith(".yaml"))
+        ]
 
         if not dockerfiles and not compose_files:
             issues.append("No active Dockerfile or Compose file found in analysis set")
@@ -35,6 +39,6 @@ class DockerAnalyzer(StackAnalyzer):
             "red_flags": flags,
             "docker_stats": {
                 "dockerfile_count": len(dockerfiles),
-                "compose_file_count": len(compose_files)
-            }
+                "compose_file_count": len(compose_files),
+            },
         }

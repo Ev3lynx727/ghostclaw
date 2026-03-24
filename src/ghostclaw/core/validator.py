@@ -2,7 +2,7 @@
 
 import yaml
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 import fnmatch
 
 
@@ -11,11 +11,13 @@ class RuleValidator:
 
     def __init__(self, patterns_path: str = None):
         if patterns_path is None:
-            patterns_path = Path(__file__).parent.parent / "references" / "stack-patterns.yaml"
+            patterns_path = (
+                Path(__file__).parent.parent / "references" / "stack-patterns.yaml"
+            )
         else:
             patterns_path = Path(patterns_path)
 
-        with open(patterns_path, 'r', encoding='utf-8') as f:
+        with open(patterns_path, "r", encoding="utf-8") as f:
             self.rules = yaml.safe_load(f)
 
     def validate(self, stack: str, report: Dict) -> Dict:
@@ -35,74 +37,82 @@ class RuleValidator:
         # Collect applicable rules
         applicable_rules = []
         if "global" in self.rules:
-            applicable_rules.extend(self.rules["global"].get('rules', []))
+            applicable_rules.extend(self.rules["global"].get("rules", []))
         if stack in self.rules:
-            applicable_rules.extend(self.rules[stack].get('rules', []))
+            applicable_rules.extend(self.rules[stack].get("rules", []))
 
-        new_issues = list(report.get('issues', []))
-        new_ghosts = list(report.get('architectural_ghosts', []))
-        new_flags = list(report.get('red_flags', []))
+        new_issues = list(report.get("issues", []))
+        new_ghosts = list(report.get("architectural_ghosts", []))
+        new_flags = list(report.get("red_flags", []))
 
         for rule in applicable_rules:
-            rule_type = rule.get('type')
-            rule_id = rule.get('id')
-            message = rule.get('message', '')
+            rule_type = rule.get("type")
+            rule_id = rule.get("id")
+            message = rule.get("message", "")
 
             # Metric-based rules (average_lines, large_file_count, etc.)
-            if rule_type == 'metric':
-                metric_name = rule.get('metric')
-                threshold = rule.get('threshold')
-                condition = rule.get('condition', 'greater_than')
+            if rule_type == "metric":
+                metric_name = rule.get("metric")
+                threshold = rule.get("threshold")
+                condition = rule.get("condition", "greater_than")
                 value = report.get(metric_name, 0)
 
                 applies = False
-                if condition == 'greater_than' and value > threshold:
+                if condition == "greater_than" and value > threshold:
                     applies = True
-                elif condition == 'less_than' and value < threshold:
+                elif condition == "less_than" and value < threshold:
                     applies = True
-                elif condition == 'equals' and value == threshold:
+                elif condition == "equals" and value == threshold:
                     applies = True
 
-                if applies:  # Previously value != 0 guard prevented empty codebase detection
-                    formatted_msg = message.format(value=value, threshold=threshold, count=value)
+                if (
+                    applies
+                ):  # Previously value != 0 guard prevented empty codebase detection
+                    formatted_msg = message.format(
+                        value=value, threshold=threshold, count=value
+                    )
                     new_issues.append(formatted_msg)
                     new_ghosts.append(f"[{rule_id}] {formatted_msg}")
 
             # Coupling metric rules (instability, etc.)
-            elif rule_type == 'metric_coupling':
-                metric_name = rule.get('metric')
-                threshold = rule.get('threshold')
-                condition = rule.get('condition', 'greater_than')
-                coupling_metrics = report.get('coupling_metrics', {})
+            elif rule_type == "metric_coupling":
+                metric_name = rule.get("metric")
+                threshold = rule.get("threshold")
+                condition = rule.get("condition", "greater_than")
+                coupling_metrics = report.get("coupling_metrics", {})
 
                 for module, metrics in coupling_metrics.items():
                     if not isinstance(metrics, dict):
                         continue
                     value = metrics.get(metric_name, 0)
                     applies = False
-                    if condition == 'greater_than' and value > threshold:
+                    if condition == "greater_than" and value > threshold:
                         applies = True
-                    elif condition == 'less_than' and value < threshold:
+                    elif condition == "less_than" and value < threshold:
                         applies = True
 
                     if applies:
-                        formatted_msg = message.format(module=module, value=value, threshold=threshold)
+                        formatted_msg = message.format(
+                            module=module, value=value, threshold=threshold
+                        )
                         new_issues.append(formatted_msg)
                         new_ghosts.append(f"[{rule_id}] {formatted_msg}")
 
             # File count over threshold rules
-            elif rule_type == 'file_count_over_threshold':
-                large_count = report.get('large_file_count', 0)
-                threshold = rule.get('threshold')
+            elif rule_type == "file_count_over_threshold":
+                large_count = report.get("large_file_count", 0)
+                threshold = rule.get("threshold")
                 if large_count >= 1:  # At least one file over threshold exists
-                    formatted_msg = message.format(count=large_count, threshold=threshold)
+                    formatted_msg = message.format(
+                        count=large_count, threshold=threshold
+                    )
                     new_issues.append(formatted_msg)
                     new_ghosts.append(f"[{rule_id}] {formatted_msg}")
 
             # Import dependency rules (layer violations)
-            elif rule_type == 'import_dependency':
-                forbidden_patterns = rule.get('forbidden', [])
-                import_edges = report.get('import_edges', [])
+            elif rule_type == "import_dependency":
+                forbidden_patterns = rule.get("forbidden", [])
+                import_edges = report.get("import_edges", [])
 
                 for pattern in forbidden_patterns:
                     if "->" in pattern:
@@ -112,17 +122,26 @@ class RuleValidator:
                         dst_glob = f"*{dst_p}*" if "*" not in dst_p else dst_p
 
                         for src, dst in import_edges:
-                            if fnmatch.fnmatch(src, src_glob) and fnmatch.fnmatch(dst, dst_glob):
-                                formatted_msg = message.format(**{"from": src, "to": dst})
+                            if fnmatch.fnmatch(src, src_glob) and fnmatch.fnmatch(
+                                dst, dst_glob
+                            ):
+                                formatted_msg = message.format(
+                                    **{"from": src, "to": dst}
+                                )
                                 new_issues.append(formatted_msg)
                                 new_ghosts.append(f"[{rule_id}] {formatted_msg}")
 
             # Naming pattern rules
-            elif rule_type == 'naming':
-                pattern = rule.get('pattern', '')
-                files = report.get('files', [])
+            elif rule_type == "naming":
+                pattern = rule.get("pattern", "")
+                files = report.get("files", [])
                 if pattern:
-                    matched_files = [f for f in files if fnmatch.fnmatch(f, f"*{pattern}*") or fnmatch.fnmatch(f, pattern)]
+                    matched_files = [
+                        f
+                        for f in files
+                        if fnmatch.fnmatch(f, f"*{pattern}*")
+                        or fnmatch.fnmatch(f, pattern)
+                    ]
                     if not matched_files:
                         # This logic seems to be "warn if NO files match this pattern"
                         # which might not be what's intended for all naming rules.
@@ -130,8 +149,8 @@ class RuleValidator:
                         pass
 
         # Update report
-        report['issues'] = new_issues
-        report['architectural_ghosts'] = new_ghosts
-        report['red_flags'] = new_flags
+        report["issues"] = new_issues
+        report["architectural_ghosts"] = new_ghosts
+        report["red_flags"] = new_flags
 
         return report

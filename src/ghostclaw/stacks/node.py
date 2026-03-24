@@ -1,15 +1,16 @@
-"""Node.js / React / TypeScript stack analyzer with coupling."""
+"""Node.js / React / TypeScript stack analyzer with coupling and cognitive complexity."""
 
 from typing import Dict, List
 from ghostclaw.core.node_coupling import NodeImportAnalyzer
 from .base import StackAnalyzer
+from ghostclaw.lib.complexity import analyze_files_cognitive
 
 
 class NodeAnalyzer(StackAnalyzer):
     """Analyzes Node.js projects for architectural issues."""
 
     def get_extensions(self) -> List[str]:
-        return ['.ts', '.tsx', '.js', '.jsx']
+        return [".ts", ".tsx", ".js", ".jsx"]
 
     def get_large_file_threshold(self) -> int:
         return 400
@@ -25,13 +26,18 @@ class NodeAnalyzer(StackAnalyzer):
             analyzer = NodeImportAnalyzer(root)
             coupling_report = analyzer.analyze()
 
-            issues.extend(coupling_report.get('issues', []))
-            ghosts.extend(coupling_report.get('architectural_ghosts', []))
-            flags.extend(coupling_report.get('red_flags', []))
-            coupling_metrics = coupling_report.get('coupling_metrics', {})
+            issues.extend(coupling_report.get("issues", []))
+            ghosts.extend(coupling_report.get("architectural_ghosts", []))
+            flags.extend(coupling_report.get("red_flags", []))
+            coupling_metrics = coupling_report.get("coupling_metrics", {})
         except Exception as e:
             coupling_metrics = {}
             issues.append(f"Import analysis failed: {str(e)}")
+
+        # Add cognitive complexity metrics via complexipy (if available)
+        cognitive_data = analyze_files_cognitive(files)
+        if cognitive_data:
+            coupling_metrics.update(cognitive_data)
 
         # File size metrics handled by validator rules
 
@@ -40,5 +46,5 @@ class NodeAnalyzer(StackAnalyzer):
             "issues": issues,
             "architectural_ghosts": ghosts,
             "red_flags": flags,
-            "coupling_metrics": coupling_metrics
+            "coupling_metrics": coupling_metrics,
         }
