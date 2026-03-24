@@ -183,14 +183,16 @@ def test_cli_json_mode_streaming_to_stderr(tmp_path, capsys, monkeypatch):
         "ghostclaw.core.analyzer.CodebaseAnalyzer.analyze", mock_analyze, raising=True
     )
 
-    # Ensure analyzer has a registry since we mock analyze (which normally sets it)
+    # Ensure analyzer has a registry with async save_report; use the global registry instance
+    from ghostclaw.core.adapters.registry import registry as global_registry
     from ghostclaw.core.analyzer import CodebaseAnalyzer as _CAA
 
     _original_init = _CAA.__init__
 
     def _patched_init(self, *args, **kwargs):
         _original_init(self, *args, **kwargs)
-        self.registry = MagicMock()
+        # Use the global registry (with emit/save methods) instead of a MagicMock
+        self.registry = global_registry
 
     monkeypatch.setattr(
         "ghostclaw.core.analyzer.CodebaseAnalyzer.__init__", _patched_init, raising=True
@@ -227,6 +229,9 @@ def test_cli_json_mode_streaming_to_stderr(tmp_path, capsys, monkeypatch):
         sys.argv = ["ghostclaw", str(repo), "--json", "--use-ai"]
         cli_main()
         captured = capsys.readouterr()
+        # Debug: if JSON parsing fails, print captured.out and captured.err
+        print(f"\nDEBUG captured.out: {repr(captured.out)}", file=sys.__stderr__)
+        print(f"DEBUG captured.err: {repr(captured.err)}", file=sys.__stderr__)
         # stdout should be valid JSON
         output = json.loads(captured.out)
         # The ai_synthesis field should contain concatenated chunks

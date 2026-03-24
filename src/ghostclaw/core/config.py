@@ -355,12 +355,16 @@ class GhostclawConfig(BaseSettings):
             else:
                 resolved_config[k] = v
 
-        # Normalize top-level orchestrate flag: if orchestrate=True and no orchestrator config provided,
-        # create a minimal orchestrator config with enabled=True as a convenience.
-        if "orchestrate" in resolved_config and resolved_config["orchestrate"] is True:
-            if resolved_config.get("orchestrator") is None:
+        # Normalize top-level orchestrate flag:
+        # - If orchestrate=True and no orchestrator explicitly provided, ensure minimal orchestrator with enabled=True
+        # - If orchestrate=False and no orchestrator explicitly provided, clear orchestrator to None
+        orch_val = resolved_config.get("orchestrate")
+        if orch_val is not None:
+            orch_explicit = "orchestrator" in cli_overrides
+            if orch_val is True and not orch_explicit and resolved_config.get("orchestrator") is None:
                 resolved_config["orchestrator"] = {"enabled": True}
-                    # If it's a model instance, we could convert to dict and set, but rare; leave as is
+            elif orch_val is False and not orch_explicit:
+                resolved_config["orchestrator"] = None
 
         # print(f"DEBUG: GhostclawConfig.load - resolved_config['use_ai']={resolved_config.get('use_ai')}")
         return cls(**resolved_config)
