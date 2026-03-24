@@ -40,10 +40,9 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
           HEADER="## [${VERSION}]"
-          # Some entries have dash and date after: "## [v0.2.2a0] - 2026-03-22"
-          # So match the prefix line starting with ## [vX.Y.Z
-          awk -v ver="## [${VERSION}" '
-            $0 ~ ver {found=1; print_line=1; next}
+          # Use awk with index() to avoid regex escaping issues
+          awk -v hdr="$HEADER" '
+            index($0, hdr) > 0 {found=1; next}
             /^## \[/ && found {exit}
             found {print}
           ' CHANGELOG.md > release_notes.txt
