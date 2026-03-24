@@ -215,7 +215,7 @@ class AnalyzeCommand(Command):
             overrides['orchestrator']['cache_dir'] = args.orchestrate_cache_dir
         if getattr(args, 'orchestrate_history_len', None) is not None:
             overrides['orchestrator'] = overrides.get('orchestrator', {})
-            overrides['orchestrator']['history_len'] = args.orchestrate_history_len
+            overrides['orchestrator']['plugin_history_lookback'] = args.orchestrate_history_len
         # Alias for --no-orchestrate-cache (positive flag to disable)
         if getattr(args, 'orchestrate_no_cache', False):
             overrides['orchestrator'] = overrides.get('orchestrator', {})

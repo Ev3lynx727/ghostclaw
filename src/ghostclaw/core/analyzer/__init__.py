@@ -105,6 +105,14 @@ class CodebaseAnalyzer:
         root_path = Path(root)
         config = config or GhostclawConfig()
 
+        # Early registry creation: ensure self.registry exists for save_report even if we return early (cache hit)
+        from ghostclaw.core.adapters.registry import PluginRegistry
+        registry = PluginRegistry()
+        self.registry = registry
+        registry.register_internal_plugins()
+        if (root_path / ".ghostclaw" / "plugins").exists():
+            registry.load_external_plugins(root_path / ".ghostclaw" / "plugins")
+
         delta_mode = getattr(config, "delta_mode", False)
         delta_base_ref = getattr(config, "delta_base_ref", None) or "HEAD~1"
 
@@ -219,13 +227,6 @@ class CodebaseAnalyzer:
 
         # 4. Standardized Tool Ingestion via Adapters
         from ghostclaw.core.adapters.registry import PluginRegistry
-
-        # Create a fresh registry for this analysis to avoid global state mutations and races
-        registry = PluginRegistry()
-        self.registry = registry  # expose for later use (e.g., save_report)
-        registry.register_internal_plugins()
-        if (root_path / ".ghostclaw" / "plugins").exists():
-            registry.load_external_plugins(root_path / ".ghostclaw" / "plugins")
 
         # Compute enabled_plugins as a local variable (do not mutate global state)
         enabled_plugins: Optional[Set[str]] = None

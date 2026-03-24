@@ -46,7 +46,6 @@ class OrchestratorConfig(BaseModel):
     # v0.2.4 enhancements
     verbose: bool = False
     cache_dir: Optional[str] = None
-    history_len: int = 20
 
     plan_only: bool = False
     report_plan_details: bool = True

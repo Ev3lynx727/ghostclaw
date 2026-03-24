@@ -386,7 +386,7 @@ class TestOrchestrateCLIParser:
         assert overrides["orchestrator"]["cache_dir"] == "/custom/cache/dir"
 
     def test_orchestrate_history_len_flag_sets_override(self):
-        """--orchestrate-history-len should set orchestrator.history_len to the given int."""
+        """--orchestrate-history-len should set orchestrator.plugin_history_lookback to the given int."""
         cmd = AnalyzeCommand()
         args = Namespace(
             orchestrate=True,
@@ -415,7 +415,7 @@ class TestOrchestrateCLIParser:
         )
         overrides = cmd._build_cli_overrides(args)
         assert "orchestrator" in overrides
-        assert overrides["orchestrator"]["history_len"] == 50
+        assert overrides["orchestrator"]["plugin_history_lookback"] == 50
 
     def test_orchestrate_no_cache_alias_sets_override(self):
         """--orchestrate-no-cache should set orchestrator.enable_plan_cache=False."""
