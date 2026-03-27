@@ -241,6 +241,21 @@ ghostclaw plugins add ./path/to/custom_adapter
 ghostclaw plugins scaffold my-new-adapter
 ```
 
+### Storage Management
+
+Ghostclaw provides a dedicated command group for managing storage backends and data migration.
+
+```bash
+# List all available storage adapters (built-in + external) with their status
+ghostclaw storage list
+
+# Migrate data from SQLite to Supabase
+ghostclaw storage migrate --from sqlite --to supabase --dry-run  # preview
+ghostclaw storage migrate --from sqlite --to supabase           # execute
+```
+
+For Supabase migration, set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` environment variables. Use `--dry-run` to verify before writing. The migration script bats and inserts batches, preserving full report JSON.
+
 ### Orchestrator (Adaptive Routing)
 
 Ghostclaw includes an **orchestrator** plugin that intelligently selects which analysis adapters to run based on the repository's characteristics and historical performance. This reduces analysis time by 30-60% and produces cleaner, more relevant reports.
