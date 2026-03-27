@@ -6,6 +6,7 @@ All notable changes to Ghostclaw will be documented here.
 
 ### Added
 
+- **Supabase Storage Adapter** — Persist architectural reports to a Supabase (PostgreSQL) database for cloud-based history and team sharing. Enable via `plugins_enabled: ["supabase"]` in config or by installing the `supabase` extra (`pip install ghostclaw[supabase]`). Requires `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` environment variables.
 - **Native Logfire Telemetry** — Integrated Pydantic Logfire directly into the core engine. Activated via `GHOSTCLAW_TELEMETRY=1` (standardizes observability without external `logfire run` wrappers).
 - **Embedded Auto-Instrumentation** — Added OpenTelemetry hooks for `botocore`, `fastapi`, `flask`, `jinja2`, `redis`, `sqlalchemy`, `sqlite3`, `tornado`, and `urllib`.
 - **Telemetry Test Suite** — New unit tests (`test_telemetry.py`) and live integration tests (`test_logfire_live.py`) ensuring robust tracing.

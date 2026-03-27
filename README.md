@@ -421,6 +421,12 @@ Ghostclaw is designed to be fast out of the box, but for large repositories or s
 - **Automatic migration**: If you have legacy `.ghostclaw/reports/` or `.ghostclaw/cache/` from older versions, they will be automatically moved to the new storage layout on first run.
 - **QMD backend** (production-ready as of v0.2.1-beta): Use `--use-qmd` or set `use_qmd: true` in config for a high-performance alternative storage with AI-Buff optimizations (requires `ghostclaw[qmd]`).
   - AI-Buff includes: embedding cache, search cache, query planning, prefetching, auto-migration for legacy data, optional IVF-PQ index, adaptive alpha tuning, and result diversity.
+- **Supabase Cloud Storage** (v0.2.5+): Persist reports to a Supabase (PostgreSQL) database for cloud-based history and team sharing.
+  - Install the extra: `pip install ghostclaw[supabase]`.
+  - Set environment variables: `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` (or `SUPABASE_ANON_KEY`).
+  - Enable the adapter in config: `plugins_enabled: ["supabase"]` (or include it alongside other storage adapters).
+  - By default, Supabase is **disabled**; it must be explicitly enabled. When enabled together with SQLite (default), both will receive writes (dual-write). To use Supabase exclusively, set `plugins_enabled: ["supabase"]` (omit `sqlite`).
+  - A migration script is provided in `ghostclaw-experimental/supabase-integration/src/migrate.py` to import existing local SQLite history into Supabase.
 - MCP tools (`ghostclaw_mcp`) automatically detect and use the configured backend.
 
 ### Configuration File
