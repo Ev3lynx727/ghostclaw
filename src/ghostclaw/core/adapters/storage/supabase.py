@@ -167,5 +167,6 @@ class SupabaseStorageAdapter(StorageAdapter):
             "name": meta.name,
             "version": meta.version,
             "description": meta.description,
+            "dependencies": meta.dependencies,
             "available": HAS_SUPABASE,
         }

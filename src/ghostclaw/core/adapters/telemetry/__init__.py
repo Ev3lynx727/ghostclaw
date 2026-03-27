@@ -4,9 +4,12 @@ from typing import Optional
 from ghostclaw.core.adapters.telemetry.base import BaseTelemetryAdapter
 from ghostclaw.core.adapters.telemetry.logfire_adapter import LogfireTelemetryAdapter
 
+# Alias the logfire_adapter module as `logfire` for compatibility
+from . import logfire_adapter as logfire
+
 logger = logging.getLogger(__name__)
 
-__all__ = ["BaseTelemetryAdapter", "LogfireTelemetryAdapter", "bootstrap_telemetry"]
+__all__ = ["BaseTelemetryAdapter", "LogfireTelemetryAdapter", "bootstrap_telemetry", "logfire"]
 
 def bootstrap_telemetry() -> Optional[BaseTelemetryAdapter]:
     """
