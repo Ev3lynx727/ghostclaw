@@ -257,97 +257,101 @@ def legacy_main(args: argparse.Namespace) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Ghostclaw CLI — Architectural Analyzer"
-    )
-    parser.add_argument(
-        "--version", action="version", version=f"Ghostclaw {__version__}"
-    )
+    from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
+    adapter = bootstrap_telemetry()
+    
+    try:
+        parser = argparse.ArgumentParser(
+            description="Ghostclaw CLI — Architectural Analyzer"
+        )
+        parser.add_argument(
+            "--version", action="version", version=f"Ghostclaw {__version__}"
+        )
 
-    subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
+        subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
 
-    # Auto-discover commands
-    registry.auto_discover()
+        # Auto-discover commands
+        registry.auto_discover()
 
-    # Track the plugins parser specially to add subcommands
-    plugins_parser = None
-    plugins_subparsers = None
+        # Track the plugins parser specially to add subcommands
+        plugins_parser = None
+        plugins_subparsers = None
 
-    # Store command instances created during configuration
-    cmd_instances = {}
-    top_level_commands = set()
+        # Store command instances created during configuration
+        cmd_instances = {}
+        top_level_commands = set()
 
-    # Build parser from registry
-    for cmd_cls in registry.all():
-        cmd = cmd_cls()
-        cmd_instances[cmd.name] = cmd
-
-        # Track top-level command name (e.g., "plugins" from "plugins list")
-        top_level = cmd.name.split(" ")[0]
-        top_level_commands.add(top_level)
-
-        # Handle "plugins xxx" subcommands specially
-        if cmd.name.startswith("plugins "):
-            if not plugins_parser:
-                plugins_parser = subparsers.add_parser(
-                    "plugins", help="Manage architectural adapters/plugins"
-                )
-                plugins_subparsers = plugins_parser.add_subparsers(
-                    dest="plugin_command", help="Plugin sub-commands"
-                )
-
-            subcommand_name = cmd.name.split(" ", 1)[1]
-            subparser = plugins_subparsers.add_parser(
-                subcommand_name, help=cmd.description
-            )
-            cmd.configure_parser(subparser)
-        else:
-            subparser = subparsers.add_parser(cmd.name, help=cmd.description)
-            cmd.configure_parser(subparser)
-
-    # Pre-parse handling: directory shortcut and unknown command fallback
-    if len(sys.argv) > 1:
-        raw = sys.argv[1]
-        # Only apply shortcut/fallback for non-option arguments (skip flags like --help)
-        if not raw.startswith("-") and raw not in top_level_commands:
-            if os.path.isdir(raw):
-                sys.argv.insert(1, "analyze")
-            else:
-                print("Warning: Using legacy CLI mode...", file=sys.stderr)
-                legacy_ns = argparse.Namespace(command=raw)
-                exit_code = legacy_main(legacy_ns)
-                sys.exit(exit_code)
-                return exit_code
-
-    args = parser.parse_args()
-
-    # Setup global logging
-    setup_logging(verbose=getattr(args, "verbose", False))
-
-    if not args.command:
-        parser.print_help()
-        return 1
-
-    # Determine command name
-    cmd_name = args.command
-    if cmd_name == "plugins" and getattr(args, "plugin_command", None):
-        cmd_name = f"plugins {args.plugin_command}"
-
-    # Try modular command first, using the instances created during parser setup
-    cmd = cmd_instances.get(cmd_name)
-    if not cmd:
-        cmd_cls = registry.get(cmd_name)
-        if cmd_cls:
+        # Build parser from registry
+        for cmd_cls in registry.all():
             cmd = cmd_cls()
+            cmd_instances[cmd.name] = cmd
 
-    if cmd:
-        exit_code = asyncio.run(cmd.execute(args))
-        return exit_code
+            # Track top-level command name (e.g., "plugins" from "plugins list")
+            top_level = cmd.name.split(" ")[0]
+            top_level_commands.add(top_level)
 
-    # LEGACY: Fall back to monolithic code
-    print("Warning: Using legacy CLI mode...", file=sys.stderr)
-    exit_code = legacy_main(args)
-    return exit_code
+            # Handle "plugins xxx" subcommands specially
+            if cmd.name.startswith("plugins "):
+                if not plugins_parser:
+                    plugins_parser = subparsers.add_parser(
+                        "plugins", help="Manage architectural adapters/plugins"
+                    )
+                    plugins_subparsers = plugins_parser.add_subparsers(
+                        dest="plugin_command", help="Plugin sub-commands"
+                    )
+
+                subcommand_name = cmd.name.split(" ", 1)[1]
+                subparser = plugins_subparsers.add_parser(
+                    subcommand_name, help=cmd.description
+                )
+                cmd.configure_parser(subparser)
+            else:
+                subparser = subparsers.add_parser(cmd.name, help=cmd.description)
+                cmd.configure_parser(subparser)
+
+        # Pre-parse handling: directory shortcut and unknown command fallback
+        if len(sys.argv) > 1:
+            raw = sys.argv[1]
+            # Only apply shortcut/fallback for non-option arguments (skip flags like --help)
+            if not raw.startswith("-") and raw not in top_level_commands:
+                if os.path.isdir(raw):
+                    sys.argv.insert(1, "analyze")
+                else:
+                    print("Warning: Using legacy CLI mode...", file=sys.stderr)
+                    legacy_ns = argparse.Namespace(command=raw)
+                    exit_code = legacy_main(legacy_ns)
+                    sys.exit(exit_code)
+
+        args = parser.parse_args()
+
+        # Setup global logging
+        setup_logging(verbose=getattr(args, "verbose", False))
+
+        if not args.command:
+            parser.print_help()
+            return 1
+
+        # Determine command name
+        cmd_name = args.command
+        if cmd_name == "plugins" and getattr(args, "plugin_command", None):
+            cmd_name = f"plugins {args.plugin_command}"
+
+        # Try modular command first, using the instances created during parser setup
+        cmd = cmd_instances.get(cmd_name)
+        if not cmd:
+            cmd_cls = registry.get(cmd_name)
+            if cmd_cls:
+                cmd = cmd_cls()
+
+        if cmd:
+            return asyncio.run(cmd.execute(args))
+
+        # LEGACY: Fall back to monolithic code
+        print("Warning: Using legacy CLI mode...", file=sys.stderr)
+        return legacy_main(args)
+    finally:
+        if adapter:
+            adapter.flush()
 
 
 if __name__ == "__main__":

@@ -313,14 +313,21 @@ async def ghostclaw_memory_get_previous_run(
 
 def main():
     """Entry point for the MCP server."""
-    if not HAS_MCP:
-        print(
-            "Error: mcp-sdk not installed. Install with 'pip install ghostclaw[mcp]'.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
+    adapter = bootstrap_telemetry()
+    
+    try:
+        if not HAS_MCP:
+            print(
+                "Error: mcp-sdk not installed. Install with 'pip install ghostclaw[mcp]'.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
-    mcp.run()
+        mcp.run()
+    finally:
+        if adapter:
+            adapter.flush()
 
 
 if __name__ == "__main__":

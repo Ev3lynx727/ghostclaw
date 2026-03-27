@@ -2,9 +2,31 @@
 
 All notable changes to Ghostclaw will be documented here.
 
-## [v0.2.4] - Upcoming
+## [v0.2.5] - Upcoming
 
 ### Added
+
+- **Native Logfire Telemetry** — Integrated Pydantic Logfire directly into the core engine. Activated via `GHOSTCLAW_TELEMETRY=1` (standardizes observability without external `logfire run` wrappers).
+- **Embedded Auto-Instrumentation** — Added OpenTelemetry hooks for `botocore`, `fastapi`, `flask`, `jinja2`, `redis`, `sqlalchemy`, `sqlite3`, `tornado`, and `urllib`.
+- **Telemetry Test Suite** — New unit tests (`test_telemetry.py`) and live integration tests (`test_logfire_live.py`) ensuring robust tracing.
+- **Black Formatter** — Added `black` to dev dependencies alongside `ruff` for consistent code styling.
+
+### Improved
+
+- **Python 3.12 Standardization** — Added `.python-version` and updated `pyproject.toml` to enforce Python 3.12 for local development while maintaining `python >= 3.10` compatibility.
+- **Dependency Scoping** — Refactored `requirements-dev.txt` to use local editable extras (`-e .[full,mcp]`), eliminating redundant core package listings.
+- **Environment Example** — Updated `.env.example` with `GHOSTCLAW_TELEMETRY` documentation.
+
+### Fixed
+
+- **Pyproject Metadata** — Fixed `package-data` scoping and removed unresolvable dependencies (`codebert-score`, `complexipy`) from the `[full]` extra.
+
+---
+
+## [v0.2.4] - 2026-03-28
+
+### Added
+
 - **Orchestrator CLI flags** — new options:
   - `--orchestrate-verbose` — print detailed planning info to stderr
   - `--orchestrate-cache-dir <path>` — specify custom plan cache directory
@@ -16,6 +38,7 @@ All notable changes to Ghostclaw will be documented here.
 - **Comprehensive Orchestrator documentation** — added README section with LLM setup, config reference, troubleshooting
 
 ### Improved
+
 - **Registry robustness** — early creation in `CodebaseAnalyzer.analyze()` guarantees availability for `save_report`, fixing "Analyzer registry not available" errors.
 - **Duplicate plugin discovery** — noisy "Plugin name already registered" errors are now logged at DEBUG level; duplicates are skipped silently.
 - **Config validation** — core `OrchestratorConfig` now validates:
@@ -26,6 +49,7 @@ All notable changes to Ghostclaw will be documented here.
 - **Test coverage** — added 8 new unit tests for orchestrator CLI flags (total 21); full suite now 298 passed, 2 skipped.
 
 ### Fixed
+
 - `test_cli_json_mode_streaming_to_stderr` — fixed registry mocking issue
 - Orchestrator CLI tests — safe `getattr` usage for optional flags
 - Cache fingerprinting includes orchestrator parameters for accurate invalidation
@@ -35,11 +59,13 @@ All notable changes to Ghostclaw will be documented here.
 ## [v0.2.3] - 2026-03-24
 
 ### Added
+
 - **CI/CD Pipeline** — Introduced GitHub Actions for lint (ruff), test (pytest matrix), build verification, and automated releases (TestPyPI + PyPI).
 - **Release Workflows** — `release-testpypi.yml` triggers on tag push; `release-pypi.yml` for manual promotion to production.
 - **Comprehensive Test Suite** — Added 100+ new unit tests covering CLI, orchestrator, QMD, and vector store components.
 
 ### Improved
+
 - **Orchestrator Config Normalization** — Refined handling of `--orchestrate` and `--no-orchestrate` flags; config semantics now consistent and predictable.
 - **CLI Robustness** — Safe attribute access for optional flags (`getattr` usage) prevents crashes in test environments and edge cases.
 - **Analyzer Registry Handling** — `CodebaseAnalyzer` now properly sets `self.registry` for post-analysis operations (e.g., save_report).
@@ -47,6 +73,7 @@ All notable changes to Ghostclaw will be documented here.
 - **Lint Compliance** — Codebase now passes `ruff` check with zero errors (E701, E741, F401, etc.) under Python 3.12.
 
 ### Fixed
+
 - **`test_cli_json_mode_streaming_to_stderr`** — Fixed registry mocking issue causing JSON output failure in `--json` mode.
 - **Orchestrator CLI Tests** — Resolved `AttributeError` for missing optional CLI arguments by using safe defaults.
 - **Configuration Deep-Merge** — Nested dict overrides now merge correctly, preserving default values.
@@ -54,11 +81,13 @@ All notable changes to Ghostclaw will be documented here.
 - **Delta Mode Base Report Discovery** — Improved async SHA resolution and error handling.
 
 ### Documentation
+
 - Added `MIGRATION_GUIDE.md` for upgrading from v0.1.x to v0.2.x.
 - Extended README with Orchestrator section (setup, CLI options, experimental status).
 - Added benchmark scripts and QMD reference documentation.
 
 ### Tests
+
 - All tests passing: **290 passed, 2 skipped** (Python 3.10, 3.11, 3.12).
 - Added dedicated suites: `test_orchestrator_cli.py`, `test_orchestrator_integration.py`, `test_qmd_*`, `test_vector_store.py`.
 
@@ -67,6 +96,7 @@ All notable changes to Ghostclaw will be documented here.
 ## [v0.2.2a0] - Upcoming
 
 ### Added
+
 - **Orchestrator Integration** — Introduced `--orchestrate` / `--no-orchestrate` CLI flags to enable adaptive plugin routing via the `ghost-orchestrator` plugin.
 - **Orchestrator Config** — Added top-level `orchestrate` boolean (env: `GHOSTCLAW_ORCHESTRATE`) and `orchestrator` dict for fine-grained control (LLM, weights).
 - **Multi-Dimensional Scoring (Vibe Engine)** — Introduced a stack-aware scoring model that breaks down the 0-100 score into Complexity, Coupling, Cohesion, Naming, and Layering dimensions.
@@ -76,6 +106,7 @@ All notable changes to Ghostclaw will be documented here.
 - **40 New Unit Tests** — Comprehensive coverage for config, enforcement, and CLI behavior.
 
 ### Improved
+
 - **Performance Foundation (Phase 1)** — Implemented a multi-layered optimization strategy:
   - **Async Git Layer**: Optimized `AsyncGitExecutor` and `DiffCache` (LRU) to reduce Git overhead.
   - **Intelligent Caching**: Added `PerFileAnalysisCache` using SHA-256 content hashing to skip analysis for unchanged files.
@@ -88,6 +119,7 @@ All notable changes to Ghostclaw will be documented here.
 - **Schema Flexibility**: Updated `ArchitectureReport.issues` to `List[Any]` to support structured plugin data (e.g., Coderabbit) without validation errors.
 
 ### Fixed
+
 - **Bandit Plugin Timeout**: Added `timeout` support to the `AsyncProcessMetricAdapter` base class and fixed the Bandit plugin's handling of asynchronous timeouts.
 - **Plugin Discovery Regression**: Fixed an issue where entry-point plugins (like `orchestrator`) were not discovered unless a local `.ghostclaw/plugins` directory existed.
 
@@ -96,6 +128,7 @@ All notable changes to Ghostclaw will be documented here.
 ## [v0.2.1-beta] - 2026-03-17
 
 ### Added
+
 - **Phase 5: Migration** — `EmbeddingBackfillManager` for legacy QMD reports; auto-migration on startup; resumable state; CLI `ghostclaw qmd migrate status|stop|trigger`.
 - **Phase 6: Vector Optimization** — Optional IVF-PQ index (`VectorIndex.ensure_index()`); `QueryClassifier` for adaptive alpha; `max_chunks_per_report` diversity limit.
 - **docs/references.md** — Comprehensive source code reference for plugin developers.
@@ -103,12 +136,14 @@ All notable changes to Ghostclaw will be documented here.
 - **README Update** — Installation section now includes both `npm` and `pip` methods for clarity.
 
 ### Changed
+
 - **AI-Buff** features (caching, prefetch, query planning) are now production-ready (removed experimental label).
 - **QMD backend** is now considered stable for general use.
 - **Config:** Added `embedding_model` option to customize model name for `sentence-transformers` or `openai` backends (fastembed uses its own default).
 - **Versioning** — Pre-release versions now use `-beta` suffix (e.g., `0.2.1-beta`).
 
 ### Fixed
+
 - CLI import error: added `migrate_legacy_storage` stub in `core/migration.py`.
 - **`ghostclaw qmd-migrate` NameError**: Fixed missing `parser` reference in command handler.
 - **PySCN integration**: Gracefully handle repositories with no Python files (no false error issues).
@@ -119,6 +154,7 @@ All notable changes to Ghostclaw will be documented here.
 ## [v0.2.0-beta] - 2026-03-17
 
 ### Added
+
 - **QMD Hybrid Search** — combines BM25 (SQLite FTS5) with vector embeddings (LanceDB) for superior retrieval.
 - **Fastembed by default** — torch-free ONNX embeddings (~200MB) with CPU-optimized runtime.
 - **Configurable backends** — `--embedding-backend` choosing `fastembed` (default), `sentence-transformers`, or `openai`.
@@ -126,11 +162,13 @@ All notable changes to Ghostclaw will be documented here.
 - **Full test coverage** — 20/20 QMD-specific tests passing.
 
 ### Improved
+
 - **Search performance** — Legacy substring replaced with FTS5 → ~80× faster.
 - **Memory efficiency** — Vector store isolated per-db (`.ghostclaw/storage/qmd/lancedb/`).
 - **Error handling** — Graceful fallback chain: hybrid → BM25 → legacy.
 
 ### Fixed
+
 - SQLite function registration: `extract_searchable_text()` now connection-local.
 - `QMDMemoryStore` default `use_enhanced=False` preserves legacy behavior.
 - Vector store schema uses proper `pyarrow.Schema`.
@@ -138,6 +176,7 @@ All notable changes to Ghostclaw will be documented here.
 - Removed pandas dependency from vector store.
 
 ### Configuration
+
 ```json
 {
   "qmd": {
@@ -150,6 +189,7 @@ All notable changes to Ghostclaw will be documented here.
 ```
 
 ### Dependencies
+
 - `ghostclaw[qmd]` installs: `lancedb>=0.12.0`, `fastembed>=0.4.0`, `numpy>=1.24.0`.
 - `sentence-transformers` backend requires separate torch install.
 
@@ -158,22 +198,26 @@ All notable changes to Ghostclaw will be documented here.
 ## [v0.2.0-alpha] - 2026-03-14
 
 ### Highlights
+
 - **QMD backend** (experimental) — high-performance memory store using hybrid BM25 + vector search.
 - **Fastembed** default for embeddings (CPU-friendly, no torch).
 - **Configurable** embedding backends via `--embedding-backend`.
 - **Performance** — BM25 search p50 ~1.15ms on 1000 reports.
 
 ### Technical Details
+
 - BM25 via SQLite FTS5 with Porter stemming and custom `extract_searchable_text()`.
 - LanceDB vector store with chunking (issues, ghosts, flags, AI paragraphs).
 - Hybrid algorithm: parallel BM25+vector, MinMax normalization, configurable `alpha`.
 - Fallback chain: hybrid → BM25 → legacy substring.
 
 ### Testing
+
 - New tests: `test_vector_store.py`, `test_qmd_bm25.py`, `test_qmd_hybrid.py`.
 - Total QMD tests: 20/20 passing.
 
 ### Known Limitations
+
 - IVF-PQ index disabled (LanceDB API changes).
 - No embedding cache (AI-Buff Phase 3 pending).
 - Legacy migration not automated (Phase 5 pending).
@@ -183,11 +227,13 @@ All notable changes to Ghostclaw will be documented here.
 ## [v0.1.9] - 2026-03-12
 
 ### Added
+
 - **MemoryStore** — SQLite-backed persistent analysis history.
 - **MCP tools**: `ghostclaw_memory_search`, `ghostclaw_memory_get_run`, `ghostclaw_memory_list_runs`, `ghostclaw_memory_diff_runs`, `ghostclaw_knowledge_graph`.
 - Performance: search ~5ms, knowledge graph ~7.5ms (1000 runs).
 
 ### CLI
+
 - Full modular commander pattern.
 
 ---

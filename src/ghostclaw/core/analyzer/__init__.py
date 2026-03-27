@@ -249,7 +249,7 @@ class CodebaseAnalyzer:
 
             enabled_plugins = (
                 set(INTERNAL_PLUGINS) | set(registry.external_plugins)
-            ) - {"qmd", "orchestrator"}
+            ) - {"qmd", "orchestrator", "supabase"}
 
         if config.use_qmd and enabled_plugins is not None:
             enabled_plugins.add("sqlite")

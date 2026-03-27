@@ -15,7 +15,7 @@ from ghostclaw.core.config import GhostclawConfig
 logger = logging.getLogger(__name__)
 
 # Internal plugin names (for default enable/disable logic)
-INTERNAL_PLUGINS = ["pyscn", "ai-codeindex", "sqlite", "qmd", "json_target", "lizard"]
+INTERNAL_PLUGINS = ["pyscn", "ai-codeindex", "sqlite", "qmd", "json_target", "lizard", "supabase"]
 
 
 class PluginRegistry:
@@ -54,6 +54,7 @@ class PluginRegistry:
         from ghostclaw.core.adapters.metric.ai_codeindex import AICodeIndexAdapter
         from ghostclaw.core.adapters.storage.sqlite import SQLiteStorageAdapter
         from ghostclaw.core.adapters.storage.qmd import QMDStorageAdapter
+        from ghostclaw.core.adapters.storage.supabase import SupabaseStorageAdapter
         from ghostclaw.core.adapters.target.json import JsonTargetAdapter
         from ghostclaw.core.adapters.scoring.lizard import LizardScoringAdapter
 
@@ -62,6 +63,7 @@ class PluginRegistry:
             "ai-codeindex": AICodeIndexAdapter,
             "sqlite": SQLiteStorageAdapter,
             "qmd": QMDStorageAdapter,
+            "supabase": SupabaseStorageAdapter,
             "json_target": JsonTargetAdapter,
             "lizard": LizardScoringAdapter,
         }
