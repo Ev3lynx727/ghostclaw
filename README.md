@@ -431,6 +431,27 @@ Ghostclaw is designed to be fast out of the box, but for large repositories or s
 - Avoid `--no-parallel` on any non-trivial repository.
 - For extremely large repos, consider analyzing a specific subdirectory instead of the entire codebase.
 
+### Telemetry & Observability
+Ghostclaw includes optional telemetry adapters to monitor performance, errors, and operational insights.
+
+#### Logfire (Pydantic Telemetry)
+Integrated directly into the core engine, Logfire provides OpenTelemetry-based tracing without external wrappers.
+
+- Enable via environment: `GHOSTCLAW_TELEMETRY=1`
+- Auto-instruments common libraries: `httpx`, `fastapi`, `flask`, `sqlalchemy`, `redis`, and more.
+- Sends traces to Logfire (requires `logfire` package and account).
+- Disabled by default; set `GHOSTCLAW_TELEMETRY=0` or unset to turn off.
+
+```bash
+export GHOSTCLAW_TELEMETRY=1
+ghostclaw /path/to/repo
+```
+
+For local development, you can also run `logfire run ghostclaw ...` but the built-in integration is sufficient.
+
+#### Custom Telemetry Adapters
+Advanced users can implement their own telemetry adapter by implementing the `TelemetryAdapter` hook interface. See `docs/PLUGINS_GUIDE.md` for details.
+
 ### Storage & Memory Backend
 - Ghostclaw stores analysis results and history in `.ghostclaw/storage/` (reports, cache, SQLite DB).
 - **Automatic migration**: If you have legacy `.ghostclaw/reports/` or `.ghostclaw/cache/` from older versions, they will be automatically moved to the new storage layout on first run.
