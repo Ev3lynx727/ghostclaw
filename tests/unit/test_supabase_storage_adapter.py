@@ -1,8 +1,8 @@
 """Unit tests for SupabaseStorageAdapter."""
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from ghostclaw.core.adapters.storage.supabase import SupabaseStorageAdapter, HAS_SUPABASE
+from unittest.mock import patch, MagicMock
+from ghostclaw.core.adapters.storage.supabase import SupabaseStorageAdapter
 
 
 @pytest.fixture
