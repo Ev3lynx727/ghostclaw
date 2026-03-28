@@ -1,12 +1,18 @@
 """Unit tests for SupabaseStorageAdapter."""
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from ghostclaw.core.adapters.storage.supabase import SupabaseStorageAdapter, HAS_SUPABASE
+from unittest.mock import patch, MagicMock
+from ghostclaw.core.adapters.storage.supabase import SupabaseStorageAdapter
 
 
 @pytest.fixture
 def adapter():
+    """
+    Provide a fresh SupabaseStorageAdapter instance for tests.
+    
+    Returns:
+        SupabaseStorageAdapter: A new, unconfigured adapter instance.
+    """
     return SupabaseStorageAdapter()
 
 
@@ -66,6 +72,15 @@ async def test_supabase_save_report_success(adapter):
         with patch('ghostclaw.core.adapters.storage.supabase.create_client', return_value=mock_client):
             # Also patch asyncio.to_thread to run synchronously in test
             async def mock_to_thread(func):
+                """
+                Execute the provided callable synchronously and return its result.
+                
+                Parameters:
+                    func (Callable): A callable to be invoked.
+                
+                Returns:
+                    The value returned by `func`.
+                """
                 return func()
             with patch('asyncio.to_thread', side_effect=mock_to_thread):
                 report_id = await adapter.save_report(report)
@@ -105,6 +120,15 @@ async def test_supabase_get_history_success(adapter):
     with patch.dict('os.environ', {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_SERVICE_KEY": "testkey"}):
         with patch('ghostclaw.core.adapters.storage.supabase.create_client', return_value=mock_client):
             async def mock_to_thread(func):
+                """
+                Execute the provided callable synchronously and return its result.
+                
+                Parameters:
+                    func (Callable): A callable to be invoked.
+                
+                Returns:
+                    The value returned by `func`.
+                """
                 return func()
             with patch('asyncio.to_thread', side_effect=mock_to_thread):
                 history = await adapter.get_history(limit=2)

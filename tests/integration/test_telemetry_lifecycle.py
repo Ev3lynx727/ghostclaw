@@ -1,6 +1,4 @@
-import os
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # We need to ensure the module is patched before bootstrap_telemetry uses it
 def test_bootstrap_telemetry_disabled(monkeypatch):

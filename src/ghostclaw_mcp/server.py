@@ -312,7 +312,11 @@ async def ghostclaw_memory_get_previous_run(
 
 
 def main():
-    """Entry point for the MCP server."""
+    """
+    Start the Ghostclaw MCP server and initialize telemetry.
+    
+    Bootstraps the telemetry adapter, starts the optional MCP server if the MCP SDK is installed, and ensures the telemetry adapter is flushed on exit. If the MCP SDK is missing, prints an error message and exits the process with status code 1.
+    """
     from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
     adapter = bootstrap_telemetry()
     

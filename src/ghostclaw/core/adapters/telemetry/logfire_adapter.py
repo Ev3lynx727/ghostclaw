@@ -24,13 +24,30 @@ class LogfireTelemetryAdapter(BaseTelemetryAdapter):
     """
 
     def __init__(self):
+        """
+        Initialize the telemetry adapter and mark it as not configured.
+        
+        Sets the internal flag `self._initialized` to `False` to indicate Logfire has not been successfully configured yet.
+        """
         self._initialized = False
 
     @property
     def name(self) -> str:
+        """
+        Adapter name used to identify this telemetry adapter.
+        
+        Returns:
+            str: The adapter name `'logfire'`.
+        """
         return "logfire"
 
     def get_metadata(self) -> Any:
+        """
+        Provide adapter metadata for the Logfire telemetry adapter.
+        
+        Returns:
+            AdapterMetadata: Metadata with name "logfire", version "1.0.0", description "Pydantic Logfire telemetry integration", and supports_per_file_cache set to False.
+        """
         from ghostclaw.core.adapters.base import AdapterMetadata
         return AdapterMetadata(
             name=self.name,
@@ -40,11 +57,22 @@ class LogfireTelemetryAdapter(BaseTelemetryAdapter):
         )
 
     async def is_available(self) -> bool:
+        """
+        Check whether the Logfire library is available for use.
+        
+        Returns:
+            `true` if the Logfire package was successfully imported and is available, `false` otherwise.
+        """
         return logfire is not None
 
     def initialize(self, context: Optional[Dict[str, Any]] = None) -> None:
         """
-        Configure Logfire based on GHOSTCLAW_TELEMETRY environment variable.
+        Initialize Logfire telemetry when telemetry is enabled via the GHOSTCLAW_TELEMETRY environment variable.
+        
+        Performs conditional configuration and instrumentation of the Logfire client and marks the adapter as initialized on success. If telemetry is disabled or the Logfire package is unavailable, the function returns without side effects.
+        
+        Parameters:
+            context (Optional[Dict[str, Any]]): Optional initialization context (currently unused).
         """
         if os.environ.get("GHOSTCLAW_TELEMETRY") != "1":
             return
@@ -73,7 +101,12 @@ class LogfireTelemetryAdapter(BaseTelemetryAdapter):
 
     @hookimpl
     def ghost_get_metadata(self) -> Dict[str, Any]:
-        """Return plugin metadata for registry listing."""
+        """
+        Provide plugin metadata for registry listing.
+        
+        Returns:
+            metadata (Dict[str, Any]): Dictionary containing the adapter's `name`, `version`, and `description`.
+        """
         meta = self.get_metadata()
         return {
             "name": meta.name,
@@ -82,7 +115,11 @@ class LogfireTelemetryAdapter(BaseTelemetryAdapter):
         }
 
     def flush(self) -> None:
-        """Force flush Logfire spans."""
+        """
+        Shuts down Logfire to force a flush of any collected telemetry if the adapter was initialized.
+        
+        If Logfire is available and the adapter was initialized, calls logfire.shutdown(); failures during shutdown are logged.
+        """
         if self._initialized and logfire is not None:
             try:
                 logfire.shutdown()

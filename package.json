@@ -1,6 +1,6 @@
 {
     "name": "ghostclaw",
-    "version": "0.2.5a0",
+    "version": "0.2.5a1",
     "description": "Architectural code review assistant that perceives code vibes",
     "bin": {
         "ghostclaw": "./bin/ghostclaw.sh"
