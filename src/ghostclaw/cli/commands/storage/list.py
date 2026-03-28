@@ -130,9 +130,7 @@ class StorageListCommand(Command):
                 available = False
                 try:
                     if hasattr(plugin, "is_available"):
-                        # Call async in sync context
-                        import asyncio
-                        available = asyncio.run(plugin.is_available())
+                        available = await plugin.is_available()
                     else:
                         available = True
                 except Exception:
@@ -140,8 +138,9 @@ class StorageListCommand(Command):
 
                 enabled = name in enabled_set
 
-                    if hasattr(plugin, "is_available"):
-                        available = await plugin.is_available()
+                table.add_row(
+                    meta_name,
+                    str(meta_version),
                     meta_desc,
                     "✅" if available else "❌",
                     "✅" if enabled else "⭕",
@@ -169,8 +168,7 @@ class StorageListCommand(Command):
                 available = False
                 try:
                     if hasattr(plugin, "is_available"):
-                        import asyncio
-                        available = asyncio.run(plugin.is_available())
+                        available = await plugin.is_available()
                     else:
                         available = True
                 except Exception:

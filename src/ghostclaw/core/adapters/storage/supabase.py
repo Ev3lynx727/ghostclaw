@@ -1,7 +1,6 @@
 """Storage adapter using Supabase (PostgreSQL) for vibe history persistence."""
 
 import asyncio
-import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
