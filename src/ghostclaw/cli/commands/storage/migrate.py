@@ -1,14 +1,11 @@
 """CLI command: ghostclaw storage migrate — Migrate data between storage backends."""
 
 import argparse
-import asyncio
 import json
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 from ghostclaw.cli.commander import Command
-from ghostclaw.core.config import GhostclawConfig
 
 
 class StorageMigrateCommand(Command):
