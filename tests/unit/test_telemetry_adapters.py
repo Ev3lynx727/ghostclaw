@@ -1,6 +1,6 @@
 import pytest
-import pytest
-from unittest.mock import patch
+import os
+from unittest.mock import MagicMock, patch
 from ghostclaw.core.adapters.telemetry.logfire_adapter import LogfireTelemetryAdapter
 
 def test_logfire_adapter_inheritance():

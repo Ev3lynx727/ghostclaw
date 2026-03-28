@@ -13,12 +13,8 @@ __all__ = ["BaseTelemetryAdapter", "LogfireTelemetryAdapter", "bootstrap_telemet
 
 def bootstrap_telemetry() -> Optional[BaseTelemetryAdapter]:
     """
-    Bootstrap telemetry if enabled via GHOSTCLAW_TELEMETRY.
-    
-    If the environment variable GHOSTCLAW_TELEMETRY is set to "1", attempts to create and initialize a LogfireTelemetryAdapter and return it. If telemetry is not enabled or initialization fails, returns None.
-    
-    Returns:
-        Optional[BaseTelemetryAdapter]: An initialized telemetry adapter when bootstrapping succeeds, `None` otherwise.
+    Early bootstrap for telemetry.
+    Searches for an available telemetry adapter and initializes it.
     """
     if os.environ.get("GHOSTCLAW_TELEMETRY") != "1":
         return None

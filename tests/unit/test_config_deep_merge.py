@@ -101,11 +101,7 @@ class TestDeepMergeNestedConfig:
         assert orch.max_plugins == 8
 
     def test_orchestrator_empty_dict_creates_default_config(self):
-        """
-        Ensure that passing an empty `orchestrator` dict with `orchestrate=False` produces a default OrchestratorConfig.
-        
-        Verifies the orchestrator is created and has default field values: `enabled` is disabled, `use_llm` is disabled, and `max_plugins` equals 8.
-        """
+        """Providing an empty orchestrator dict with orchestrate=False should create a default OrchestratorConfig (enabled=False)."""
         config = GhostclawConfig.load(".", orchestrate=False, orchestrator={})
         assert config.orchestrator is not None
         assert isinstance(config.orchestrator, OrchestratorConfig)
