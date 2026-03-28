@@ -1,8 +1,6 @@
 import os
-import pytest
 import logfire
-from ghostclaw.lib.telemetry import init_telemetry
-
+from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
 def test_logfire_live_reporting(monkeypatch):
     """
     This test actually sends data to Logfire.
