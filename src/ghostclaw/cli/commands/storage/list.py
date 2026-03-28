@@ -78,7 +78,7 @@ class StorageListCommand(Command):
 
             # Determine which are enabled (via enabled_plugins filter)
             enabled_set = registry.enabled_plugins if registry.enabled_plugins is not None else set(
-                name for name, _ in storage_plugins
+                name for name, _, _ in storage_plugins
             )
 
             for name, meta, plugin in storage_plugins:
