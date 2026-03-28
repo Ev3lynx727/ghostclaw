@@ -17,7 +17,7 @@ class TestDeepMergeNestedConfig:
         assert config.orchestrator.use_llm is True
         assert config.orchestrator.enabled is False
         # Use actual default from codebase
-        assert config.orchestrator.llm_model == "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
+        assert config.orchestrator.llm_model == "openrouter/anthropic/claude-3-sonnet"
         assert config.orchestrator.vector_weight == 0.7
         assert config.orchestrator.max_plugins == 8
 
