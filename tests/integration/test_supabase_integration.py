@@ -84,11 +84,12 @@ async def main():
         history = await adapter.get_history(limit=5)
         print(f"✅ Retrieved {len(history)} reports")
         # Check if our ID is in the history
-        ids = [r.get("id") for r in history]
-        if report_id in ids:
+        ids = {str(r.get("id")) for r in history}
+        if str(report_id) in ids:
             print(f"✅ Our report ({report_id}) appears in history")
         else:
-            print(f"⚠️  Our report ID not in recent history (maybe index delay)")
+            print("❌ Saved report is missing from recent history")
+            sys.exit(1)
     except Exception as e:
         print(f"❌ Get history failed: {e}")
         sys.exit(1)
