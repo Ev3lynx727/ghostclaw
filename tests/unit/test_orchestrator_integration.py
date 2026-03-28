@@ -89,8 +89,11 @@ class TestOrchestratorEnforcement:
         result = asyncio.run(self._run_analyzer(config, tmp_path))
         assert result == {"orchestrator", "sqlite", "qmd"}
 
-    def test_orchestrator_dict_enabled_with_qmd(self, tmp_path):
+    def test_orchestrator_dict_enabled_with_qmd(self, tmp_path, monkeypatch):
         """Setting orchestrator={'enabled': True} with use_qmd=True also yields orchestrator + storage."""
+        # Isolate config to avoid global settings
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
         config = GhostclawConfig.load(
             str(tmp_path), orchestrator={"enabled": True}, use_qmd=True
         )

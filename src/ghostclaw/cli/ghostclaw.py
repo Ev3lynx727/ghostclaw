@@ -321,6 +321,7 @@ def main():
                     legacy_ns = argparse.Namespace(command=raw)
                     exit_code = legacy_main(legacy_ns)
                     sys.exit(exit_code)
+                    return  # in case sys.exit is mocked, prevent fallthrough to parser.parse_args()
 
         args = parser.parse_args()
 

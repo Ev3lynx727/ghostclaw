@@ -16,7 +16,8 @@ class TestDeepMergeNestedConfig:
         assert isinstance(config.orchestrator, OrchestratorConfig)
         assert config.orchestrator.use_llm is True
         assert config.orchestrator.enabled is False
-        assert config.orchestrator.llm_model == "openrouter/anthropic/claude-3-sonnet"
+        # Use actual default from codebase
+        assert config.orchestrator.llm_model == "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
         assert config.orchestrator.vector_weight == 0.7
         assert config.orchestrator.max_plugins == 8
 
@@ -61,16 +62,19 @@ class TestDeepMergeNestedConfig:
         monkeypatch.setenv("HOME", str(tmp_path))
         gc_dir = tmp_path / ".ghostclaw"
         gc_dir.mkdir()
+        # Valid base config: weights must sum to 1.0. Keep default vector_weight=0.7 and set heuristics_weight=0.3.
         local_cfg = {
             "orchestrator": {
                 "enabled": True,
                 "use_llm": False,
                 "max_plugins": 10,
-                "vector_weight": 0.6,
+                "vector_weight": 0.7,
+                "heuristics_weight": 0.3,
             }
         }
         (gc_dir / "ghostclaw.json").write_text(json.dumps(local_cfg))
 
+        # Override only use_llm
         config = GhostclawConfig.load(
             str(tmp_path),
             orchestrator={"use_llm": True}
@@ -79,8 +83,9 @@ class TestDeepMergeNestedConfig:
         assert orch.enabled is True
         assert orch.use_llm is True
         assert orch.max_plugins == 10
-        assert orch.vector_weight == 0.6
+        assert orch.vector_weight == 0.7
         assert orch.heuristics_weight == 0.3
+        # Other defaults preserved
         assert orch.plan_cache_ttl_hours == 24
 
     def test_supabase_partial_override_preserves_other_fields(self):
