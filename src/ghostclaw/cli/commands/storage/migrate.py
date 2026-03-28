@@ -258,9 +258,9 @@ class StorageMigrateCommand(Command):
 
             try:
                 if upsert:
-                    res = supabase.table("reports").upsert(batch).execute()
+                    supabase.table("reports").upsert(batch).execute()
                 else:
-                    res = supabase.table("reports").insert(batch).execute()
+                    supabase.table("reports").insert(batch).execute()
                 print(f"✅ Batch {i//batch_size + 1}/{(total+batch_size-1)//batch_size} ({len(batch)} rows)")
             except Exception as e:
                 print(f"❌ Error on batch {i//batch_size + 1}: {e}")
