@@ -10,7 +10,7 @@ def test_logfire_live_reporting(monkeypatch):
     monkeypatch.setenv("GHOSTCLAW_TELEMETRY", "1")
     
     # Initialize real telemetry
-    init_telemetry()
+    bootstrap_telemetry()
     
     # Create a manual span that should appear in the dashboard
     with logfire.span("Ghostclaw Live Integration Test"):
