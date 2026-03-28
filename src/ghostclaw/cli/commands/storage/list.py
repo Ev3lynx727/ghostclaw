@@ -140,8 +140,9 @@ class StorageListCommand(Command):
 
                 enabled = name in enabled_set
 
-                    if hasattr(plugin, "is_available"):
-                        available = await plugin.is_available()
+                table.add_row(
+                    meta_name,
+                    meta_version,
                     meta_desc,
                     "✅" if available else "❌",
                     "✅" if enabled else "⭕",
