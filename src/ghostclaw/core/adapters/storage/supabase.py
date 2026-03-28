@@ -149,8 +149,13 @@ class SupabaseStorageAdapter(StorageAdapter):
         )
         vcs = data.get("metadata", {}).get("vcs", {})
 
+        timestamp = data.get("timestamp")
+        if not timestamp:
+            timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
         # Prepare row
         row = {
+            "timestamp": timestamp,
             "vibe_score": data.get("vibe_score", 0),
             "stack": data.get("stack", "unknown"),
             "files_analyzed": data.get("files_analyzed", 0),
