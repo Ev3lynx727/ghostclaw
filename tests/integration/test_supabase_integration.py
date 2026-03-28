@@ -84,7 +84,7 @@ async def main():
         history = await adapter.get_history(limit=5)
         print(f"✅ Retrieved {len(history)} reports")
         # Check if our ID is in the history
-        ids = [r.get("id") for r in history]
+        ids = [str(r.get("id")) for r in history]
         if report_id in ids:
             print(f"✅ Our report ({report_id}) appears in history")
         else:
