@@ -11,9 +11,16 @@ All notable changes to Ghostclaw will be documented here.
 - **Embedded Auto-Instrumentation** — Added OpenTelemetry hooks for `botocore`, `fastapi`, `flask`, `jinja2`, `redis`, `sqlalchemy`, `sqlite3`, `tornado`, and `urllib`.
 - **Telemetry Test Suite** — New unit tests (`test_telemetry.py`) and live integration tests (`test_logfire_live.py`) ensuring robust tracing.
 - **Black Formatter** — Added `black` to dev dependencies alongside `ruff` for consistent code styling.
+- **Stability Test Suite** — New tests ensuring core reliability:
+  - `test_config_deep_merge.py` — validates nested configuration merging (orchestrator partial overrides preserve defaults)
+  - `test_fingerprint_orchestrator.py` — verifies cache fingerprint incorporates orchestrator parameters correctly
+- **Storage Adapter Package** — Added missing `__init__.py` to `ghostclaw/core/adapters/storage/` to ensure package integrity.
 
 ### Improved
 
+- **Orchestrator + QMD Interaction** — Fixed plugin selection when `orchestrator.enabled=True` with `use_qmd=True`; now correctly includes both `orchestrator` and storage adapters (`sqlite`, `qmd`).
+- **CLI Legacy Fallback** — Added `return` after `sys.exit()` in pre-parse unknown command handler to prevent fallthrough when `sys.exit` is mocked in tests.
+- **Test Isolation** — Added `HOME` environment isolation in `test_orchestrator_dict_enabled_with_qmd` to avoid global config pollution.
 - **Python 3.12 Standardization** — Added `.python-version` and updated `pyproject.toml` to enforce Python 3.12 for local development while maintaining `python >= 3.10` compatibility.
 - **Dependency Scoping** — Refactored `requirements-dev.txt` to use local editable extras (`-e .[full,mcp]`), eliminating redundant core package listings.
 - **Environment Example** — Updated `.env.example` with `GHOSTCLAW_TELEMETRY` documentation.
@@ -21,6 +28,9 @@ All notable changes to Ghostclaw will be documented here.
 ### Fixed
 
 - **Pyproject Metadata** — Fixed `package-data` scoping and removed unresolvable dependencies (`codebert-score`, `complexipy`) from the `[full]` extra.
+- **Unit Test Failures** — Resolved 3 previously failing tests ensuring full suite is green: `test_legacy_fallback`, `test_orchestrator_dict_enabled_with_qmd`, and associated integration tests.
+- **Cache Fingerprint Stability** — Verified that changing orchestrator parameters (max_plugins, vector_weight, etc.) produces distinct fingerprints; ensures accurate cache invalidation.
+- **Config Deep-Merge** — Fixed issue where partial dictionary overrides would replace entire nested config objects instead of merging.
 
 ---
 

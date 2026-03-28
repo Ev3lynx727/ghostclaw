@@ -103,7 +103,51 @@ Since v0.1.6, Ghostclaw uses a plugin-based adapter system.
 
 ---
 
-## 3. Automation and Webhook Issues
+## 4. AI & Orchestrator Issues
+
+### LLM API Authentication Fails
+
+**Symptom:** Using `--orchestrate-llm` or `use_llm=true` results in 401/403 errors from the LLM provider.
+**Cause:** Missing or invalid API key, or the model identifier is incorrect/unavailable on your account.
+**Solution:**
+- Set the correct environment variable for your provider:
+  - OpenRouter: `export OPENROUTER_API_KEY="sk-or-..."`
+  - Anthropic: `export ANTHROPIC_API_KEY="sk-ant-..."`
+- Verify the model name matches a model accessible with your key (e.g., `openrouter/anthropic/claude-3.5-sonnet`).
+- Use `--dry-run` to see the prompt without sending; test connectivity with a simple API call via `curl` or provider SDK.
+- Check for typos in `orchestrator.llm_model` config.
+
+### QMD Storage Initialization Fails
+
+**Symptom:** When enabling `--use-qmd`, Ghostclaw throws errors like "table not found" or "LanceDB/Arrow not available".
+**Cause:** QMD uses LanceDB for local vector storage; required dependencies (`pyarrow`, `lancedb`, `fastembed`) may be missing or incompatible.
+**Solution:**
+- Install QMD dependencies: `pip install "ghostclaw[qmd]"` or `pip install lancedb fastembed pyarrow`.
+- Ensure you have write permissions to the QMD directory (default: `.ghostclaw/qmd/`).
+- On Linux, you may need additional system libraries for Arrow; see LanceDB docs.
+- If the database is corrupted, delete `.ghostclaw/qmd/` (this resets vector history).
+
+### Orchestrator Not Activating Despite `--orchestrate`
+
+- Ensure `ghost-orchestrator` is installed: `pip list | grep ghost-orchestrator`
+- Check that `orchestrator.enabled` is `true` (the `--orchestrate` flag sets it automatically).
+- Verify the plugin appears in `ghostclaw plugins list`.
+
+### Plan Cache Not Being Used
+
+- Verify cache directory exists and is writable (`--orchestrate-cache-dir`).
+- Check that `enable_plan_cache` is `true`.
+- The cache key includes repository fingerprint + orchestrator config; any change invalidates the cache.
+
+### Vector Similarity Seems Off
+
+- Ensure QMD is enabled (`--use-qmd`) and that you have historical runs in `.ghostclaw/storage/`.
+- Increase `plugin_history_lookback` to consider more past runs (default 50).
+- The vector weight (`vector_weight`) and heuristics weight (`heuristics_weight`) must sum to ~1.0. Invalid values cause validation errors.
+
+---
+
+## 5. Automation and Webhook Issues
 
 ### PR Creation Fails / `HTTP 401 Unauthorized`
 
