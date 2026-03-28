@@ -26,6 +26,11 @@ from ghostclaw.core.models import ArchitectureReport
 
 async def main():
     # Check env vars
+    """
+    Run an end-to-end integration test that saves an ArchitectureReport to Supabase and verifies the saved report appears in recent history.
+    
+    This coroutine reads SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY) from the environment, initializes SupabaseStorageAdapter, checks adapter availability, constructs a sample ArchitectureReport, saves it to Supabase, retrieves recent reports (limit=5), and asserts the saved report ID is present. On any configuration error, adapter unavailability, model construction failure, save failure, or history retrieval/verification failure, the process exits with status code 1.
+    """
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:

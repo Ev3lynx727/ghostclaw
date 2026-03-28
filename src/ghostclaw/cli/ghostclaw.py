@@ -257,6 +257,14 @@ def legacy_main(args: argparse.Namespace) -> int:
 
 
 def main():
+    """
+    Start the Ghostclaw CLI, build argument parsers from the command registry, and dispatch the requested command.
+    
+    Bootstraps telemetry and configures logging, auto-discovers and registers modular commands into an argparse parser, and executes the selected modular command when available. If a command is not found, the function falls back to the legacy monolithic command handler. The telemetry adapter is flushed before the process exits.
+    
+    Returns:
+        int: Exit code returned by the executed command; returns 1 if no command is provided.
+    """
     from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
     adapter = bootstrap_telemetry()
     

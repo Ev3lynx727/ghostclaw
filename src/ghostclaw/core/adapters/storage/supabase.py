@@ -30,12 +30,27 @@ class SupabaseStorageAdapter(StorageAdapter):
     """Persists ArchitectureReports to a Supabase (PostgreSQL) database."""
 
     def __init__(self):
+        """
+        Initialize the adapter's internal state for lazy Supabase client management.
+        
+        Sets up cached attributes used during client creation and tracking:
+        - _client: cached Supabase client instance or None until created.
+        - _url: cached Supabase URL used to create the client.
+        - _key: cached Supabase service or anon key used to create the client.
+        - _initialized: flag indicating whether an initialization attempt has completed.
+        """
         self._client: Optional[Client] = None
         self._url: Optional[str] = None
         self._key: Optional[str] = None
         self._initialized = False
 
     def get_metadata(self) -> AdapterMetadata:
+        """
+        Provide adapter metadata for the Supabase storage adapter.
+        
+        Returns:
+            AdapterMetadata: Metadata containing the adapter's name ("supabase"), version ("0.1.0"), a short description indicating JSONB support, and the runtime dependency list (["supabase"]).
+        """
         return AdapterMetadata(
             name="supabase",
             version="0.1.0",
@@ -44,11 +59,22 @@ class SupabaseStorageAdapter(StorageAdapter):
         )
 
     async def is_available(self) -> bool:
-        """Supabase adapter is available if the supabase library is installed."""
+        """
+        Indicates whether the Supabase storage adapter can be used.
+        
+        @returns `true` if the Supabase client library is installed and available, `false` otherwise.
+        """
         return HAS_SUPABASE
 
     async def _ensure_client(self) -> Optional[Client]:
-        """Initialize Supabase client from environment if not already done."""
+        """
+        Create and cache a Supabase client using environment credentials if available.
+        
+        Attempts to build a client from SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY), stores it on the instance, and marks the adapter initialized. Returns `None` if the supabase library is unavailable, required environment variables are missing, or client construction fails.
+        
+        Returns:
+            Client or `None`: The cached `Client` instance if created, `None` otherwise.
+        """
         if self._client is not None:
             return self._client
 
@@ -76,11 +102,32 @@ class SupabaseStorageAdapter(StorageAdapter):
 
     @hookimpl
     async def ghost_save_report(self, report: Any) -> Optional[str]:
-        """Hook implementation for saving report."""
+        """
+        Plugin hook that saves a report to Supabase and returns the stored row ID.
+        
+        Parameters:
+        	report (Any): A report object or mapping; if the object supports `model_dump`, its dict representation will be used.
+        
+        Returns:
+        	inserted_id (Optional[str]): The ID of the inserted report row as a string on success, or `None` if the adapter is not available.
+        """
         return await self.save_report(report)
 
     async def save_report(self, report: Any) -> str:
-        """Save a report to Supabase and return its ID."""
+        """
+        Persist a report into the Supabase "reports" table and return the inserted row's ID.
+        
+        The function accepts either a dict-like report or an object exposing `model_dump()`. It extracts repository and VCS context (falling back to sensible defaults), writes summary fields and the full report JSON into the `reports` table, and returns the database ID of the inserted row.
+        
+        Parameters:
+            report (Any): Report data as a dict or an object with a `model_dump()` method.
+        
+        Returns:
+            str: The ID of the inserted report row.
+        
+        Raises:
+            RuntimeError: If the Supabase client is not available, if the insert returns no data, or if insertion fails.
+        """
         client = await self._ensure_client()
         if client is None:
             raise RuntimeError(
@@ -117,6 +164,12 @@ class SupabaseStorageAdapter(StorageAdapter):
 
         # Perform insert in a thread to avoid blocking
         def _insert():
+            """
+            Execute insertion of the prepared `row` into the Supabase "reports" table and return the response.
+            
+            Returns:
+                The Supabase response object returned by the client's `execute()` call (contains `data`, `error`, and related fields).
+            """
             res = client.table("reports").insert(row).execute()
             return res
 
@@ -131,7 +184,18 @@ class SupabaseStorageAdapter(StorageAdapter):
             raise RuntimeError(f"Failed to insert report into Supabase: {e}")
 
     async def get_history(self, limit: int = 10) -> List[Any]:
-        """Retrieve recent reports from Supabase."""
+        """
+        Fetches recent report rows from Supabase ordered by timestamp descending.
+        
+        Parameters:
+            limit (int): Maximum number of rows to return.
+        
+        Returns:
+            List[Any]: A list of row dictionaries from the `reports` table, ordered newest first.
+        
+        Raises:
+            RuntimeError: If the Supabase client is not available or if fetching the history fails.
+        """
         client = await self._ensure_client()
         if client is None:
             raise RuntimeError(
@@ -140,6 +204,12 @@ class SupabaseStorageAdapter(StorageAdapter):
             )
 
         def _select():
+            """
+            Query the Supabase "reports" table for the most recent rows limited by the enclosing `limit` value.
+            
+            Returns:
+                The Supabase query response object from execute(), which includes the retrieved rows (accessible via `res.data`) and any metadata or error information.
+            """
             res = (
                 client.table("reports")
                 .select("*")
@@ -161,7 +231,12 @@ class SupabaseStorageAdapter(StorageAdapter):
 
     @hookimpl
     def ghost_get_metadata(self) -> Dict[str, Any]:
-        """Expose metadata to the plugin manager."""
+        """
+        Return adapter metadata formatted for the plugin manager.
+        
+        Returns:
+            metadata (Dict[str, Any]): Mapping with keys "name", "version", "description", "dependencies", and "available" where "available" is `True` if the Supabase client dependency was successfully imported, otherwise `False`.
+        """
         meta = self.get_metadata()
         return {
             "name": meta.name,

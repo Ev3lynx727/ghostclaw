@@ -16,13 +16,34 @@ class StorageMigrateCommand(Command):
 
     @property
     def name(self) -> str:
+        """
+        Command name for the storage migration CLI.
+        
+        Returns:
+            str: The command name "storage-migrate".
+        """
         return "storage-migrate"
 
     @property
     def description(self) -> str:
+        """
+        Command description for the storage-migrate CLI command.
+        
+        Returns:
+            A short description string used in CLI help and command listings.
+        """
         return "Migrate reports from SQLite to Supabase (or other storage backends)"
 
     def configure_parser(self, parser: argparse.ArgumentParser):
+        """
+        Register CLI arguments for the `storage-migrate` command.
+        
+        Adds options to select source and target backends, provide SQLite and Supabase connection info,
+        and control migration behavior (dry run, batch size, omit IDs, upsert, and repository path).
+        
+        Parameters:
+            parser (argparse.ArgumentParser): The argument parser to configure with command options.
+        """
         parser.add_argument(
             "--from",
             dest="source",
@@ -84,6 +105,25 @@ class StorageMigrateCommand(Command):
         )
 
     async def execute(self, args) -> int:
+        """
+        Run the storage-migrate command to migrate report records from a local SQLite database to a Supabase project.
+        
+        Parameters:
+            args (argparse.Namespace): Parsed CLI arguments with the following relevant attributes:
+                - source (str): Source backend name (must be "sqlite").
+                - target (str): Target backend name (must be "supabase").
+                - sqlite_db (Path | str | None): Path to the SQLite database file; if None a default path under the repository is used.
+                - supabase_url (str | None): Supabase project URL; may be provided via SUPABASE_URL env var.
+                - supabase_key (str | None): Supabase service key; may be provided via SUPABASE_SERVICE_KEY or SUPABASE_ANON_KEY env var.
+                - dry_run (bool): If true, prints a preview and makes no changes.
+                - batch_size (int): Number of records to send to Supabase per batch.
+                - omit_id (bool): If true, removes the `id` field from records before inserting/upserting.
+                - upsert (bool): If true, use upsert instead of insert when sending data to Supabase.
+                - repo (Path | str | None): Repository path used to resolve the default SQLite location.
+        
+        Returns:
+            int: Exit code where `0` indicates success and any non-zero value indicates a failure.
+        """
         repo_path = args.repo or Path.cwd()
 
         if args.source != "sqlite":
@@ -162,7 +202,17 @@ class StorageMigrateCommand(Command):
         return 0
 
     def _fetch_sqlite_reports(self, sqlite_path: Path) -> list:
-        """Read all rows from the SQLite reports table."""
+        """
+        Load and normalize all records from the SQLite "reports" table.
+        
+        Each database row is converted to a dict. If a row's `timestamp` is a string in the format "YYYY-MM-DD HH:MM:SS", it is converted to an ISO 8601 string with a trailing "Z". If `report_json` is stored as a JSON string it is parsed to a Python object.
+        
+        Parameters:
+            sqlite_path (Path): Path to the SQLite database file containing the `reports` table.
+        
+        Returns:
+            list: A list of report dictionaries with normalized `timestamp` and `report_json` fields when applicable.
+        """
         conn = sqlite3.connect(sqlite_path)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
@@ -189,7 +239,18 @@ class StorageMigrateCommand(Command):
         return reports
 
     def _migrate_reports(self, supabase, reports: list, batch_size: int = 100, omit_id: bool = False, upsert: bool = False):
-        """Insert reports into Supabase in batches."""
+        """
+        Migrate a list of report records into the Supabase "reports" table using batched inserts or upserts.
+        
+        Per-batch behavior: slices `reports` into batches of size `batch_size`, optionally removes the `"id"` key from each record when `omit_id` is True, and performs either `insert` or `upsert` against the Supabase client. Prints a progress line for each successful batch; on failure prints an error line for the batch and re-raises the exception.
+        
+        Parameters:
+            supabase: Supabase client instance with a `.table("reports")` interface exposing `insert(...).execute()` and `upsert(...).execute()` methods.
+            reports (list): List of report dictionaries to migrate.
+            batch_size (int): Number of records to send per request.
+            omit_id (bool): If True, remove the `"id"` key from records before sending.
+            upsert (bool): If True use upsert operations; otherwise use insert.
+        """
         total = len(reports)
         for i in range(0, total, batch_size):
             batch = reports[i:i+batch_size]
