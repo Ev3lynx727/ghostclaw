@@ -1,4 +1,4 @@
--e .[mcp,ai-codeindex,pyscn,telemetry]
+-e .[mcp,ai-codeindex,pyscn,telemetry,supabase]
 
 # Dev tools
 pytest>=8.0.0
