@@ -267,8 +267,8 @@ This affects all tools provided by this server instance.
 
 - **MCP Tools Reference**: See `src/ghostclaw_mcp/server.py` for available tools and parameters.
 - **Ghostclaw Docs**: `README.md`, `docs/`
-- **MCP Specification**: https://modelcontextprotocol.io/
+- **MCP Specification**: <https://modelcontextprotocol.io/>
 
 ---
 
-**Last updated:** 2026-03-12 (Ghostclaw v0.2.0)
+**Last updated:** 2026-03-29 (Ghostclaw v0.2.5a0)
