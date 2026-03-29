@@ -1,5 +1,4 @@
 import pytest
-import pytest
 from unittest.mock import patch
 from ghostclaw.core.adapters.telemetry.logfire_adapter import LogfireTelemetryAdapter
 
@@ -60,6 +59,6 @@ def test_logfire_flush_uninitialized():
     adapter = LogfireTelemetryAdapter()
     adapter._initialized = False
     
-    with patch("ghostclaw.core.adapters.telemetry.logfire.logfire") as mock_lf:
+    with patch("ghostclaw.core.adapters.telemetry.logfire_adapter.logfire") as mock_lf:
         adapter.flush()
         mock_lf.shutdown.assert_not_called()

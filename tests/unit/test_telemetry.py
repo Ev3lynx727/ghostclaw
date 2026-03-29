@@ -1,7 +1,4 @@
-import os
-import sys
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
 
 def test_telemetry_disabled_by_default(monkeypatch):

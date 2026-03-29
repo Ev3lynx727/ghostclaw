@@ -20,6 +20,6 @@ def test_logfire_live_reporting(monkeypatch):
 if __name__ == "__main__":
     # Allow running directly
     os.environ["GHOSTCLAW_TELEMETRY"] = "1"
-    init_telemetry()
+    bootstrap_telemetry()
     with logfire.span("Ghostclaw Manual Run"):
         print("Manual span started...")

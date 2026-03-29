@@ -2,11 +2,9 @@
 
 import argparse
 from pathlib import Path
-from typing import Optional
 
 from ghostclaw.cli.commander import Command
 from ghostclaw.core.adapters.registry import PluginRegistry
-from ghostclaw.core.config import GhostclawConfig
 
 
 class StorageListCommand(Command):
@@ -66,9 +64,6 @@ class StorageListCommand(Command):
         local_plugins = repo_path / ".ghostclaw" / "plugins"
         if local_plugins.exists():
             registry.load_external_plugins(local_plugins)
-
-        # Collect metadata
-        metadata_list = registry.get_plugin_metadata()
 
         # Filter to storage adapters only (those that have ghost_save_report)
         storage_plugins = []
