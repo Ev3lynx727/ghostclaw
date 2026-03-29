@@ -125,9 +125,7 @@ class StorageListCommand(Command):
                 available = False
                 try:
                     if hasattr(plugin, "is_available"):
-                        # Call async in sync context
-                        import asyncio
-                        available = asyncio.run(plugin.is_available())
+                        available = await plugin.is_available()
                     else:
                         available = True
                 except Exception:
@@ -165,8 +163,7 @@ class StorageListCommand(Command):
                 available = False
                 try:
                     if hasattr(plugin, "is_available"):
-                        import asyncio
-                        available = asyncio.run(plugin.is_available())
+                        available = await plugin.is_available()
                     else:
                         available = True
                 except Exception:
