@@ -288,6 +288,7 @@ def main():
         # Track the storage parser similarly
         storage_parser = None
         storage_subparsers = None
+        storage_subparsers = None
 
         # Store command instances created during configuration
         cmd_instances = {}
