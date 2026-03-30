@@ -1,6 +1,4 @@
-import os
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # We need to ensure the module is patched before bootstrap_telemetry uses it
 def test_bootstrap_telemetry_disabled(monkeypatch):
@@ -14,15 +12,15 @@ def test_bootstrap_telemetry_enabled(monkeypatch):
     """Verify bootstrap returns an initialized adapter when enabled."""
     monkeypatch.setenv("GHOSTCLAW_TELEMETRY", "1")
     
-    with patch("ghostclaw.core.adapters.telemetry.logfire.logfire") as mock_lf:
+    with patch("ghostclaw.core.adapters.telemetry.logfire_adapter.logfire") as mock_lf:
         # Manually ensure the module-level 'logfire' is our mock
-        import ghostclaw.core.adapters.telemetry.logfire as logfire_mod
+        import ghostclaw.core.adapters.telemetry.logfire_adapter as logfire_mod
         monkeypatch.setattr(logfire_mod, "logfire", mock_lf)
         
         from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
         adapter = bootstrap_telemetry()
         
-        from ghostclaw.core.adapters.telemetry.logfire import LogfireTelemetryAdapter
+        from ghostclaw.core.adapters.telemetry.logfire_adapter import LogfireTelemetryAdapter
         assert isinstance(adapter, LogfireTelemetryAdapter)
         assert adapter._initialized is True
         mock_lf.configure.assert_called_once()
@@ -31,8 +29,8 @@ def test_telemetry_bootstrap_idempotency(monkeypatch):
     """Verify calling bootstrap multiple times works correctly."""
     monkeypatch.setenv("GHOSTCLAW_TELEMETRY", "1")
     
-    with patch("ghostclaw.core.adapters.telemetry.logfire.logfire") as mock_lf:
-        import ghostclaw.core.adapters.telemetry.logfire as logfire_mod
+    with patch("ghostclaw.core.adapters.telemetry.logfire_adapter.logfire") as mock_lf:
+        import ghostclaw.core.adapters.telemetry.logfire_adapter as logfire_mod
         monkeypatch.setattr(logfire_mod, "logfire", mock_lf)
         
         from ghostclaw.core.adapters.telemetry import bootstrap_telemetry

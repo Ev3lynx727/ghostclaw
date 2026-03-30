@@ -49,7 +49,11 @@ class PluginRegistry:
         # Internal registry of plugins for runtime filtering
 
     def register_internal_plugins(self):
-        """Register built-in adapters if not already registered."""
+        """
+        Register the built-in adapter plugins and then discover external entry-point plugins.
+        
+        Registers each built-in adapter under a stable name if a plugin with that name is not already present in the plugin manager, and records registered names in the registry's internal_plugins set. After registering built-ins, triggers discovery of entry-point plugins so pip-installed plugins are loaded.
+        """
         from ghostclaw.core.adapters.metric.pyscn import PySCNAdapter
         from ghostclaw.core.adapters.metric.ai_codeindex import AICodeIndexAdapter
         from ghostclaw.core.adapters.storage.sqlite import SQLiteStorageAdapter

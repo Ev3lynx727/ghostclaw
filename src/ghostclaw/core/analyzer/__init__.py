@@ -101,7 +101,14 @@ class CodebaseAnalyzer:
         use_cache: bool = True,
         config: Optional[GhostclawConfig] = None,
     ) -> ArchitectureReport:
-        """Perform a complete architectural analysis of a codebase."""
+        """
+        Perform a complete architectural analysis of the codebase at the given root.
+        
+        May use the configured local cache when `use_cache` is true; on a cache hit a previously computed report is returned instead of recomputing.
+        
+        Returns:
+            ArchitectureReport: The assembled analysis report including vibe scores, detailed metrics, issues, architectural ghosts, red flags, coupling metrics, adapter errors, and metadata (including VCS and delta information when available). 
+        """
         root_path = Path(root)
         config = config or GhostclawConfig()
 

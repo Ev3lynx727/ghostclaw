@@ -1,8 +1,6 @@
 import os
-import pytest
 import logfire
-from ghostclaw.lib.telemetry import init_telemetry
-
+from ghostclaw.core.adapters.telemetry import bootstrap_telemetry
 def test_logfire_live_reporting(monkeypatch):
     """
     This test actually sends data to Logfire.
@@ -12,7 +10,7 @@ def test_logfire_live_reporting(monkeypatch):
     monkeypatch.setenv("GHOSTCLAW_TELEMETRY", "1")
     
     # Initialize real telemetry
-    init_telemetry()
+    bootstrap_telemetry()
     
     # Create a manual span that should appear in the dashboard
     with logfire.span("Ghostclaw Live Integration Test"):
@@ -22,6 +20,6 @@ def test_logfire_live_reporting(monkeypatch):
 if __name__ == "__main__":
     # Allow running directly
     os.environ["GHOSTCLAW_TELEMETRY"] = "1"
-    init_telemetry()
+    bootstrap_telemetry()
     with logfire.span("Ghostclaw Manual Run"):
         print("Manual span started...")

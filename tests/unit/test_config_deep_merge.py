@@ -17,7 +17,7 @@ class TestDeepMergeNestedConfig:
         assert config.orchestrator.use_llm is True
         assert config.orchestrator.enabled is False
         # Use actual default from codebase
-        assert config.orchestrator.llm_model == "openrouter/nvidia/nemotron-3-nano-30b-a3b:free"
+        assert config.orchestrator.llm_model == "openrouter/anthropic/claude-3-sonnet"
         assert config.orchestrator.vector_weight == 0.7
         assert config.orchestrator.max_plugins == 8
 
@@ -101,7 +101,11 @@ class TestDeepMergeNestedConfig:
         assert orch.max_plugins == 8
 
     def test_orchestrator_empty_dict_creates_default_config(self):
-        """Providing an empty orchestrator dict with orchestrate=False should create a default OrchestratorConfig (enabled=False)."""
+        """
+        Ensure that passing an empty `orchestrator` dict with `orchestrate=False` produces a default OrchestratorConfig.
+        
+        Verifies the orchestrator is created and has default field values: `enabled` is disabled, `use_llm` is disabled, and `max_plugins` equals 8.
+        """
         config = GhostclawConfig.load(".", orchestrate=False, orchestrator={})
         assert config.orchestrator is not None
         assert isinstance(config.orchestrator, OrchestratorConfig)

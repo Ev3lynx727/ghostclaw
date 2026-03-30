@@ -34,6 +34,8 @@ dependencies = [
     "pluggy>=1.0.0",
     "aiosqlite>=0.20.0",
     "lizard>=1.21.2",
+    "logfire>=4.30.0",
+    "pydantic-ai-slim[openai]>=1.73.0",
 ]
 
 [project.optional-dependencies]
