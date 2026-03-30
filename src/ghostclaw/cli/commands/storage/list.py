@@ -109,17 +109,17 @@ class StorageListCommand(Command):
                 meta_name = name
                 meta_version = "?"
                 meta_desc = ""
-                if meta:
+                if meta and isinstance(meta, dict):
+                    meta_name = meta.get("name", name)
+                    meta_version = meta.get("version", "?")
+                    meta_desc = meta.get("description", "")
+                elif meta:
                     if hasattr(meta, "name"):
                         meta_name = getattr(meta.name, "value", meta.name) if hasattr(meta.name, "value") else meta.name
                     if hasattr(meta, "version"):
                         meta_version = meta.version
                     if hasattr(meta, "description"):
                         meta_desc = meta.description
-                elif isinstance(meta, dict):
-                    meta_name = meta.get("name", name)
-                    meta_version = meta.get("version", "?")
-                    meta_desc = meta.get("description", "")
 
                 # Check availability
                 available = False
