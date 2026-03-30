@@ -210,12 +210,11 @@ class StorageMigrateCommand(Command):
         Returns:
             list: A list of report dictionaries with normalized `timestamp` and `report_json` fields when applicable.
         """
-        conn = sqlite3.connect(sqlite_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM reports ORDER BY id")
-        rows = cur.fetchall()
-        conn.close()
+        with sqlite3.connect(sqlite_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM reports ORDER BY id")
+            rows = cur.fetchall()
 
         reports = []
         for row in rows:
