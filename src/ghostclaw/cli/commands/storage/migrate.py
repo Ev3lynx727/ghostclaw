@@ -19,7 +19,7 @@ class StorageMigrateCommand(Command):
         Returns:
             str: The command name "storage-migrate".
         """
-        return "storage-migrate"
+        return "storage migrate"
 
     @property
     def description(self) -> str:

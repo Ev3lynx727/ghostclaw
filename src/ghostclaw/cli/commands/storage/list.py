@@ -18,7 +18,7 @@ class StorageListCommand(Command):
         Returns:
             command_name (str): The literal string 'storage-list'.
         """
-        return "storage-list"
+        return "storage list"
 
     @property
     def description(self) -> str:

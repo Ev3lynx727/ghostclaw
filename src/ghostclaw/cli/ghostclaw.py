@@ -313,6 +313,21 @@ def main():
                     subcommand_name, help=cmd.description
                 )
                 cmd.configure_parser(subparser)
+            # Handle "storage xxx" subcommands similarly
+            elif cmd.name.startswith("storage "):
+                if not storage_parser:
+                    storage_parser = subparsers.add_parser(
+                        "storage", help="Manage storage adapters and operations"
+                    )
+                    storage_subparsers = storage_parser.add_subparsers(
+                        dest="storage_command", help="Storage sub-commands"
+                    )
+
+                subcommand_name = cmd.name.split(" ", 1)[1]
+                subparser = storage_subparsers.add_parser(
+                    subcommand_name, help=cmd.description
+                )
+                cmd.configure_parser(subparser)
             else:
                 subparser = subparsers.add_parser(cmd.name, help=cmd.description)
                 cmd.configure_parser(subparser)
@@ -344,6 +359,8 @@ def main():
         cmd_name = args.command
         if cmd_name == "plugins" and getattr(args, "plugin_command", None):
             cmd_name = f"plugins {args.plugin_command}"
+        elif cmd_name == "storage" and getattr(args, "storage_command", None):
+            cmd_name = f"storage {args.storage_command}"
 
         # Try modular command first, using the instances created during parser setup
         cmd = cmd_instances.get(cmd_name)
