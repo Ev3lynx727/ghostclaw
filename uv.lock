@@ -560,7 +560,7 @@ wheels = [
 
 [[package]]
 name = "ghostclaw"
-version = "0.2.5a1"
+version = "0.2.5b2"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },

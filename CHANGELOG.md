@@ -2,7 +2,7 @@
 
 All notable changes to Ghostclaw will be documented here.
 
-## [v0.2.5] - Upcoming
+## [v0.2.5b2] - 2026-04-01
 
 ### Added
 
