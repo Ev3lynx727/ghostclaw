@@ -2,7 +2,91 @@
 
 All notable changes to Ghostclaw will be documented here.
 
-## [v0.2.5] - Upcoming
+## [v0.3.0] - 2026-03-31
+
+### 🚀 Foundation: CLI with Agentic Enhancements
+
+Version 0.3.0 marks a **transitional foundation** for the agent system while maintaining backward compatibility with legacy CLI. This version introduces the **Agent SDK** infrastructure, architecture documentation, and implementation roadmap for v1.0.0 production agents.
+
+### Added
+
+- **Agent SDK Module** (`src/ghostclaw/core/agent_sdk/`)
+  - Persistent agent identity system with personality, goals, strengths, and constraints
+  - Multi-file memory management system (IDENTITY, HOOK, USER, AGENT, RULES, CONTEXT, LEARNINGS)
+  - Isolated git workspace for safe agent edits (agent/workspaces/{id} branch pattern)
+  - Session state and message management for conversations
+  - Agent registry infrastructure for ecosystem coordination
+  - Type hints and comprehensive docstrings (100% coverage target)
+
+- **Agent Architecture Documentation**
+  - KNOWLEDGE_DB_ARCHITECTURE.md - SQLite (local) + PostgreSQL (cloud) unified schema
+  - MISSION_CONTROL_ARCHITECTURE.md - Web dashboard for agent oversight and team collaboration
+  - AGENT_CAPABILITIES_ARCHITECTURE.md - Agent identity, memory, and learning system specifications
+  - TASK.md - Phase 1 implementation roadmap (10 tasks, 30 hours, 2 weeks)
+
+- **Semantic Versioning Roadmap**
+  - v0.3.0: Foundation with Agent SDK scaffolding
+  - v0.3.1-0.3.9: Agent feature development (memory, git workspace, GitHub integration)
+  - v1.0.0: Production-ready agent system (CLI + Mission Control + Backend Service)
+
+### Improved
+
+- **CLI Foundation** — Prepared for agent integration
+  - Backward compatible with v0.2.5 CLI (`ghostclaw /path` unchanged)
+  - Ready for new agent command: `ghostclaw agent spawn --name {name} /path`
+  - No breaking changes to existing batch analysis workflow
+
+- **Project Structure** — Organized agent components
+  - New submodule: `src/ghostclaw/core/agent_sdk/` (agent-specific code)
+  - Separation of concerns: core/lib vs agent-sdk
+  - Type checking enabled (py.typed marker)
+
+### For Developers
+
+Phase 1 Implementation Tasks (Weeks 1-2):
+
+**Week 1 (13 hours)**:
+- Task 1: ✅ Directory setup (1h)
+- Task 2: Agent identity & models (3h)
+- Task 3: Agent memory file system (5h)
+- Task 4: Workspace isolation with git (4h)
+
+**Week 2 (17 hours)**:
+- Task 5: Session management (3h)
+- Task 6: GhostAgent.chat_turn() extension (3h)
+- Task 7: Local storage & SQLite database (3h)
+- Task 8: CLI interactive command (4h)
+- Task 9: Agent registry & discovery (2h)
+- Task 10: Integration & testing (2h)
+
+Details in: TASK.md
+
+### Known Limitations
+
+- Agent system implementation pending (Tasks 2-10)
+  - Memory persistence not yet active
+  - Chat turn integration awaiting GhostAgent extension
+  - Git workspace isolation framework in place, logic in progress
+  - GitHub PR creation API hooks ready, implementation pending
+- Mission Control dashboard: separate milestone
+- Backend service API: separate milestone (will reuse Agent SDK)
+- Cloud sync (local ↔ PostgreSQL): separate milestone
+
+### Migration Path
+
+```
+v0.2.5 (Legacy CLI, current production)
+  ↓
+v0.3.0 (Foundation + Agent SDK scaffolding) ← YOU ARE HERE
+  ↓
+v0.3.1+ (Agent feature implementation)
+  ↓
+v1.0.0 (Production Agent System)
+```
+
+---
+
+## [v0.2.5] - Ongoing (Legacy Foundation)
 
 ### Added
 
