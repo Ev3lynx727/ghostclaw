@@ -81,6 +81,7 @@ from .agent_session import (
     SessionSummary,
 )
 from .agent_cli import AgentCLI, CommandResult
+from .agent_sdk import AgentSDK
 
 
 __version__ = "0.3.0"
@@ -136,6 +137,8 @@ __all__ = [
     # CLI
     "AgentCLI",
     "CommandResult",
+    # Unified SDK
+    "AgentSDK",
     # Module info
     "__version__",
     "__author__",
