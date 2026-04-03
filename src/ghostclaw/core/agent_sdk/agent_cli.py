@@ -317,7 +317,12 @@ class AgentCLI:
 
         try:
             # end_session returns a SessionSummary
-            self.session_manager.end_session()
+            summary = self.session_manager.end_session()
+            if summary is None:
+                return CommandResult(
+                    success=False,
+                    message="Failed to end session: session summary could not be created",
+                )
             session_id = self.session_id
             self.session_id = None
             self.current_session = None
