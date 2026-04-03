@@ -450,7 +450,8 @@ class AgentMemoryManager:
                 deleted_count += len(memory.entries)
                 memory.entries = []
             
-            if deleted_count > 0:
+            file_deleted = (original_count - len(memory.entries)) if before_date else (deleted_count - (deleted_count - len(memory.entries) if not before_date else 0))
+            if len(memory.entries) == 0 or (before_date and original_count != len(memory.entries)) or (not before_date):
                 memory.updated_at = datetime.now()
                 self._save_memory_file(memory_file, memory)
         
