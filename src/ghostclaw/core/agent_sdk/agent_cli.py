@@ -693,7 +693,7 @@ class AgentCLI:
     def _identity_export(self, identity_mgr, args: list) -> CommandResult:
         """Export agent identity."""
         try:
-            export_data = identity_mgr.export()
+            export_data = identity_mgr.to_dict()
             return CommandResult(
                 success=True,
                 message="Identity exported",
