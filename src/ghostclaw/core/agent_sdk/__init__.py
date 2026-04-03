@@ -81,6 +81,23 @@ from .agent_session import (
     SessionSummary,
 )
 from .agent_cli import AgentCLI, CommandResult
+from .agent_task_orchestrator import (
+    AgentTaskOrchestrator,
+    Task,
+    TaskPlan,
+    TaskResult,
+    TaskDependency,
+    TaskState,
+    TaskPriority,
+    TaskType,
+)
+from .agent_telemetry import (
+    AgentTelemetryManager,
+    TelemetryEvent,
+    MetricPoint,
+    EventType,
+    EventSeverity,
+)
 from .agent_sdk import AgentSDK
 
 
@@ -137,6 +154,21 @@ __all__ = [
     # CLI
     "AgentCLI",
     "CommandResult",
+    # Task Orchestration
+    "AgentTaskOrchestrator",
+    "Task",
+    "TaskPlan",
+    "TaskResult",
+    "TaskDependency",
+    "TaskState",
+    "TaskPriority",
+    "TaskType",
+    # Telemetry
+    "AgentTelemetryManager",
+    "TelemetryEvent",
+    "MetricPoint",
+    "EventType",
+    "EventSeverity",
     # Unified SDK
     "AgentSDK",
     # Module info

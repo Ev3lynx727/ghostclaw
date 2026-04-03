@@ -19,8 +19,11 @@ When a user runs `ghostclaw agent spawn /path/to/repo`:
 
 ```
 Agent Identity Lifecycle:
+
+<should this path be cwd or absolute? Absolute is more flexible for multi-agent discovery>
+
 ┌─────────────────────────────────────────┐
-│  $ ghostclaw agent spawn /path/repo     │
+│  $ ghostclaw agent spawn /path/repo     │ 
 └──────────────────┬──────────────────────┘
                    │
         ┌──────────┴──────────┐
@@ -29,7 +32,7 @@ Agent Identity Lifecycle:
     Register Agent       Create Workspace
     UUID: abc-123        
     Status: active       ~/.ghostclaw/agents/
-                         └── abc-123/
+                         └── abc-123/ (Agent workspace namespace)
                              ├── memory/
                              │   ├── IDENTITY.md
                              │   ├── HOOK.md
