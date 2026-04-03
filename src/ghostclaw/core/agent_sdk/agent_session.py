@@ -547,6 +547,7 @@ class AgentSessionManager:
         self._actions.append(action)
         
         # Update metrics
+        self._metrics.action_count += 1
         if not success:
             self._metrics.errors_count += 1
         
