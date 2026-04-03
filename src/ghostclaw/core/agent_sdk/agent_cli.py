@@ -680,8 +680,8 @@ class AgentCLI:
             summary = identity_mgr.get_summary()
             return CommandResult(
                 success=True,
-                message=f"Agent: {summary.get('agent_id', 'unknown')}",
-                data=summary,
+                message=summary,
+                data={"summary": summary},
             )
         except Exception as e:
             return CommandResult(
