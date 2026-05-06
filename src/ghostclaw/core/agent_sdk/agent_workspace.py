@@ -361,12 +361,15 @@ class AgentWorkspaceManager:
             File contents or None on error
         """
         try:
-            full_path = self.workspace_root / filepath
+            base = self.workspace_root.resolve()
+            full_path = (base / filepath).resolve()
+            # Ensure the resolved path is within workspace_root
+            full_path.relative_to(base)
             if full_path.exists() and full_path.is_file():
                 with open(full_path, 'r', encoding='utf-8') as f:
                     return f.read()
             return None
-        except Exception:
+        except (ValueError, Exception):
             return None
     
     def write_file(self, filepath: str, content: str, create_dirs: bool = True) -> bool:
@@ -382,7 +385,10 @@ class AgentWorkspaceManager:
             True if successful, False otherwise
         """
         try:
-            full_path = self.workspace_root / filepath
+            base = self.workspace_root.resolve()
+            full_path = (base / filepath).resolve()
+            # Ensure the resolved path is within workspace_root
+            full_path.relative_to(base)
             
             if create_dirs:
                 full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -391,7 +397,7 @@ class AgentWorkspaceManager:
                 f.write(content)
             
             return True
-        except Exception:
+        except (ValueError, Exception):
             return False
     
     def list_files(

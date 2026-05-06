@@ -473,12 +473,18 @@ class AgentMemoryManager:
                 try:
                     data = json.load(f)
                     memory = MemoryFile(**data)
-                except (json.JSONDecodeError, ValueError):
-                    # If JSON fails, create empty memory
-                    memory = MemoryFile(
-                        name=memory_type,
-                        description=self.MEMORY_DESCRIPTIONS.get(memory_type, ""),
-                    )
+                except json.JSONDecodeError as e:
+                    # Log error and re-raise to prevent data loss
+                    raise RuntimeError(
+                        f"Corrupt memory file '{memory_type}' at {filepath}: "
+                        f"Invalid JSON - {str(e)}. File not modified."
+                    ) from e
+                except ValueError as e:
+                    # Pydantic validation error
+                    raise RuntimeError(
+                        f"Corrupt memory file '{memory_type}' at {filepath}: "
+                        f"Invalid structure - {str(e)}. File not modified."
+                    ) from e
         else:
             # Create new memory file
             memory = MemoryFile(

@@ -13,7 +13,7 @@ All models support:
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator, ValidationInfo
@@ -223,7 +223,7 @@ class AgentIdentity(BaseModel):
     )
     
     personality: AgentPersonality = Field(
-        default_factory=AgentPersonality,
+        default_factory=lambda: AgentPersonality(name="default"),
         description="Agent personality traits"
     )
     
@@ -269,7 +269,7 @@ class AgentMessage(BaseModel):
     """Single message in agent conversation."""
     
     id: UUID = Field(
-        default_factory=UUID,
+        default_factory=uuid4,
         description="Unique message ID"
     )
     
@@ -310,7 +310,7 @@ class Suggestion(BaseModel):
     """Code suggestion from agent."""
     
     id: UUID = Field(
-        default_factory=UUID,
+        default_factory=uuid4,
         description="Unique suggestion ID"
     )
     
@@ -435,7 +435,7 @@ class AgentSession(BaseModel):
     """
     
     id: UUID = Field(
-        default_factory=UUID,
+        default_factory=uuid4,
         description="Unique session ID"
     )
     

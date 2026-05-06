@@ -8,6 +8,7 @@ and identity configurations.
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Dict
+from uuid import UUID, uuid5, NAMESPACE_DNS
 import shlex
 
 from ghostclaw.core.agent_sdk.agent_session import (
@@ -48,7 +49,9 @@ class AgentCLI:
             agent_id: Unique identifier for the agent
         """
         self.agent_id = agent_id
-        self.session_manager = AgentSessionManager(agent_id=agent_id)
+        # Convert string agent_id to UUID for session manager
+        agent_uuid = uuid5(NAMESPACE_DNS, str(agent_id))
+        self.session_manager = AgentSessionManager(agent_id=agent_uuid)
         self.session_id: Optional[str] = None
         self.current_session: Optional[Dict[str, Any]] = None
         self.running = False
