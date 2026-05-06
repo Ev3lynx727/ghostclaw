@@ -2,6 +2,7 @@
 
 All notable changes to Ghostclaw will be documented here.
 
+<<<<<<< HEAD
 ## [v0.3.0] - 2026-03-31
 
 ### 🚀 Foundation: CLI with Agentic Enhancements
@@ -87,6 +88,9 @@ v1.0.0 (Production Agent System)
 ---
 
 ## [v0.2.5] - Ongoing (Legacy Foundation)
+=======
+## [v0.2.5b2] - 2026-04-01
+>>>>>>> 6afec2079eaa0e0167f4e53ce17afebf0e0b92cd
 
 ### Added
 
