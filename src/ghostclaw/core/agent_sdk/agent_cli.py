@@ -416,7 +416,7 @@ class AgentCLI:
 
     def _memory_list(self, memory_mgr, args: list) -> CommandResult:
         """List memory entries."""
-        entries = memory_mgr.get_entries("LONGTERM")
+        entries = memory_mgr.get_entries("LONGTERM.md")
         return CommandResult(
             success=True,
             message=f"Found {len(entries)} memory entries",
