@@ -305,7 +305,7 @@ class AgentTaskOrchestrator:
 
         for dep in task.dependencies:
             dep_task = self.get_task(dep.task_id)
-            if dep.required and (not dep_task or not dep_task.is_completed()):
+            if dep.required and (not dep_task or dep_task.state != TaskState.COMPLETED):
                 return False
 
         return True
