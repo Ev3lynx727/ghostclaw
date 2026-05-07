@@ -20,7 +20,7 @@ Example:
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4, uuid5, NAMESPACE_DNS
 
 from .agent_cli import AgentCLI, CommandResult
 from .agent_identity import AgentIdentityManager
@@ -59,11 +59,15 @@ class AgentSDK:
             agent_id: Optional unique identifier for the agent. Auto-generated if not provided.
             settings: Optional SDK settings. Uses defaults if not provided.
         """
+        # Keep agent_id as string for external API
         self.agent_id = agent_id or "default-agent"
         self.settings = settings or AgentSDKSettings()
 
-        # Initialize core managers
-        self.session_manager = AgentSessionManager(agent_id=self.agent_id)
+        # Convert string agent_id to UUID for internal managers
+        agent_uuid = uuid5(NAMESPACE_DNS, str(self.agent_id))
+        
+        # Initialize core managers with UUID
+        self.session_manager = AgentSessionManager(agent_id=agent_uuid)
         self.cli = AgentCLI(agent_id=self.agent_id)
 
         # These are set when session starts

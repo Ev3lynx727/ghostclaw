@@ -192,11 +192,12 @@ class AgentSessionManager:
                 self._initialize_managers()
             
             # Log session start
-            self._log_action(
+            action = SessionAction(
                 action_type="session_start",
                 description=f"Session started with {len(self._context.goals)} goals",
                 details={"goals": self._context.goals},
             )
+            self._log_action(action)
             
             return True
         except Exception:
@@ -218,8 +219,10 @@ class AgentSessionManager:
             self._state = SessionState.PAUSED
             
             self._log_action(
-                action_type="session_pause",
-                description="Session paused",
+                SessionAction(
+                    action_type="session_pause",
+                    description="Session paused",
+                )
             )
             
             return True
@@ -245,8 +248,10 @@ class AgentSessionManager:
             self._state = SessionState.ACTIVE
             
             self._log_action(
-                action_type="session_resume",
-                description="Session resumed",
+                SessionAction(
+                    action_type="session_resume",
+                    description="Session resumed",
+                )
             )
             
             return True
@@ -281,11 +286,12 @@ class AgentSessionManager:
             self._metrics.total_duration = total_duration
             
             # Log session end
-            self._log_action(
+            action = SessionAction(
                 action_type="session_end",
                 description=f"Session ended with state: {state.value}",
                 details={"state": state.value, "notes": notes},
             )
+            self._log_action(action)
             
             # Create summary
             summary = SessionSummary(
@@ -365,7 +371,7 @@ class AgentSessionManager:
             error_message=error_message,
         )
         
-        self._log_action(action_type, description, details or {}, success, error_message)
+        self._log_action(action)
         return action
     
     def get_actions(
@@ -529,32 +535,26 @@ class AgentSessionManager:
     
     def _log_action(
         self,
-        action_type: str,
-        description: str,
-        details: Optional[Dict[str, Any]] = None,
-        success: bool = True,
-        error_message: Optional[str] = None,
+        action: SessionAction,
     ) -> None:
-        """Internal method to log an action."""
-        action = SessionAction(
-            action_type=action_type,
-            description=description,
-            details=details or {},
-            success=success,
-            error_message=error_message,
-        )
+        """
+        Internal method to log an action.
         
+        Args:
+            action: SessionAction object to track
+        """
         self._actions.append(action)
         
         # Update metrics
-        if not success:
+        self._metrics.action_count += 1
+        if not action.success:
             self._metrics.errors_count += 1
         
-        if action_type == "file_edit":
+        if action.action_type == "file_edit":
             self._metrics.file_count += 1
-        elif action_type == "git_commit":
+        elif action.action_type == "git_commit":
             self._metrics.git_commits += 1
-        elif action_type == "memory_add":
+        elif action.action_type == "memory_add":
             self._metrics.memory_entries += 1
     
     def _save_session_metadata(self) -> None:

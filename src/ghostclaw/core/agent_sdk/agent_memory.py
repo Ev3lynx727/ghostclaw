@@ -450,7 +450,8 @@ class AgentMemoryManager:
                 deleted_count += len(memory.entries)
                 memory.entries = []
             
-            if deleted_count > 0:
+            file_deleted = (original_count - len(memory.entries)) if before_date else (deleted_count - (deleted_count - len(memory.entries) if not before_date else 0))
+            if len(memory.entries) == 0 or (before_date and original_count != len(memory.entries)) or (not before_date):
                 memory.updated_at = datetime.now()
                 self._save_memory_file(memory_file, memory)
         
@@ -472,12 +473,18 @@ class AgentMemoryManager:
                 try:
                     data = json.load(f)
                     memory = MemoryFile(**data)
-                except (json.JSONDecodeError, ValueError):
-                    # If JSON fails, create empty memory
-                    memory = MemoryFile(
-                        name=memory_type,
-                        description=self.MEMORY_DESCRIPTIONS.get(memory_type, ""),
-                    )
+                except json.JSONDecodeError as e:
+                    # Log error and re-raise to prevent data loss
+                    raise RuntimeError(
+                        f"Corrupt memory file '{memory_type}' at {filepath}: "
+                        f"Invalid JSON - {str(e)}. File not modified."
+                    ) from e
+                except ValueError as e:
+                    # Pydantic validation error
+                    raise RuntimeError(
+                        f"Corrupt memory file '{memory_type}' at {filepath}: "
+                        f"Invalid structure - {str(e)}. File not modified."
+                    ) from e
         else:
             # Create new memory file
             memory = MemoryFile(

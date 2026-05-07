@@ -8,6 +8,7 @@ and identity configurations.
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Dict
+from uuid import UUID, uuid5, NAMESPACE_DNS
 import shlex
 
 from ghostclaw.core.agent_sdk.agent_session import (
@@ -48,7 +49,9 @@ class AgentCLI:
             agent_id: Unique identifier for the agent
         """
         self.agent_id = agent_id
-        self.session_manager = AgentSessionManager(agent_id=agent_id)
+        # Convert string agent_id to UUID for session manager
+        agent_uuid = uuid5(NAMESPACE_DNS, str(agent_id))
+        self.session_manager = AgentSessionManager(agent_id=agent_uuid)
         self.session_id: Optional[str] = None
         self.current_session: Optional[Dict[str, Any]] = None
         self.running = False
@@ -317,7 +320,12 @@ class AgentCLI:
 
         try:
             # end_session returns a SessionSummary
-            self.session_manager.end_session()
+            summary = self.session_manager.end_session()
+            if summary is None:
+                return CommandResult(
+                    success=False,
+                    message="Failed to end session: session summary could not be created",
+                )
             session_id = self.session_id
             self.session_id = None
             self.current_session = None
@@ -408,7 +416,7 @@ class AgentCLI:
 
     def _memory_list(self, memory_mgr, args: list) -> CommandResult:
         """List memory entries."""
-        entries = memory_mgr.get_entries("LONGTERM")
+        entries = memory_mgr.get_entries("LONGTERM.md")
         return CommandResult(
             success=True,
             message=f"Found {len(entries)} memory entries",
@@ -680,8 +688,8 @@ class AgentCLI:
             summary = identity_mgr.get_summary()
             return CommandResult(
                 success=True,
-                message=f"Agent: {summary.get('agent_id', 'unknown')}",
-                data=summary,
+                message=summary,
+                data={"summary": summary},
             )
         except Exception as e:
             return CommandResult(
@@ -693,7 +701,7 @@ class AgentCLI:
     def _identity_export(self, identity_mgr, args: list) -> CommandResult:
         """Export agent identity."""
         try:
-            export_data = identity_mgr.export()
+            export_data = identity_mgr.to_dict()
             return CommandResult(
                 success=True,
                 message="Identity exported",
