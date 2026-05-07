@@ -95,6 +95,11 @@ class AgentPersonality(BaseModel):
         description="Formality level (0=casual, 1=formal)"
     )
     
+    traits: List[str] = Field(
+        default_factory=list,
+        description="List of personality traits (e.g., 'analytical', 'collaborative', 'pragmatic')"
+    )
+    
     model_config = {
         "json_schema_extra": {
             "examples": [{

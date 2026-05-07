@@ -211,7 +211,7 @@ class AgentSDK:
         Set or update agent personality.
 
         Args:
-            personality: Description of agent personality
+            personality: Description of agent personality (maps to communication field)
             traits: Optional list of personality traits
 
         Returns:
@@ -223,7 +223,9 @@ class AgentSDK:
         try:
             identity = self.identity_manager.load()
             if identity:
-                identity.personality.description = personality
+                # Map personality string to communication field
+                identity.personality.communication = personality
+                # Set traits if provided
                 if traits:
                     identity.personality.traits = traits
                 self.identity_manager.save(identity)
